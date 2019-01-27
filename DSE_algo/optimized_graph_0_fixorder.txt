@@ -1,0 +1,64 @@
+Network : VGG_ILSVRC_16_layers
+Input Blob : data
+Output Blob : pool5
+Start Layer : data
+End Layer : pool5
+
+# -------------------- Layers ------------------------ #
+[data:0] --> { conv1_1 - Convolution: F = 64x3x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x3x3x3; BDim = 64; ID = 0} --> [conv1_1:0]
+Xilinx
+[conv1_1:0] --> { conv1_2 - Convolution: F = 64x64x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x64x3x3; BDim = 64; ID = 1} --> [conv1_2:0]
+Xilinx
+[pool1:0] --> { conv2_1 - Convolution: F = 128x64x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x64x3x3; BDim = 128; ID=2} --> [conv2_1:0]
+Xilinx
+[conv2_1:0] --> { conv2_2 - Convolution: F = 128x128x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x128x3x3; BDim = 128; ID = 0} --> [conv2_2:0]
+Xilinx
+[pool2:0] --> { conv3_1 - Convolution: F = 256x128x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x128x3x3; BDim = 256; ID = 1} --> [conv3_1:0]
+Xilinx
+[conv3_1:0] --> { conv3_2 - Convolution: F = 256x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x256x3x3; BDim = 256; ID = 2} --> [conv3_2:0]
+Xilinx
+[conv3_2:0] --> { conv3_3 - Convolution: F = 256x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x256x3x3; BDim = 256; ID = 0} --> [conv3_3:0]
+Xilinx
+[pool3:0] --> { conv4_1 - Convolution: F = 512x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x256x3x3; BDim = 512; ID = 1} --> [conv4_1:0]
+Xilinx
+[conv4_1:0] --> { conv4_2 - Convolution: F = 512x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x512x3x3; BDim = 512; ID = 2} --> [conv4_2:0]
+Xilinx
+[conv4_2:0] --> { conv4_3 - Convolution: F = 512x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x512x3x3; BDim = 512; ID = 0} --> [conv4_3:0]
+Xilinx
+[pool4:0] --> { conv5_1 - Convolution: F = 512x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x512x3x3; BDim = 512; ID = 1} --> [conv5_1:0]
+Xilinx
+[conv5_1:0] --> { conv5_2 - Convolution: F = 512x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x512x3x3; BDim = 512; ID = 2} --> [conv5_2:0]
+Xilinx
+[conv5_2:0] --> { conv5_3 - Convolution: F = 512x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x512x3x3; BDim = 512; ID = 0} --> [conv5_3:0]
+Xilinx
+[conv1_2:0] --> { pool1 - Pooling : PoolType = MAXPOOL; N = 64; K = 2; S = 2; P = 0; ID = 3} --> [pool1:0]
+Xilinx
+[conv2_2:0] --> { pool2 - Pooling : PoolType = MAXPOOL; N = 128; K = 2; S = 2; P = 0; ID = 4} --> [pool2:0]
+Xilinx
+[conv3_3:0] --> { pool3 - Pooling : PoolType = MAXPOOL; N = 256; K = 2; S = 2; P = 0; ID = 5} --> [pool3:0]
+Xilinx
+[conv4_3:0] --> { pool4 - Pooling : PoolType = MAXPOOL; N = 512; K = 2; S = 2; P = 0; ID = 6} --> [pool4:0]
+Xilinx
+[conv5_3:0] --> { pool5 - Pooling : PoolType = MAXPOOL; N = 512; K = 2; S = 2; P = 0; ID = 7} --> [pool5:0]
+Xilinx
+
+# -------------------- Blobs ------------------------ #
+conv1_1 : 1x64x224x224
+conv1_2 : 1x64x224x224
+conv2_1 : 1x128x112x112 : P
+conv2_2 : 1x128x112x112
+conv3_1 : 1x256x56x56
+conv3_2 : 1x256x56x56 : P
+conv3_3 : 1x256x56x56
+conv4_1 : 1x512x28x28
+conv4_2 : 1x512x28x28 : P
+conv4_3 : 1x512x28x28
+conv5_1 : 1x512x14x14
+conv5_2 : 1x512x14x14 : P
+conv5_3 : 1x512x14x14
+data : 1x3x224x224 : P
+pool1 : 1x64x112x112
+pool2 : 1x128x56x56
+pool3 : 1x256x28x28
+pool4 : 1x512x14x14
+pool5 : 1x512x7x7

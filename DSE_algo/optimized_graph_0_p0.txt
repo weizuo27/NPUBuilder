@@ -1,0 +1,22 @@
+Network : VGG_ILSVRC_16_layers
+Input Blob : data
+Output Blob : pool5
+Start Layer : data
+End Layer : pool5
+
+# -------------------- Layers ------------------------ #
+[data:0] --> { conv1_1 - Convolution: F = 64x3x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x3x3x3; BDim = 64; ID = 0} --> [conv1_1:0]
+Xilinx
+[conv1_1:0] --> { conv1_2 - Convolution: F = 64x64x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x64x3x3; BDim = 64; ID = 1} --> [conv1_2:0]
+Xilinx
+[pool1:0] --> { conv2_1 - Convolution: F = 128x64x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x64x3x3; BDim = 128; ID=2} --> [conv2_1:0]
+Xilinx
+[conv1_2:0] --> { pool1 - Pooling : PoolType = MAXPOOL; N = 64; K = 2; S = 2; P = 0; ID = 3} --> [pool1:0]
+Xilinx
+
+# -------------------- Blobs ------------------------ #
+conv1_1 : 1x64x224x224
+conv1_2 : 1x64x224x224
+data : 1x3x224x224 : P
+pool1 : 1x64x112x112
+conv2_1 : 1x128x112x112

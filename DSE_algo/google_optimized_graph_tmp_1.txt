@@ -1,0 +1,15 @@
+
+Network : GoogleNet
+Input Blob : data
+Output Blob : pool5/7x7_s1
+Start Layer : data
+End Layer : pool5/7x7_s1
+
+# -------------------- Layers ------------------------ #
+[data:0] --> { conv_pool0 - Convolution: F = 1024x1024x7x7; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 1024x1024x7x7; BDim = 1024;  } --> [pool5/7x7_s1:0]
+Xilinx
+
+# -------------------- Blobs ------------------------ #
+data : 1x1024x7x7 : P
+pool5/7x7_s1 : 1x1024x1x1
+

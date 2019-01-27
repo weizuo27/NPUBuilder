@@ -1,0 +1,225 @@
+
+Network : ResNet-50
+Input Blob : data
+Output Blob : pool5
+Start Layer : data
+End Layer : pool5
+
+# -------------------- Layers ------------------------ #
+[data:0] --> { conv1 - Convolution: F = 64x3x7x7; S = 2; P = 3; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x3x7x7; BDim = 64;  } --> [conv1:0]
+Xilinx
+[res2a_branch1:0, res2a_branch2c:0] --> { conv_eltwise0 - Eltwise: F = 256x256x0x0; S = 19; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res2a:0]
+Xilinx
+[res2a:0, res2b_branch2c:0] --> { conv_eltwise1 - Eltwise: F = 256x256x0x0; S = 1027; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res2b:0]
+Xilinx
+[res4c:0, res4d_branch2c:0] --> { conv_eltwise10 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4d:0]
+Xilinx
+[res4d:0, res4e_branch2c:0] --> { conv_eltwise11 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4e:0]
+Xilinx
+[res4e:0, res4f_branch2c:0] --> { conv_eltwise12 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4f:0]
+Xilinx
+[res5a_branch1:0, res5a_branch2c:0] --> { conv_eltwise13 - Eltwise: F = 2048x2048x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res5a:0]
+Xilinx
+[res5a:0, res5b_branch2c:0] --> { conv_eltwise14 - Eltwise: F = 2048x2048x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res5b:0]
+Xilinx
+[res5b:0, res5c_branch2c:0] --> { conv_eltwise15 - Eltwise: F = 2048x2048x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res5c:0]
+Xilinx
+[res2b:0, res2c_branch2c:0] --> { conv_eltwise2 - Eltwise: F = 256x256x0x0; S = 962392656; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res2c:0]
+Xilinx
+[res3a_branch1:0, res3a_branch2c:0] --> { conv_eltwise3 - Eltwise: F = 512x512x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res3a:0]
+Xilinx
+[res3a:0, res3b_branch2c:0] --> { conv_eltwise4 - Eltwise: F = 512x512x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res3b:0]
+Xilinx
+[res3b:0, res3c_branch2c:0] --> { conv_eltwise5 - Eltwise: F = 512x512x0x0; S = 964367248; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res3c:0]
+Xilinx
+[res3c:0, res3d_branch2c:0] --> { conv_eltwise6 - Eltwise: F = 512x512x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res3d:0]
+Xilinx
+[res4a_branch1:0, res4a_branch2c:0] --> { conv_eltwise7 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4a:0]
+Xilinx
+[res4a:0, res4b_branch2c:0] --> { conv_eltwise8 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4b:0]
+Xilinx
+[res4b:0, res4c_branch2c:0] --> { conv_eltwise9 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4c:0]
+Xilinx
+[res5c:0] --> { pool5 - Pooling : PoolType = AVGPOOL; N = 2048; K = 7; S = 1; P = 0 } --> [pool5:0]
+Xilinx
+[conv1:0] --> { pool1 - Pooling : PoolType = MAXPOOL; N = 64; K = 3; S = 2; P = 0 } --> [pool1:0]
+Xilinx
+[pool1:0] --> { res2a_branch1 - Convolution: F = 256x64x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 256x64x1x1; BDim = 256;  } --> [res2a_branch1:0]
+Xilinx
+[pool1:0] --> { res2a_branch2a - Convolution: F = 64x64x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x64x1x1; BDim = 64;  } --> [res2a_branch2a:0]
+Xilinx
+[res2a_branch2a:0] --> { res2a_branch2b - Convolution: F = 64x64x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x64x3x3; BDim = 64;  } --> [res2a_branch2b:0]
+Xilinx
+[res2a_branch2b:0] --> { res2a_branch2c - Convolution: F = 256x64x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 256x64x1x1; BDim = 256;  } --> [res2a_branch2c:0]
+Xilinx
+[res2a:0] --> { res2b_branch2a - Convolution: F = 64x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x256x1x1; BDim = 64;  } --> [res2b_branch2a:0]
+Xilinx
+[res2b_branch2a:0] --> { res2b_branch2b - Convolution: F = 64x64x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x64x3x3; BDim = 64;  } --> [res2b_branch2b:0]
+Xilinx
+[res2b_branch2b:0] --> { res2b_branch2c - Convolution: F = 256x64x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 256x64x1x1; BDim = 256;  } --> [res2b_branch2c:0]
+Xilinx
+[res2b:0] --> { res2c_branch2a - Convolution: F = 64x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x256x1x1; BDim = 64;  } --> [res2c_branch2a:0]
+Xilinx
+[res2c_branch2a:0] --> { res2c_branch2b - Convolution: F = 64x64x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x64x3x3; BDim = 64;  } --> [res2c_branch2b:0]
+Xilinx
+[res2c_branch2b:0] --> { res2c_branch2c - Convolution: F = 256x64x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 256x64x1x1; BDim = 256;  } --> [res2c_branch2c:0]
+Xilinx
+[res2c:0] --> { res3a_branch1 - Convolution: F = 512x256x1x1; S = 2; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 512x256x1x1; BDim = 512;  } --> [res3a_branch1:0]
+Xilinx
+[res2c:0] --> { res3a_branch2a - Convolution: F = 128x256x1x1; S = 2; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x256x1x1; BDim = 128;  } --> [res3a_branch2a:0]
+Xilinx
+[res3a_branch2a:0] --> { res3a_branch2b - Convolution: F = 128x128x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x128x3x3; BDim = 128;  } --> [res3a_branch2b:0]
+Xilinx
+[res3a_branch2b:0] --> { res3a_branch2c - Convolution: F = 512x128x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 512x128x1x1; BDim = 512;  } --> [res3a_branch2c:0]
+Xilinx
+[res3a:0] --> { res3b_branch2a - Convolution: F = 128x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x512x1x1; BDim = 128;  } --> [res3b_branch2a:0]
+Xilinx
+[res3b_branch2a:0] --> { res3b_branch2b - Convolution: F = 128x128x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x128x3x3; BDim = 128;  } --> [res3b_branch2b:0]
+Xilinx
+[res3b_branch2b:0] --> { res3b_branch2c - Convolution: F = 512x128x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 512x128x1x1; BDim = 512;  } --> [res3b_branch2c:0]
+Xilinx
+[res3b:0] --> { res3c_branch2a - Convolution: F = 128x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x512x1x1; BDim = 128;  } --> [res3c_branch2a:0]
+Xilinx
+[res3c_branch2a:0] --> { res3c_branch2b - Convolution: F = 128x128x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x128x3x3; BDim = 128;  } --> [res3c_branch2b:0]
+Xilinx
+[res3c_branch2b:0] --> { res3c_branch2c - Convolution: F = 512x128x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 512x128x1x1; BDim = 512;  } --> [res3c_branch2c:0]
+Xilinx
+[res3c:0] --> { res3d_branch2a - Convolution: F = 128x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x512x1x1; BDim = 128;  } --> [res3d_branch2a:0]
+Xilinx
+[res3d_branch2a:0] --> { res3d_branch2b - Convolution: F = 128x128x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x128x3x3; BDim = 128;  } --> [res3d_branch2b:0]
+Xilinx
+[res3d_branch2b:0] --> { res3d_branch2c - Convolution: F = 512x128x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 512x128x1x1; BDim = 512;  } --> [res3d_branch2c:0]
+Xilinx
+[res3d:0] --> { res4a_branch1 - Convolution: F = 1024x512x1x1; S = 2; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 1024x512x1x1; BDim = 1024;  } --> [res4a_branch1:0]
+Xilinx
+[res3d:0] --> { res4a_branch2a - Convolution: F = 256x512x1x1; S = 2; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x512x1x1; BDim = 256;  } --> [res4a_branch2a:0]
+Xilinx
+[res4a_branch2a:0] --> { res4a_branch2b - Convolution: F = 256x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x256x3x3; BDim = 256;  } --> [res4a_branch2b:0]
+Xilinx
+[res4a_branch2b:0] --> { res4a_branch2c - Convolution: F = 1024x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 1024x256x1x1; BDim = 1024;  } --> [res4a_branch2c:0]
+Xilinx
+[res4a:0] --> { res4b_branch2a - Convolution: F = 256x1024x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x1024x1x1; BDim = 256;  } --> [res4b_branch2a:0]
+Xilinx
+[res4b_branch2a:0] --> { res4b_branch2b - Convolution: F = 256x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x256x3x3; BDim = 256;  } --> [res4b_branch2b:0]
+Xilinx
+[res4b_branch2b:0] --> { res4b_branch2c - Convolution: F = 1024x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 1024x256x1x1; BDim = 1024;  } --> [res4b_branch2c:0]
+Xilinx
+[res4b:0] --> { res4c_branch2a - Convolution: F = 256x1024x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x1024x1x1; BDim = 256;  } --> [res4c_branch2a:0]
+Xilinx
+[res4c_branch2a:0] --> { res4c_branch2b - Convolution: F = 256x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x256x3x3; BDim = 256;  } --> [res4c_branch2b:0]
+Xilinx
+[res4c_branch2b:0] --> { res4c_branch2c - Convolution: F = 1024x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 1024x256x1x1; BDim = 1024;  } --> [res4c_branch2c:0]
+Xilinx
+[res4c:0] --> { res4d_branch2a - Convolution: F = 256x1024x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x1024x1x1; BDim = 256;  } --> [res4d_branch2a:0]
+Xilinx
+[res4d_branch2a:0] --> { res4d_branch2b - Convolution: F = 256x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x256x3x3; BDim = 256;  } --> [res4d_branch2b:0]
+Xilinx
+[res4d_branch2b:0] --> { res4d_branch2c - Convolution: F = 1024x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 1024x256x1x1; BDim = 1024;  } --> [res4d_branch2c:0]
+Xilinx
+[res4d:0] --> { res4e_branch2a - Convolution: F = 256x1024x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x1024x1x1; BDim = 256;  } --> [res4e_branch2a:0]
+Xilinx
+[res4e_branch2a:0] --> { res4e_branch2b - Convolution: F = 256x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x256x3x3; BDim = 256;  } --> [res4e_branch2b:0]
+Xilinx
+[res4e_branch2b:0] --> { res4e_branch2c - Convolution: F = 1024x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 1024x256x1x1; BDim = 1024;  } --> [res4e_branch2c:0]
+Xilinx
+[res4e:0] --> { res4f_branch2a - Convolution: F = 256x1024x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x1024x1x1; BDim = 256;  } --> [res4f_branch2a:0]
+Xilinx
+[res4f_branch2a:0] --> { res4f_branch2b - Convolution: F = 256x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x256x3x3; BDim = 256;  } --> [res4f_branch2b:0]
+Xilinx
+[res4f_branch2b:0] --> { res4f_branch2c - Convolution: F = 1024x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 1024x256x1x1; BDim = 1024;  } --> [res4f_branch2c:0]
+Xilinx
+[res4f:0] --> { res5a_branch1 - Convolution: F = 2048x1024x1x1; S = 2; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 2048x1024x1x1; BDim = 2048;  } --> [res5a_branch1:0]
+Xilinx
+[res4f:0] --> { res5a_branch2a - Convolution: F = 512x1024x1x1; S = 2; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x1024x1x1; BDim = 512;  } --> [res5a_branch2a:0]
+Xilinx
+[res5a_branch2a:0] --> { res5a_branch2b - Convolution: F = 512x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x512x3x3; BDim = 512;  } --> [res5a_branch2b:0]
+Xilinx
+[res5a_branch2b:0] --> { res5a_branch2c - Convolution: F = 2048x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 2048x512x1x1; BDim = 2048;  } --> [res5a_branch2c:0]
+Xilinx
+[res5a:0] --> { res5b_branch2a - Convolution: F = 512x2048x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x2048x1x1; BDim = 512;  } --> [res5b_branch2a:0]
+Xilinx
+[res5b_branch2a:0] --> { res5b_branch2b - Convolution: F = 512x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x512x3x3; BDim = 512;  } --> [res5b_branch2b:0]
+Xilinx
+[res5b_branch2b:0] --> { res5b_branch2c - Convolution: F = 2048x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 2048x512x1x1; BDim = 2048;  } --> [res5b_branch2c:0]
+Xilinx
+[res5b:0] --> { res5c_branch2a - Convolution: F = 512x2048x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x2048x1x1; BDim = 512;  } --> [res5c_branch2a:0]
+Xilinx
+[res5c_branch2a:0] --> { res5c_branch2b - Convolution: F = 512x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x512x3x3; BDim = 512;  } --> [res5c_branch2b:0]
+Xilinx
+[res5c_branch2b:0] --> { res5c_branch2c - Convolution: F = 2048x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 2048x512x1x1; BDim = 2048;  } --> [res5c_branch2c:0]
+Xilinx
+
+# -------------------- Blobs ------------------------ #
+conv1 : 1x64x112x112
+data : 1x3x224x224 : P
+pool1 : 1x64x56x56 : P
+pool5 : 1x2048x1x1
+res2a : 1x256x56x56 : P
+res2a_branch1 : 1x256x56x56
+res2a_branch2a : 1x64x56x56
+res2a_branch2b : 1x64x56x56
+res2a_branch2c : 1x256x56x56
+res2b : 1x256x56x56 : P
+res2b_branch2a : 1x64x56x56
+res2b_branch2b : 1x64x56x56
+res2b_branch2c : 1x256x56x56
+res2c : 1x256x56x56 : P
+res2c_branch2a : 1x64x56x56
+res2c_branch2b : 1x64x56x56
+res2c_branch2c : 1x256x56x56
+res3a : 1x512x28x28 : P
+res3a_branch1 : 1x512x28x28
+res3a_branch2a : 1x128x28x28
+res3a_branch2b : 1x128x28x28
+res3a_branch2c : 1x512x28x28
+res3b : 1x512x28x28 : P
+res3b_branch2a : 1x128x28x28
+res3b_branch2b : 1x128x28x28
+res3b_branch2c : 1x512x28x28
+res3c : 1x512x28x28 : P
+res3c_branch2a : 1x128x28x28
+res3c_branch2b : 1x128x28x28
+res3c_branch2c : 1x512x28x28
+res3d : 1x512x28x28 : P
+res3d_branch2a : 1x128x28x28
+res3d_branch2b : 1x128x28x28
+res3d_branch2c : 1x512x28x28
+res4a : 1x1024x14x14 : P
+res4a_branch1 : 1x1024x14x14
+res4a_branch2a : 1x256x14x14
+res4a_branch2b : 1x256x14x14
+res4a_branch2c : 1x1024x14x14
+res4b : 1x1024x14x14 : P
+res4b_branch2a : 1x256x14x14
+res4b_branch2b : 1x256x14x14
+res4b_branch2c : 1x1024x14x14
+res4c : 1x1024x14x14 : P
+res4c_branch2a : 1x256x14x14
+res4c_branch2b : 1x256x14x14
+res4c_branch2c : 1x1024x14x14
+res4d : 1x1024x14x14 : P
+res4d_branch2a : 1x256x14x14
+res4d_branch2b : 1x256x14x14
+res4d_branch2c : 1x1024x14x14
+res4e : 1x1024x14x14 : P
+res4e_branch2a : 1x256x14x14
+res4e_branch2b : 1x256x14x14
+res4e_branch2c : 1x1024x14x14
+res4f : 1x1024x14x14 : P
+res4f_branch2a : 1x256x14x14
+res4f_branch2b : 1x256x14x14
+res4f_branch2c : 1x1024x14x14
+res5a : 1x2048x7x7 : P
+res5a_branch1 : 1x2048x7x7
+res5a_branch2a : 1x512x7x7
+res5a_branch2b : 1x512x7x7
+res5a_branch2c : 1x2048x7x7
+res5b : 1x2048x7x7 : P
+res5b_branch2a : 1x512x7x7
+res5b_branch2b : 1x512x7x7
+res5b_branch2c : 1x2048x7x7
+res5c : 1x2048x7x7 : P
+res5c_branch2a : 1x512x7x7
+res5c_branch2b : 1x512x7x7
+res5c_branch2c : 1x2048x7x7
+

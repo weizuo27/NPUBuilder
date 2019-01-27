@@ -1,0 +1,198 @@
+
+Network : GoogleNet
+Input Blob : data
+Output Blob : pool5/7x7_s1
+Start Layer : data
+End Layer : pool5/7x7_s1
+
+# -------------------- Layers ------------------------ #
+[data:0] --> { conv1/7x7_s2 - Convolution: F = 64x3x7x7; S = 2; P = 3; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x3x7x7; BDim = 64;  } --> [conv1/7x7_s2:0] 
+Xilinx
+[conv2/3x3_reduce:0] --> { conv2/3x3 - Convolution: F = 192x64x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 192x64x3x3; BDim = 192;  } --> [conv2/3x3:0]
+Xilinx
+[pool1/3x3_s2:0] --> { conv2/3x3_reduce - Convolution: F = 64x64x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x64x1x1; BDim = 64;  } --> [conv2/3x3_reduce:0]
+Xilinx
+[inception_5b/output:0] --> { conv_pool0 - Convolution: F = 1024x1024x7x7; S = 1; P = 0; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 1024x1024x7x7; BDim = 1024;  } --> [pool5/7x7_s1:0]
+Xilinx
+[pool2/3x3_s2:0] --> { inception_3a/1x1 - Convolution: F = 64x192x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x192x1x1; BDim = 64;  } --> [inception_3a/output:0]
+Xilinx
+[inception_3a/3x3_reduce:0] --> { inception_3a/3x3 - Convolution: F = 128x96x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x96x3x3; BDim = 128;  } --> [inception_3a/output:1]
+Xilinx
+[pool2/3x3_s2:0] --> { inception_3a/3x3_reduce - Convolution: F = 96x192x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 96x192x1x1; BDim = 96;  } --> [inception_3a/3x3_reduce:0]
+Xilinx
+[inception_3a/5x5_reduce:0] --> { inception_3a/5x5 - Convolution: F = 32x16x5x5; S = 1; P = 2; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 32x16x5x5; BDim = 32;  } --> [inception_3a/output:2]
+Xilinx
+[pool2/3x3_s2:0] --> { inception_3a/5x5_reduce - Convolution: F = 16x192x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 16x192x1x1; BDim = 16;  } --> [inception_3a/5x5_reduce:0]
+Xilinx
+[pool2/3x3_s2:0] --> { inception_3a/pool - Pooling : PoolType = MAXPOOL; N = 192; K = 3; S = 1; P = 1 } --> [inception_3a/pool:0]
+Xilinx
+[inception_3a/pool:0] --> { inception_3a/pool_proj - Convolution: F = 32x192x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 32x192x1x1; BDim = 32;  } --> [inception_3a/output:3]
+Xilinx
+[inception_3a/output:0] --> { inception_3b/1x1 - Convolution: F = 128x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x256x1x1; BDim = 128;  } --> [inception_3b/output:0]
+Xilinx
+[inception_3b/3x3_reduce:0] --> { inception_3b/3x3 - Convolution: F = 192x128x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 192x128x3x3; BDim = 192;  } --> [inception_3b/output:1]
+Xilinx
+[inception_3a/output:0] --> { inception_3b/3x3_reduce - Convolution: F = 128x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x256x1x1; BDim = 128;  } --> [inception_3b/3x3_reduce:0]
+Xilinx
+[inception_3b/5x5_reduce:0] --> { inception_3b/5x5 - Convolution: F = 96x32x5x5; S = 1; P = 2; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 96x32x5x5; BDim = 96;  } --> [inception_3b/output:2]
+Xilinx
+[inception_3a/output:0] --> { inception_3b/5x5_reduce - Convolution: F = 32x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 32x256x1x1; BDim = 32;  } --> [inception_3b/5x5_reduce:0]
+Xilinx
+[inception_3a/output:0] --> { inception_3b/pool - Pooling : PoolType = MAXPOOL; N = 256; K = 3; S = 1; P = 1 } --> [inception_3b/pool:0]
+Xilinx
+[inception_3b/pool:0] --> { inception_3b/pool_proj - Convolution: F = 64x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x256x1x1; BDim = 64;  } --> [inception_3b/output:3]
+Xilinx
+[pool3/3x3_s2:0] --> { inception_4a/1x1 - Convolution: F = 192x480x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 192x480x1x1; BDim = 192;  } --> [inception_4a/output:0]
+Xilinx
+[inception_4a/3x3_reduce:0] --> { inception_4a/3x3 - Convolution: F = 208x96x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 208x96x3x3; BDim = 208;  } --> [inception_4a/output:1]
+Xilinx
+[pool3/3x3_s2:0] --> { inception_4a/3x3_reduce - Convolution: F = 96x480x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 96x480x1x1; BDim = 96;  } --> [inception_4a/3x3_reduce:0]
+Xilinx
+[inception_4a/5x5_reduce:0] --> { inception_4a/5x5 - Convolution: F = 48x16x5x5; S = 1; P = 2; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 48x16x5x5; BDim = 48;  } --> [inception_4a/output:2]
+Xilinx
+[pool3/3x3_s2:0] --> { inception_4a/5x5_reduce - Convolution: F = 16x480x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 16x480x1x1; BDim = 16;  } --> [inception_4a/5x5_reduce:0]
+Xilinx
+[pool3/3x3_s2:0] --> { inception_4a/pool - Pooling : PoolType = MAXPOOL; N = 480; K = 3; S = 1; P = 1 } --> [inception_4a/pool:0]
+Xilinx
+[inception_4a/pool:0] --> { inception_4a/pool_proj - Convolution: F = 64x480x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x480x1x1; BDim = 64;  } --> [inception_4a/output:3]
+Xilinx
+[inception_4a/output:0] --> { inception_4b/1x1 - Convolution: F = 160x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 160x512x1x1; BDim = 160;  } --> [inception_4b/output:0]
+Xilinx
+[inception_4b/3x3_reduce:0] --> { inception_4b/3x3 - Convolution: F = 224x112x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 224x112x3x3; BDim = 224;  } --> [inception_4b/output:1]
+Xilinx
+[inception_4a/output:0] --> { inception_4b/3x3_reduce - Convolution: F = 112x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 112x512x1x1; BDim = 112;  } --> [inception_4b/3x3_reduce:0]
+Xilinx
+[inception_4b/5x5_reduce:0] --> { inception_4b/5x5 - Convolution: F = 64x24x5x5; S = 1; P = 2; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x24x5x5; BDim = 64;  } --> [inception_4b/output:2]
+Xilinx
+[inception_4a/output:0] --> { inception_4b/5x5_reduce - Convolution: F = 24x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 24x512x1x1; BDim = 24;  } --> [inception_4b/5x5_reduce:0]
+Xilinx
+[inception_4a/output:0] --> { inception_4b/pool - Pooling : PoolType = MAXPOOL; N = 512; K = 3; S = 1; P = 1 } --> [inception_4b/pool:0]
+Xilinx
+[inception_4b/pool:0] --> { inception_4b/pool_proj - Convolution: F = 64x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x512x1x1; BDim = 64;  } --> [inception_4b/output:3]
+Xilinx
+[inception_4b/output:0] --> { inception_4c/1x1 - Convolution: F = 128x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x512x1x1; BDim = 128;  } --> [inception_4c/output:0]
+Xilinx
+[inception_4c/3x3_reduce:0] --> { inception_4c/3x3 - Convolution: F = 256x128x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x128x3x3; BDim = 256;  } --> [inception_4c/output:1]
+Xilinx
+[inception_4b/output:0] --> { inception_4c/3x3_reduce - Convolution: F = 128x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x512x1x1; BDim = 128;  } --> [inception_4c/3x3_reduce:0]
+Xilinx
+[inception_4c/5x5_reduce:0] --> { inception_4c/5x5 - Convolution: F = 64x24x5x5; S = 1; P = 2; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x24x5x5; BDim = 64;  } --> [inception_4c/output:2]
+Xilinx
+[inception_4b/output:0] --> { inception_4c/5x5_reduce - Convolution: F = 24x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 24x512x1x1; BDim = 24;  } --> [inception_4c/5x5_reduce:0]
+Xilinx
+[inception_4b/output:0] --> { inception_4c/pool - Pooling : PoolType = MAXPOOL; N = 512; K = 3; S = 1; P = 1 } --> [inception_4c/pool:0]
+Xilinx
+[inception_4c/pool:0] --> { inception_4c/pool_proj - Convolution: F = 64x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x512x1x1; BDim = 64;  } --> [inception_4c/output:3]
+Xilinx
+[inception_4c/output:0] --> { inception_4d/1x1 - Convolution: F = 112x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 112x512x1x1; BDim = 112;  } --> [inception_4d/output:0]
+Xilinx
+[inception_4d/3x3_reduce:0] --> { inception_4d/3x3 - Convolution: F = 288x144x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 288x144x3x3; BDim = 288;  } --> [inception_4d/output:1]
+Xilinx
+[inception_4c/output:0] --> { inception_4d/3x3_reduce - Convolution: F = 144x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 144x512x1x1; BDim = 144;  } --> [inception_4d/3x3_reduce:0]
+Xilinx
+[inception_4d/5x5_reduce:0] --> { inception_4d/5x5 - Convolution: F = 64x32x5x5; S = 1; P = 2; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x32x5x5; BDim = 64;  } --> [inception_4d/output:2]
+Xilinx
+[inception_4c/output:0] --> { inception_4d/5x5_reduce - Convolution: F = 32x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 32x512x1x1; BDim = 32;  } --> [inception_4d/5x5_reduce:0]
+Xilinx
+[inception_4c/output:0] --> { inception_4d/pool - Pooling : PoolType = MAXPOOL; N = 512; K = 3; S = 1; P = 1 } --> [inception_4d/pool:0]
+Xilinx
+[inception_4d/pool:0] --> { inception_4d/pool_proj - Convolution: F = 64x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x512x1x1; BDim = 64;  } --> [inception_4d/output:3]
+Xilinx
+[inception_4d/output:0] --> { inception_4e/1x1 - Convolution: F = 256x528x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x528x1x1; BDim = 256;  } --> [inception_4e/output:0]
+Xilinx
+[inception_4e/3x3_reduce:0] --> { inception_4e/3x3 - Convolution: F = 320x160x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 320x160x3x3; BDim = 320;  } --> [inception_4e/output:1]
+Xilinx
+[inception_4d/output:0] --> { inception_4e/3x3_reduce - Convolution: F = 160x528x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 160x528x1x1; BDim = 160;  } --> [inception_4e/3x3_reduce:0]
+Xilinx
+[inception_4e/5x5_reduce:0] --> { inception_4e/5x5 - Convolution: F = 128x32x5x5; S = 1; P = 2; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x32x5x5; BDim = 128;  } --> [inception_4e/output:2]
+Xilinx
+[inception_4d/output:0] --> { inception_4e/5x5_reduce - Convolution: F = 32x528x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 32x528x1x1; BDim = 32;  } --> [inception_4e/5x5_reduce:0]
+Xilinx
+[inception_4d/output:0] --> { inception_4e/pool - Pooling : PoolType = MAXPOOL; N = 528; K = 3; S = 1; P = 1 } --> [inception_4e/pool:0]
+Xilinx
+[inception_4e/pool:0] --> { inception_4e/pool_proj - Convolution: F = 128x528x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x528x1x1; BDim = 128;  } --> [inception_4e/output:3]
+Xilinx
+[pool4/3x3_s2:0] --> { inception_5a/1x1 - Convolution: F = 256x832x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x832x1x1; BDim = 256;  } --> [inception_5a/output:0]
+Xilinx
+[inception_5a/3x3_reduce:0] --> { inception_5a/3x3 - Convolution: F = 320x160x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 320x160x3x3; BDim = 320;  } --> [inception_5a/output:1]
+Xilinx
+[pool4/3x3_s2:0] --> { inception_5a/3x3_reduce - Convolution: F = 160x832x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 160x832x1x1; BDim = 160;  } --> [inception_5a/3x3_reduce:0]
+Xilinx
+[inception_5a/5x5_reduce:0] --> { inception_5a/5x5 - Convolution: F = 128x32x5x5; S = 1; P = 2; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x32x5x5; BDim = 128;  } --> [inception_5a/output:2]
+Xilinx
+[pool4/3x3_s2:0] --> { inception_5a/5x5_reduce - Convolution: F = 32x832x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 32x832x1x1; BDim = 32;  } --> [inception_5a/5x5_reduce:0]
+Xilinx
+[pool4/3x3_s2:0] --> { inception_5a/pool - Pooling : PoolType = MAXPOOL; N = 832; K = 3; S = 1; P = 1 } --> [inception_5a/pool:0]
+Xilinx
+[inception_5a/pool:0] --> { inception_5a/pool_proj - Convolution: F = 128x832x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x832x1x1; BDim = 128;  } --> [inception_5a/output:3]
+Xilinx
+[inception_5a/output:0] --> { inception_5b/1x1 - Convolution: F = 384x832x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 384x832x1x1; BDim = 384;  } --> [inception_5b/output:0]
+Xilinx
+[inception_5b/3x3_reduce:0] --> { inception_5b/3x3 - Convolution: F = 384x192x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 384x192x3x3; BDim = 384;  } --> [inception_5b/output:1]
+Xilinx
+[inception_5a/output:0] --> { inception_5b/3x3_reduce - Convolution: F = 192x832x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 192x832x1x1; BDim = 192;  } --> [inception_5b/3x3_reduce:0]
+Xilinx
+[inception_5b/5x5_reduce:0] --> { inception_5b/5x5 - Convolution: F = 128x48x5x5; S = 1; P = 2; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x48x5x5; BDim = 128;  } --> [inception_5b/output:2]
+Xilinx
+[inception_5a/output:0] --> { inception_5b/5x5_reduce - Convolution: F = 48x832x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 48x832x1x1; BDim = 48;  } --> [inception_5b/5x5_reduce:0]
+Xilinx
+[inception_5a/output:0] --> { inception_5b/pool - Pooling : PoolType = MAXPOOL; N = 832; K = 3; S = 1; P = 1 } --> [inception_5b/pool:0]
+Xilinx
+[inception_5b/pool:0] --> { inception_5b/pool_proj - Convolution: F = 128x832x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x832x1x1; BDim = 128;  } --> [inception_5b/output:3]
+Xilinx
+[conv1/7x7_s2:0] --> { pool1/3x3_s2 - Pooling : PoolType = MAXPOOL; N = 64; K = 3; S = 2; P = 0 } --> [pool1/3x3_s2:0]
+Xilinx
+[conv2/3x3:0] --> { pool2/3x3_s2 - Pooling : PoolType = MAXPOOL; N = 192; K = 3; S = 2; P = 0 } --> [pool2/3x3_s2:0]
+Xilinx
+[inception_3b/output:0] --> { pool3/3x3_s2 - Pooling : PoolType = MAXPOOL; N = 480; K = 3; S = 2; P = 0 } --> [pool3/3x3_s2:0]
+Xilinx
+[inception_4e/output:0] --> { pool4/3x3_s2 - Pooling : PoolType = MAXPOOL; N = 832; K = 3; S = 2; P = 0 } --> [pool4/3x3_s2:0]
+Xilinx
+
+# -------------------- Blobs ------------------------ #
+conv1/7x7_s2 : 1x64x112x112
+conv2/3x3 : 1x192x56x56
+conv2/3x3_reduce : 1x64x56x56
+data : 1x3x224x224 : P
+inception_3a/3x3_reduce : 1x96x28x28
+inception_3a/5x5_reduce : 1x16x28x28
+inception_3a/output : 1x256x28x28 : P
+inception_3a/pool : 1x192x28x28
+inception_3b/3x3_reduce : 1x128x28x28
+inception_3b/5x5_reduce : 1x32x28x28
+inception_3b/output : 1x480x28x28 : P
+inception_3b/pool : 1x256x28x28
+inception_4a/3x3_reduce : 1x96x14x14
+inception_4a/5x5_reduce : 1x16x14x14
+inception_4a/output : 1x512x14x14 : P
+inception_4a/pool : 1x480x14x14
+inception_4b/3x3_reduce : 1x112x14x14
+inception_4b/5x5_reduce : 1x24x14x14
+inception_4b/output : 1x512x14x14 : P
+inception_4b/pool : 1x512x14x14
+inception_4c/3x3_reduce : 1x128x14x14
+inception_4c/5x5_reduce : 1x24x14x14
+inception_4c/output : 1x512x14x14 : P
+inception_4c/pool : 1x512x14x14
+inception_4d/3x3_reduce : 1x144x14x14
+inception_4d/5x5_reduce : 1x32x14x14
+inception_4d/output : 1x528x14x14 : P
+inception_4d/pool : 1x512x14x14
+inception_4e/3x3_reduce : 1x160x14x14
+inception_4e/5x5_reduce : 1x32x14x14
+inception_4e/output : 1x832x14x14 : P
+inception_4e/pool : 1x528x14x14
+inception_5a/3x3_reduce : 1x160x7x7
+inception_5a/5x5_reduce : 1x32x7x7
+inception_5a/output : 1x832x7x7 : P
+inception_5a/pool : 1x832x7x7
+inception_5b/3x3_reduce : 1x192x7x7
+inception_5b/5x5_reduce : 1x48x7x7
+inception_5b/output : 1x1024x7x7 : P
+inception_5b/pool : 1x832x7x7
+pool1/3x3_s2 : 1x64x56x56
+pool2/3x3_s2 : 1x192x28x28 : P
+pool3/3x3_s2 : 1x480x14x14 : P
+pool4/3x3_s2 : 1x832x7x7 : P
+pool5/7x7_s1 : 1x1024x1x1
+
