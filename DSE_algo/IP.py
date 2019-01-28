@@ -27,8 +27,10 @@ class IP():
         self.name = str(name)
         self.type = str(type)
         self.orig_name = str(name)
-        self.BRAM, self.DSP, self.FF, self.LUT = map(int, resource_list)
-        self.paramList =map(int, paramList)
+        if resource_list != None:
+            self.BRAM, self.DSP, self.FF, self.LUT = map(int, resource_list)
+        if paramList != None:
+            self.paramList =map(int, paramList)
 
     #This actually needs to be overide by different IP types
     #This function should give latency of the using the IP with a 

@@ -1,18 +1,68 @@
-def createIPGraph(IP_g, gs):
-    IPSet = set()
-    for g in gs:
-        for n in g:
-            IPSet.add(n.mappedIP)
+import os
+import sys
+import networkx as nx
+import matplotlib.pyplot as plt
+dir_path = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(dir_path + "/..");
+from IP import IP
 
+def assignOriginalNodeMapping(orig_g, g, hw_layers):
+    mappingNodes = dict()
+    for n in g.nodes:
+        if n.type is "combineNode":
+            for m in n.node_list:
+                if m.type in hw_layers:
+                    mappingNodes[m.name] = m.mappedIP
+        if n.type in hw_layers:
+            mappingNodes[n.name] = n.mappedIP
+
+    for n in orig_g.nodes:
+        n.mappedIP = mappingNodes[n.name]
+
+def drawGraph(g, mapping):
+    h = nx.relabel_nodes(g, mapping)
+    nx.draw(h, with_labels=True, font_weight = 'bold')
+    plt.show()
+
+def createIPGraph(IP_g, gs, hw_layers):
+    mapping = dict()
+    for g in gs:
+        for n in list(g.nodes):
+            if n.type not in hw_layers:
+                g.remove_node(n)
+    for g in gs:
+        assignOriginalNodeMapping(g, gs[g], hw_layers)
+    #collect the set of IPs used 
+
+    IPSet = set()
+
+    for g in gs:
+        for n in g.nodes:
+            IPSet.add(n.mappedIP)
+    #create one node for an IP
     for ip in IPSet:
         IP_g.add_node(ip)
+    #add the DDR node
+    IPDDR = IP("DDR", "DDR", None, None)
+    IP_g.add_node(IPDDR)
 
-    IP_g.add_node("DDR")
+    for n in IP_g.nodes:
+        mapping[n] = n.name
 
+    #for each edge in the graph, add the stream edge
     for g in gs:
         for (s,t) in g.edges():
+            print "s ->t", s.name , "->", t.name, s.mappedIP.name, "->", t.mappedIP.name
             IP_g.add_edge(s.mappedIP, t.mappedIP)
-
+    #for the node that has not in degree or out degree, add edge to DDR
+    for g in gs:
+        for n in g.nodes():
+            if g.in_degree(n) == 0:
+                IP_g.add_edge(IPDDR, n.mappedIP)
+            if g.out_degree(n) == 0:
+                IP_g.add_edge(n.mappedIP, IPDDR)
+    drawGraph(IP_g, mapping)
+    
 
 def readTemplate(funcType):
     memIns = []
@@ -20,7 +70,6 @@ def readTemplate(funcType):
     neces = []
     streamIns = []
     streamOuts = []
-
 
     f = open("./IPTemplates/"+str(funcType))
     fList = f.readlines()

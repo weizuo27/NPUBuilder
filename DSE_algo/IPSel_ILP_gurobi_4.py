@@ -1,13 +1,21 @@
+import os
+import networkx as nx
+import sys
 from optimizer_gurobi_4 import optimizer
 from graph_4 import graph
 from utils_4 import *
 import itertools
+dir_path = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(dir_path + "/codeGen");
+from codeGenUtils import *
+from codeGen import *
 
 DEBUG = False
 class IPSel():
     def __init__(self, BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, Lat_budget, numIPs,
             app_fileName, IP_fileName, ESP, rowStep):
         status = "Undecided" 
+        self.IP_g = nx.DiGraph()
 
         #Hard code the hardware supported layers
         hw_layers = { 
@@ -141,7 +149,7 @@ class IPSel():
         for g in mapping_solution:
             print gs.printNodesMapping(hw_layers, mapping_solution[g])
         #Code Generation Phase
-        createIPGraph(self.IP_g, mapping_solution)
+        createIPGraph(self.IP_g, mapping_solution, hw_layers)
         expandGraph(self.IP_g)
         assignStreamPorts(g, 2, 2, 2)
         genTop(g)
