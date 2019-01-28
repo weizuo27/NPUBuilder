@@ -8,6 +8,7 @@ from utils import *
 
 class ip:
     def __init__(self, name, type_):
+        self.args = []
         self.name = name
         self.type = type_
 
@@ -71,22 +72,47 @@ def assignStreamPorts(g, streamPortsNum, memInPortsNum, memOutPortsNum):
             idx_stream += streamPortsNum
     nx.set_edge_attributes(g, Ports, 'portNames')
 
-def genStreamPorts(
+def genStreamPorts(streamArgs, fileName):
+    f = open(fileName, "a")
+    for arg in streamArgs:
+        f.write("\t\t static hls::stream< " + arg[0] + " > " + arg[1] + ";\n")
+    f.close() 
+
+def genSubFunction(n, fileName):
+    if n.type == "DDR":
+        return
+    functionName = n.name+"::"+n.type
+    if "MUX" in n.name:
+        functionName = n.type
+    f = open(fileName, 'a');
+    f.write("\t\t"+functionName + "(\n");
+    for arg in n.args:
+        f.write("\t\t\t"+arg+",\n")
+    f.write("\t\t);\n");
+    f.close()
+    
 
 def genTop(g):
     topArgs = []
+    streamArgs = []
     for n in g:
         if n.type == "DDR":
             continue
-        topArgs.append(genWrapper(g, n))
+        a, b = (genWrapper(g, n))
+        topArgs.append(a)
+        streamArgs += b
     fileName = "top.cpp"
-    genTopFunction(topArgs, fileName)
-    genStreamPorts(StreamPorts, fileName)
+    genIncludeHeaders(fileName)
+    genTopFunctionPre(topArgs, fileName)
+    genHLSPragmas(fileName)
+    genStreamPorts(list(set(streamArgs)), fileName)
     for n in g:
         genSubFunction(n, fileName)
+    genTopFunctionSub(fileName)
 
 def genWrapper(g, n):
-    args = []
+    n.args = []
+    streamArgs = []
     topArg = []
     memIns, memOuts, neces, streamIns, streamOuts = readTemplate(n.type)
     print n.name, n.type, memIns, memOuts, neces, streamIns, streamOuts
@@ -109,7 +135,7 @@ def genWrapper(g, n):
         ports = g.edges[inEdge]['portNames']
         for i in range(len(list(ports))):
             portName = n.name + "_M_in"+str(ports[i])
-            args.append(portName)
+            n.args.append(portName)
             topArg.append(memIns[i] + " " + portName)
     #MEM OUT
     if(memOutFlag):
@@ -117,7 +143,7 @@ def genWrapper(g, n):
         print "ports", ports
         for i in range(len(list(ports))):
             portName = n.name + "_M_out"+str(ports[i])
-            args.append(portName);
+            n.args.append(portName);
             topArg.append(memOuts[i] + " " + portName)
     #STREAM IN
     if(streamInFlag):
@@ -127,7 +153,8 @@ def genWrapper(g, n):
             ports = g.edges[edge]['portNames']
             for i in range(len(list(ports))):
                 portName = "S"+str(ports[i])
-                args.append(portName)
+                n.args.append(portName)
+                streamArgs.append((streamIns[i], portName))
     #SRTEAM OUT
     if(streamOutFlag):
         for edge in g.in_edges(n):
@@ -136,21 +163,38 @@ def genWrapper(g, n):
             ports = g.edges[edge]['portNames']
             for i in range(len(list(ports))):
                 portName = "S"+str(ports[i])
-                args.append(portName)
+                n.args.append(portName)
+                streamArgs.append((streamOuts[i], portName))
     #NECESSARY:
     for i in range(len(neces)):
         portName = "M_ness_" + n.name + str(i)
-        args.append(portName)
+        n.args.append(portName)
         topArg.append(neces[i] + " " + portName)
-    return topArg
+    print "streamArgs", streamArgs
+    return topArg, streamArgs
 
-def genTopFunction(topArgs, fileName):
+def genTopFunctionPre(topArgs, fileName):
     f = open(fileName, "w")
 
     f.write("void pipeSystem(\n");
     for args in topArgs:
         for arg in args:
             f.write("\t"+arg+",\n");
-    f.write("){");
+    f.write("){\n");
     f.close() 
+
+def genTopFunctionSub(fileName):
+    f=open(fileName, "a")
+    f.write("}")
+    f.close()
+def genHLSPragmas(fileName):
+    f=open(fileName, "a")
+    f.write("\t#pragma HLS dataflow\n")
+    f.write("\t#pragma HLS INTERFACE ap_stable port=ap_clk_div2\n")
+    f.close()
+
+def genIncludeHeaders(fileName):
+    f =open(fileName, "a")
+#FIXME
+    f.close()
 

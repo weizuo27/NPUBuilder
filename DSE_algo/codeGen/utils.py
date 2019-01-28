@@ -1,6 +1,18 @@
-class Ports:
-    def __init__(self, portType):
-        self.type = portType
+def createIPGraph(IP_g, gs):
+    IPSet = set()
+    for g in gs:
+        for n in g:
+            IPSet.add(n.mappedIP)
+
+    for ip in IPSet:
+        IP_g.add_node(ip)
+
+    IP_g.add_node("DDR")
+
+    for g in gs:
+        for (s,t) in g.edges():
+            IP_g.add_edge(s.mappedIP, t.mappedIP)
+
 
 def readTemplate(funcType):
     memIns = []

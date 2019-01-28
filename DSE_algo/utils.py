@@ -267,4 +267,3 @@ def unconstrMapping(g, layerQueue, layerIpLatencyTable, IP_table, explore_IP_typ
         else:
             n.Pipelined = True
     return bram, dsp, ff, lut
- 

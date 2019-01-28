@@ -140,6 +140,11 @@ class IPSel():
         print "Final latency_achieved", lat_achieved
         for g in mapping_solution:
             print gs.printNodesMapping(hw_layers, mapping_solution[g])
+        #Code Generation Phase
+        createIPGraph(self.IP_g, mapping_solution)
+        expandGraph(self.IP_g)
+        assignStreamPorts(g, 2, 2, 2)
+        genTop(g)
 
     def updateAbandonTable(self, IPs):
         ipNames = []

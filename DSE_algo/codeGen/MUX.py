@@ -1,6 +1,7 @@
 class MUX:
     idx = 0
     def __init__(self, type_, in_degree, out_degree):
+        self.args = []
         self.name = "MUX"+ str(MUX.idx)
         MUX.idx += 1
         self.type = type_
