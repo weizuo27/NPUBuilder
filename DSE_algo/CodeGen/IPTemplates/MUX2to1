@@ -1,0 +1,10 @@
+STREAMIN 4
+    ap<uint128> *
+    ap<uint128> *
+    ap<uint128> *
+    ap<uint128> *
+STREAMOUT 2
+    ap<uint128> *
+    ap<uint128> *
+NECESSARY 1
+    ap<uint128> *

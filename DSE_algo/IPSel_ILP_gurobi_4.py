@@ -6,7 +6,7 @@ from graph_4 import graph
 from utils_4 import *
 import itertools
 dir_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(dir_path + "/codeGen");
+sys.path.append(dir_path + "/CodeGen");
 from codeGenUtils import *
 from codeGen import *
 
