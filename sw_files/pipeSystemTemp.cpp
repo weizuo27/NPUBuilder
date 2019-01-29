@@ -1,0 +1,26 @@
+int*,A0
+ap_uint<128>*,A1
+ap_uint<128>*,A2
+ap_uint<128>*,A3
+ap_uint<128>*,A4
+unsigned long long int*,A5
+ap_uint<128>*,B1
+ap_uint<128>*,B2
+ap_uint<128>*,B3
+ap_uint<128>*,B4
+ap_uint<128>*,B5
+ap_uint<128>*,B6
+ap_uint<128>*,B7
+ap_uint<128>*,B8
+ap_uint<128>*,C1
+ap_uint<128>*,C2
+ap_uint<128>*,C3
+ap_uint<128>*,C4
+ap_uint<128>*,C5
+ap_uint<128>*,C6
+ap_uint<128>*,C7
+ap_uint<128>*,C8
+ap_uint<128>*,P1
+ap_uint<128>*,P2
+ap_uint<128>*,P3
+ap_uint<128>*,P4

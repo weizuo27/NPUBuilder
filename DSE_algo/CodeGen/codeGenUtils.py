@@ -27,11 +27,12 @@ def assignOriginalNodeMapping(gs, hw_layers):
             if n.type in hw_layers:
                 mappingNodes[n.name] = mappingIPs[n.mappedIP.name]
 
-    print mappingNodes
-
     for g in gs:
         for n in g.nodes:
             n.mappedIP = mappingNodes[n.name]
+            IPtoNodeTable[n.mappedIP] = n.name
+
+def 
 
 def drawGraph(g, mapping):
     h = nx.relabel_nodes(g, mapping)
@@ -50,9 +51,7 @@ def createIPGraph(gs, hw_layers):
     IPSet = set()
     for g in gs:
         for n in g.nodes:
-            print 'aaa', n.mappedIP.name, n.mappedIP
             IPSet.add(n.mappedIP)
-    print "bbb", len(IPSet)
     #create one node for an IP
     for ip in IPSet:
         IP_g.add_node(ip)
@@ -60,17 +59,12 @@ def createIPGraph(gs, hw_layers):
     IPDDR = IP("DDR", "DDR", None, None)
     IP_g.add_node(IPDDR)
 
-    print "ccc", len(list(IP_g.nodes))
-
     for n in IP_g.nodes:
         mapping[n] = n.name
-
-    print "mapping", mapping
 
     #for each edge in the graph, add the stream edge
     for g in gs:
         for (s,t) in g.edges():
-            print "s ->t", s.name , "->", t.name, s.mappedIP.name, "->", t.mappedIP.name
             IP_g.add_edge(s.mappedIP, t.mappedIP)
     #for the node that has not in degree or out degree, add edge to DDR
     for g in gs:
