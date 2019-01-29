@@ -2,7 +2,7 @@
 import networkx as nx
 #import cvxpy as cvx
 from gurobipy import *
-from utils import *
+from utils_4 import *
 
 class resourceILPBuilder():
     def __init__(self):

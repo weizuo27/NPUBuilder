@@ -6,39 +6,53 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir_path + "/..");
 from IP import IP
 
-def assignOriginalNodeMapping(orig_g, g, hw_layers):
+def assignOriginalNodeMapping(gs, hw_layers):
     mappingNodes = dict()
-    for n in g.nodes:
-        if n.type is "combineNode":
-            for m in n.node_list:
-                if m.type in hw_layers:
-                    mappingNodes[m.name] = m.mappedIP
-        if n.type in hw_layers:
-            mappingNodes[n.name] = n.mappedIP
+    mappingIPs = dict()
+    for g in gs:
+        for n in gs[g].nodes:
+            if n.type is "combineNode":
+                for m in n.node_list:
+                    if m.type in hw_layers:
+                        mappingIPs[m.mappedIP.name] = m.mappedIP
+            if n.type in hw_layers:
+                mappingIPs[n.mappedIP.name] = n.mappedIP
 
-    for n in orig_g.nodes:
-        n.mappedIP = mappingNodes[n.name]
+    for g in gs:
+        for n in gs[g].nodes:
+            if n.type is "combineNode":
+                for m in n.node_list:
+                    if m.type in hw_layers:
+                        mappingNodes[m.name] = mappingIPs[m.mappedIP.name]
+            if n.type in hw_layers:
+                mappingNodes[n.name] = mappingIPs[n.mappedIP.name]
+
+    print mappingNodes
+
+    for g in gs:
+        for n in g.nodes:
+            n.mappedIP = mappingNodes[n.name]
 
 def drawGraph(g, mapping):
     h = nx.relabel_nodes(g, mapping)
     nx.draw(h, with_labels=True, font_weight = 'bold')
     plt.show()
 
-def createIPGraph(IP_g, gs, hw_layers):
+def createIPGraph(gs, hw_layers):
+    IP_g = nx.DiGraph()
     mapping = dict()
     for g in gs:
         for n in list(g.nodes):
             if n.type not in hw_layers:
                 g.remove_node(n)
-    for g in gs:
-        assignOriginalNodeMapping(g, gs[g], hw_layers)
+    assignOriginalNodeMapping(gs, hw_layers)
     #collect the set of IPs used 
-
     IPSet = set()
-
     for g in gs:
         for n in g.nodes:
+            print 'aaa', n.mappedIP.name, n.mappedIP
             IPSet.add(n.mappedIP)
+    print "bbb", len(IPSet)
     #create one node for an IP
     for ip in IPSet:
         IP_g.add_node(ip)
@@ -46,8 +60,12 @@ def createIPGraph(IP_g, gs, hw_layers):
     IPDDR = IP("DDR", "DDR", None, None)
     IP_g.add_node(IPDDR)
 
+    print "ccc", len(list(IP_g.nodes))
+
     for n in IP_g.nodes:
         mapping[n] = n.name
+
+    print "mapping", mapping
 
     #for each edge in the graph, add the stream edge
     for g in gs:
@@ -61,7 +79,8 @@ def createIPGraph(IP_g, gs, hw_layers):
                 IP_g.add_edge(IPDDR, n.mappedIP)
             if g.out_degree(n) == 0:
                 IP_g.add_edge(n.mappedIP, IPDDR)
-    drawGraph(IP_g, mapping)
+#    drawGraph(IP_g, mapping)
+    return IP_g
     
 
 def readTemplate(funcType):
@@ -71,7 +90,7 @@ def readTemplate(funcType):
     streamIns = []
     streamOuts = []
 
-    f = open("./IPTemplates/"+str(funcType))
+    f = open("./CodeGen/IPTemplates/"+str(funcType))
     fList = f.readlines()
     f.close()
 

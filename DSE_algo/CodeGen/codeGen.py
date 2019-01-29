@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 #plt.switch_backend('agg')
 from copy import copy
 from MUX import *
-from utils import *
+from codeGenUtils import *
 
 class ip:
     def __init__(self, name, type_):

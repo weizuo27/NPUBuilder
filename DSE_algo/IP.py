@@ -101,8 +101,9 @@ class IP():
             return computeLatency_eltwise(out_width, cout)
 
     def __str__(self):
-        return "name: "+str(self.name)+" Type: "+str(self.type)+" BRAM: "+str(self.BRAM)+" DSP: "+ \
-        str(self.DSP)+" FF: "+str(self.FF)+" LUT: "+str(self.LUT)
+        return "name: "+str(self.name)\
+#        +" Type: "+str(self.type)+" BRAM: "+str(self.BRAM)+" DSP: "+ \
+#        str(self.DSP)+" FF: "+str(self.FF)+" LUT: "+str(self.LUT)
 
 class softwareIP:
     def __init__(self, name):
