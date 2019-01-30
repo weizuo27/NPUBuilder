@@ -28,6 +28,7 @@ class IP():
         self.type = str(type)
         self.orig_name = str(name)
         #The followings are used to generate csv
+        self.CSVparameterList = []
         self.memInFlag = False
         self.memOutFlag = False
         self.necessaryHasSet = False

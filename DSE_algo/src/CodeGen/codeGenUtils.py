@@ -63,14 +63,16 @@ def createIPGraph(gs, hw_layers):
     for g in gs:
         for (s,t) in g.edges():
             IP_g.add_edge(s.mappedIP, t.mappedIP)
-            IP_g[s.mappedIP, t.mappedIP]['weight'] = 1000
+            IP_g[s.mappedIP][t.mappedIP]['weight'] = 1000
     #for the node that has not in degree or out degree, add edge to DDR
     for g in gs:
         for n in g.nodes():
             if g.in_degree(n) == 0:
                 IP_g.add_edge(IPDDR, n.mappedIP)
+                IP_g[IPDDR][n.mappedIP]['weight'] = 1000
             if g.out_degree(n) == 0:
                 IP_g.add_edge(n.mappedIP, IPDDR)
+                IP_g[n.mappedIP][IPDDR]['weight'] = 1000
 #    drawGraph(IP_g, mapping)
     return IP_g
     
@@ -82,7 +84,7 @@ def readTemplate(funcType):
     streamIns = []
     streamOuts = []
 
-    f = open("./CodeGen/IPTemplates/"+str(funcType))
+    f = open("./src/CodeGen/IPTemplates/"+str(funcType))
     fList = f.readlines()
     f.close()
 

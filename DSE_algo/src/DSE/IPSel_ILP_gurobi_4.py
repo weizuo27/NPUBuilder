@@ -150,14 +150,14 @@ class IPSel():
 
         #Code Generation Phase
         IP_g = createIPGraph(mapping_solution, hw_layers)
-#        nx.draw(IP_g, with_labels=True, font_weight = 'bold')
-        plt.show()
         
-        expandGraph(IP_g)
+        muxSelTable = expandGraph(IP_g)
+        nx.draw(IP_g, with_labels=True, font_weight = 'bold')
+        plt.show()
         assignStreamPorts(IP_g, 2, 2, 2)
         genTop(IP_g)
         #Gen CSV
-        genCSVConfigs(mapping_solution)
+        genCSVConfigs(mapping_solution, IP_g, muxSelTable)
 
     def updateAbandonTable(self, IPs):
         ipNames = []
