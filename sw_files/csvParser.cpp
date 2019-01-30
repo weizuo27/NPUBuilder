@@ -22,12 +22,12 @@ int ParsePipeCSV(
     //Key: The IP type. Value: The number of columns
 
     int rounds = 0;
-    int argNums = 0;
     unordered_map<string, int> IPs;
 
-    IPs["Convolution"] = 8;
+    IPs["Convolution"] = 12;
     IPs["Pooling"] = 8;
-    IPs["Convolution_g"] = 9;
+    IPs["Convolution_g"] = 9+8;
+    IPs["Args"] = 2;
 
     fstream fs;
     fs.open("round.csv");
@@ -47,10 +47,6 @@ int ParsePipeCSV(
 
         vector<string>::iterator itr = rowList.begin();
         for(; itr!=rowList.end(); ++itr){
-            if((*itr) == "Args"){
-                argNums = stringToInt(*(++itr));
-                break;
-            }
             if(IPs.find(*itr) == IPs.end())
                 continue;
             cout << "type " << *itr << " index " << IPs[*itr] << "\n";
@@ -63,7 +59,7 @@ int ParsePipeCSV(
                 params.push_back(stringToInt(*itr));
             }
 
-            setArgs(ipType, params, hwQueue, args, newArgs, argNums);
+            setArgs(ipType, params, hwQueue, args, newArgs);
         }
         cout << "length " << args.size() << endl;
         argsToFunction.push_back(args);

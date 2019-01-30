@@ -14,10 +14,10 @@ void setArgs(
         vector<int> params, 
         std::vector<xChangeLayer> *hwQueue, 
         std::vector<void*>& argumentstoFunction, 
-        std::vector<void*> & newArgs, 
-        int argNums);
+        std::vector<void*> & newArgs);
 
 void releaseArgMems(std::vector<void*> newArgs);
+std::string tostring(int Number);
 
 template<typename T>
 void load_file(const char* filename, void *arr, size_t count);

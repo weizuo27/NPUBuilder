@@ -12,14 +12,19 @@ void setArgs(
         vector<int> params, 
         std::vector<xChangeLayer> *hwQueue, 
         std::vector<void*>& argumentstoFunction, 
-        std::vector<void*> & newArgs, int argNums){
+        std::vector<void*> & newArgs){
 
     int imageId = 0;
 
     //genArguments
-    int* newArg_0 =  (int*)sds_alloc_non_cacheable(128 * sizeof(int)*argNums);
-    newArgs.push_back((void*)newArg_0);
-    argumentstoFunction.push_back(newArg);
+    if(ipType == "Args"){
+        int length = params[1];
+        int roundIdx = params[0];
+        int* newArg =  (int*)sds_alloc_non_cacheable(length * sizeof(char));
+        load_file<char>(("args/args_"+tostring(roundIdx)).c_str(), (void*)newArg, length);
+        newArgs.push_back((void*)newArg);
+        argumentstoFunction.push_back(newArg);
+    }
     
     //Convolution
     if(ipType == "Convolution"){
@@ -39,7 +44,7 @@ void setArgs(
             else{
                 int weightlen = params[i+7];
                 newArg = (int*)sds_alloc_non_cacheable(weightlen * sizeof(char));
-                load_file<char>(("weight/weight_"+tostring(layerId)+"_"+tostring(i)).c_str(), (void*)newArg, weightlen);
+                load_file<char>(("weight/weight_"+tostring(layerId)+"_"+tostring(i+1)).c_str(), (void*)newArg, weightlen);
             }
             newArgs.push_back((void*)newArg);
             argumentstoFunction.push_back(newArg);
@@ -91,7 +96,7 @@ void setArgs(
         bool stream_out = (params[3]);
 
         //input
-        if(params[4] == 1){
+        if(params[5] == 1){
             if(idle){
                 int *newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
                 newArgs.push_back((void*)newArg);
@@ -107,7 +112,7 @@ void setArgs(
             }
         }
         //Output
-        if(params[5] == 1){
+        if(params[6] == 1){
             if(idle){
                 int *newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
                 newArgs.push_back((void*)newArg);
@@ -122,15 +127,14 @@ void setArgs(
                 argumentstoFunction.push_back(hwQueue[imageId][layerId].out_ptrs[1]);
             }
         }
-        argumentstoFunction.push_back(newArg_0);
     }
 
     else if(ipType == "Convolution_g"){
-        int layerId = params[11];
+        int layerId = params[15];
         bool idle = (params[0] == 1);
         bool stream_in = (params[1] == 1);
         bool stream_out = (params[2] == 1);
-        int groupNums = params[12];
+        int groupNums = params[16];
 
         int weightIdx = 2 + 2*(params[3] == 1); //FIXME: Verify with XH
         for (int j = 0; j < groupNums; ++j){
@@ -141,18 +145,14 @@ void setArgs(
                     newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
                 }
                 else{
-                    int weightlen = params[i+7];
+                    int weightlen = params[i+7+j*4];
                     newArg = (int*)sds_alloc_non_cacheable(weightlen * sizeof(char));
                     load_file<char>(("weight/weight_"+tostring(layerId)+"_"\
-                                +tostring(j) + "_"+
-                                +tostring(i)).c_str(), (void*)newArg, weightlen);
+                                +tostring(j) + "_" +tostring(i+1)).c_str(), (void*)newArg, weightlen);
                 }
                 newArgs.push_back((void*)newArg);
                 argumentstoFunction.push_back(newArg);
             }
-
-            argumentstoFunction.push_back(newArg_0);
-            newArgs.push_back((void*)newArg_0);
 
             //The outputs
             int outMemIdx = 2*(params[4] == 1);
