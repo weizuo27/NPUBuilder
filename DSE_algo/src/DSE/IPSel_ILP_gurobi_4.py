@@ -6,7 +6,7 @@ from graph_4 import graph
 from utils_4 import *
 import itertools
 dir_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(dir_path + "/CodeGen");
+sys.path.append(dir_path + "/../CodeGen");
 from codeGenUtils import *
 from codeGen import *
 
@@ -147,6 +147,7 @@ class IPSel():
         print "Final latency_achieved", lat_achieved
         for g in mapping_solution:
             print gs.printNodesMapping(hw_layers, mapping_solution[g])
+
         #Code Generation Phase
         IP_g = createIPGraph(mapping_solution, hw_layers)
 #        nx.draw(IP_g, with_labels=True, font_weight = 'bold')
@@ -155,6 +156,8 @@ class IPSel():
         expandGraph(IP_g)
         assignStreamPorts(IP_g, 2, 2, 2)
         genTop(IP_g)
+        #Gen CSV
+        genCSVConfigs(mapping_solution)
 
     def updateAbandonTable(self, IPs):
         ipNames = []

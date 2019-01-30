@@ -27,6 +27,11 @@ class IP():
         self.name = str(name)
         self.type = str(type)
         self.orig_name = str(name)
+        #The followings are used to generate csv
+        self.memInFlag = False
+        self.memOutFlag = False
+        self.necessaryHasSet = False
+        ################
         if resource_list != None:
             self.BRAM, self.DSP, self.FF, self.LUT = map(int, resource_list)
         if paramList != None:

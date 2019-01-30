@@ -3,7 +3,7 @@ import sys
 import networkx as nx
 import matplotlib.pyplot as plt
 dir_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(dir_path + "/..");
+sys.path.append(dir_path + "/../DSE");
 from IP import IP
 
 def assignOriginalNodeMapping(gs, hw_layers):
@@ -30,9 +30,6 @@ def assignOriginalNodeMapping(gs, hw_layers):
     for g in gs:
         for n in g.nodes:
             n.mappedIP = mappingNodes[n.name]
-            IPtoNodeTable[n.mappedIP] = n.name
-
-def 
 
 def drawGraph(g, mapping):
     h = nx.relabel_nodes(g, mapping)
@@ -66,6 +63,7 @@ def createIPGraph(gs, hw_layers):
     for g in gs:
         for (s,t) in g.edges():
             IP_g.add_edge(s.mappedIP, t.mappedIP)
+            IP_g[s.mappedIP, t.mappedIP]['weight'] = 1000
     #for the node that has not in degree or out degree, add edge to DDR
     for g in gs:
         for n in g.nodes():
@@ -120,6 +118,8 @@ def readTemplate(funcType):
             print "Unsupported type, should be one of MEMIN, MEMOUT, STREAMIN, STREAMOUT, NECESSARY"
         idx+=1
     return memIns, memOuts, neces, streamIns, streamOuts
+
+
 
 
 #mIn,mOut,neces, sIns, sOuts = readTemplate("Convolution")

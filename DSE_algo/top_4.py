@@ -1,3 +1,7 @@
+import os
+import sys
+dir_path = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(dir_path + "/src/DSE");
 import argparse
 from IPSel_ILP_gurobi_4 import IPSel
 
