@@ -294,7 +294,34 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 #endif
         if((pipeInUse == false) and i < pipeRounds){
             for (; i < pipeRounds; ++i){
-//INSERT PIPE FUNCTION
+		PipeForward(
+			argsToFunction[i][0],
+			argsToFunction[i][1],
+			argsToFunction[i][2],
+			argsToFunction[i][3],
+			argsToFunction[i][4],
+			argsToFunction[i][5],
+			argsToFunction[i][6],
+			argsToFunction[i][7],
+			argsToFunction[i][8],
+			argsToFunction[i][9],
+			argsToFunction[i][10],
+			argsToFunction[i][11],
+			argsToFunction[i][12],
+			argsToFunction[i][13],
+			argsToFunction[i][14],
+			argsToFunction[i][15],
+			argsToFunction[i][16],
+			argsToFunction[i][17],
+			argsToFunction[i][18],
+			argsToFunction[i][19],
+			argsToFunction[i][20],
+			argsToFunction[i][21],
+			argsToFunction[i][22],
+			argsToFunction[i][23],
+			argsToFunction[i][24],
+			argsToFunction[i][25]
+		);
             pipeInUse = true; 
             }
 

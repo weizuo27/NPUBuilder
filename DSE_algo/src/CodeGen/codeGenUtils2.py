@@ -19,7 +19,7 @@ def CSVconfig(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxSel):
             In = ip_inst.memInFlag
             In1st = n.firstLayer
             idx = layerIdxTable[n.name]
-            ip_inst.CSVparameterList += [weight, Out, In, In1st, idx]
+            ip_inst.CSVparameterListNecessary += [weight, Out, In, In1st, idx]
             ip_inst.necessaryHasSet = True
         if(idle):
             None
@@ -28,6 +28,7 @@ def CSVconfig(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxSel):
         else:
             streamIn = (n == t)
             streamOut = (n == s)
+        ip_inst.CSVparameterList+= ip_inst.CSVparameterListNecessary
         ip_inst.CSVparameterList += [streamIn, streamOut]
 
     elif ip_inst.type == "Convolution_g":
@@ -41,25 +42,27 @@ def CSVconfig(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxSel):
 
                 In1st = n.isFirstLayer()
                 idx = layerIdxTable[n]
-                ip_inst.CSVparameterList += [weight, Out, In, In1st, idx]
+                ip_inst.CSVparameterListNecessary.append([weight, Out, In, In1st, idx])
             if(idle):
                 None
             else:
                 streamIn = (n == t)
                 streamOut = (n == s)
-                n.CSVparameterList += [streamIn, streamOut]
+        ip_inst.CSVparameterList+= ip_inst.CSVparameterListNecessary[i]
+        ip_inst.CSVparameterList += [streamIn, streamOut]
         ip_inst.necessaryHasSet = True
 
     elif ip_inst.type == "Pooling":
         ip_inst.CSVparameterList.append(idle)
         if(not ip_inst.necessaryHasSet):
-            byPass = False
-            streamIn = (n == t)
-            streamOut = (n == s)
             In = ip_inst.memInFlag
             Out = ip_inst.memOutFlag
             Avg = (poolingTypeTable[n.name] == "avg")
-            ip_inst.CSVparameterList += [byPass, streamIn, streamOut, In, Out, Avg]
+            ip_inst.CSVparameterListNecessary += [byPass, streamIn, streamOut, In, Out, Avg]
+            ip_inst.necessaryHasSet = True
+        byPass = False
+        streamIn = (n == t)
+        streamOut = (n == s)
 
     elif "MUX" in ip_inst.type:
         if not muxSel:
@@ -91,7 +94,14 @@ def genCSVConfigs(gs, IP_g, muxSelTable):
                     muxSel = None if (ips[idx-1], ip_inst) not in muxSelTable else muxSelTable[(ips[idx-1], ip_inst)]
                 CSVconfig(n, ip_inst, s, t, False, layerIdxTable, poolingTypeTable,  muxSel)
 
-#print ip_inst.name, ip_inst.CSVparameterList
+        #FIXME: ADD for IPs that are not configed in this round, 
+        #need to set idle.
+        #FIXME: Then write CSV
+        print ip_inst.name, ip_inst.CSVparameterList
+        # reset the network
+        for n in IP_g.nodes():
+            resetForCSV(n)
 
-    #for IPs that are not configed in this round, 
-    #need to set idle.
+def resetForCSV(n):
+
+

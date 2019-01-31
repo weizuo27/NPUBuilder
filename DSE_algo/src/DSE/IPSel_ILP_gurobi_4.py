@@ -145,11 +145,44 @@ class IPSel():
                 mapping_solution[g] = mapping_solution_tmp[g]
 
         print "Final latency_achieved", lat_achieved
+
+        #THIS IS JUST FOR DEBUGGING
+        for g in mapping_solution:
+            for n in list(g.nodes):
+                if n.type not in hw_layers:
+                    g.remove_node(n)
+        assignOriginalNodeMapping(mapping_solution, hw_layers)
+
+        convIPs = set()
+        for g in mapping_solution:
+            for n in g:
+                if n.type is "combineNode":
+                    for m in n.node_list:
+                        if m.type == "Convolution":
+                            convIPs.add(m.mappedIP)
+                if n.type == "Convolution":
+                    convIPs.add(n.mappedIP)
+        convIPs = list(convIPs)
+        print "CONVIPS", convIPs
+        for g in mapping_solution:
+            idx = 0
+            for n in mapping_solution[g]:
+                if n.type is "combineNode":
+                    for m in n.node_list:
+                        if m.type == "Convolution":
+                            m.mappedIP = convIPs[idx]
+                            idx += 1
+                if n.type == "Convolution":
+                    n.mappedIP = convIPs[idx]
+                    idx += 1
+        #########
+
         for g in mapping_solution:
             print gs.printNodesMapping(hw_layers, mapping_solution[g])
 
         #Code Generation Phase
         IP_g = createIPGraph(mapping_solution, hw_layers)
+
         
         muxSelTable = expandGraph(IP_g)
         nx.draw(IP_g, with_labels=True, font_weight = 'bold')

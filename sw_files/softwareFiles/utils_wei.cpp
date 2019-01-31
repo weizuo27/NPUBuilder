@@ -9,10 +9,12 @@ std::string tostring(int Number)
 
 void setArgs(
         const string ipType, 
-        vector<int> params, 
-        std::vector<xChangeLayer> *hwQueue, 
+        const vector<int> params, 
+        const std::vector<xChangeLayer> *hwQueue, 
         std::vector<void*>& argumentstoFunction, 
-        std::vector<void*> & newArgs){
+        std::vector<void*> & newArgs, 
+        std::vector< int > & layerIds
+        ){
 
     int imageId = 0;
 
@@ -32,6 +34,10 @@ void setArgs(
         bool idle = (params[0] == 1);
         bool stream_in = (params[1] == 1);
         bool stream_out = (params[2] == 1);
+
+        if(not idle){
+            layerIds.push_back(layerId);
+        }
 
         //The weights
         int weightIdx = 2 + 2*(params[3] == 1); //FIXME: Verify with XH
@@ -95,6 +101,10 @@ void setArgs(
         bool stream_in =(params[2]);
         bool stream_out = (params[3]);
 
+        if(not idle){
+            layerIds.push_back(layerId);
+        }
+
         //input
         if(params[5] == 1){
             if(idle){
@@ -135,6 +145,10 @@ void setArgs(
         bool stream_in = (params[1] == 1);
         bool stream_out = (params[2] == 1);
         int groupNums = params[16];
+
+        if(not idle){
+            layerIds.push_back(layerId);
+        }
 
         int weightIdx = 2 + 2*(params[3] == 1); //FIXME: Verify with XH
         for (int j = 0; j < groupNums; ++j){

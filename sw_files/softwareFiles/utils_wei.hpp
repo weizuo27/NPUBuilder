@@ -11,10 +11,12 @@ using namespace std;
 
 void setArgs(
         const string ipType, 
-        vector<int> params, 
-        std::vector<xChangeLayer> *hwQueue, 
+        const vector<int> params, 
+        const std::vector<xChangeLayer> *hwQueue, 
         std::vector<void*>& argumentstoFunction, 
-        std::vector<void*> & newArgs);
+        std::vector<void*> & newArgs, 
+        std::vector< int > & layerIds
+        );
 
 void releaseArgMems(std::vector<void*> newArgs);
 std::string tostring(int Number);

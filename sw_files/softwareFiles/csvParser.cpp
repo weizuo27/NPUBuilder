@@ -17,7 +17,9 @@ int stringToInt(string in){
 int ParsePipeCSV(
         std::vector<void* > &newArgs, 
         std::vector< std::vector<void*> > & argsToFunction, 
-        std::vector<xChangeLayer> *hwQueue){
+        const std::vector<xChangeLayer> *hwQueue, 
+        std::vector< int > & layerIds
+        ){
     //Following should be configed
     //Key: The IP type. Value: The number of columns
 
@@ -59,7 +61,7 @@ int ParsePipeCSV(
                 params.push_back(stringToInt(*itr));
             }
 
-            setArgs(ipType, params, hwQueue, args, newArgs);
+            setArgs(ipType, params, hwQueue, args, newArgs, layerIds);
         }
         cout << "length " << args.size() << endl;
         argsToFunction.push_back(args);
