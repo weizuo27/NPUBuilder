@@ -30,7 +30,7 @@ class IPSel():
             "Convolution_g" : 1 
         }   
 
-        gs = graph(app_fileName, explore_IP_types,rowStep)
+        gs = graph(app_fileName, explore_IP_types, hw_layers, rowStep)
         IPs = generateIPs(IP_fileName)
 
         IP_table = constructIPTable(IPs, BRAM_budget, DSP_budget, LUT_budget, \
@@ -178,6 +178,8 @@ class IPSel():
         #########
 
         for g in mapping_solution:
+            for n in g.nodes:
+                print "abcdedf", n.name
             print gs.printNodesMapping(hw_layers, mapping_solution[g])
 
         #Code Generation Phase
@@ -189,7 +191,7 @@ class IPSel():
         assignStreamPorts(IP_g, 2, 2, 2)
         genTop(IP_g)
         #Gen CSV
-        genCSVConfigs(mapping_solution, IP_g, muxSelTable)
+        genCSVConfigs(mapping_solution, IP_g, muxSelTable, hw_layers)
 
     def updateAbandonTable(self, IPs):
         ipNames = []

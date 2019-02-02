@@ -30,17 +30,16 @@ def expandGraph(g):
                 continue
             outD += 1
         if inD > 1:
-            expandingNodeList.append(n)
-        elif outD > 1:
-            expandingNodeList.append(n)
+            expandingNodeList.append((n, "in",inD))
+        if outD > 1:
+            expandingNodeList.append((n, "out", outD))
 
     #update the graph
-    for n in expandingNodeList:
-        inD = g.in_degree(n)
-        outD = g.out_degree(n)
-        if inD > 1:
-            muxtype = "MUX"+str(inD)+"to1"
-            mux = MUX(muxtype, inD, 1)
+    for n, inOrOut, D in expandingNodeList:
+        print "dsdas", n.name, inOrOut, D
+        if inOrOut == "in":
+            muxtype = "MUX"+str(D)+"to1"
+            mux = MUX(muxtype, D, 1)
             g.add_node(mux)
             for idx, (s, t) in enumerate(list(g.in_edges(n))):
                 if s.type == "DDR":
@@ -50,9 +49,9 @@ def expandGraph(g):
                 g.remove_edge(s, t)
             g.add_edge(mux, n)
             g[mux][n]['weight'] = 1
-        if outD > 1:
-            muxtype = "MUX1to"+str(outD)
-            mux = MUX(muxtype, 1, outD)
+        else:
+            muxtype = "MUX1to"+str(D)
+            mux = MUX(muxtype, 1, D)
             g.add_node(mux)
             for idx, (s, t) in enumerate(list(g.out_edges(n))):
                 if t.type =="DDR":

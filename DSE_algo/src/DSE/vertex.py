@@ -77,7 +77,7 @@ class blob(vertex):
         self.latency = 0
 
 class layer(vertex):
-    def __init__(self, line, rowStep):
+    def __init__(self, line, rowStep, layerIdxTable):
         """
         The class to describe one layer
         Attrs:
@@ -100,7 +100,7 @@ class layer(vertex):
         self.input_params = None
         self.output_params = None
         self.isMaxPipeLayer = False
-        self.ID = None
+        self.ID = int(layerIdxTable[self.name])
         #FIXME: Hardcoded???
         if self.type == "Convolution" or self.type == "Convolution_g":
             self.rowStep = rowStep

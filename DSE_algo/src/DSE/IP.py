@@ -33,7 +33,7 @@ class IP():
             self.csvUneceNums = 4
         elif self.type == "Convolution_g":
             self.csvUneceNums = 4
-        elif self.type == "MUX":
+        elif "MUX" in self.type:
             self.csvUneceNums = 4
         elif self.type == "Pooling":
             self.csvUneceNums = 6
@@ -58,9 +58,12 @@ class IP():
         if type == "Convolution_g":
             self.CSVparameterListUnNece = [self.csvUneceNums * [0]]
             self.CSVparameterListUnNece.append(self.csvUneceNums * [0])
+            self.CSVparameterListUnNece[0][0] = 1
+            self.CSVparameterListUnNece[0][1] = 1
         else:
             self.CSVparameterListUnNece = self.csvUneceNums * [0]
-
+            if(self.csvUneceNums > 0):
+                self.CSVparameterListUnNece[0] = 1
 
     #This actually needs to be overide by different IP types
     #This function should give latency of the using the IP with a 

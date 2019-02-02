@@ -7,7 +7,7 @@ from vertex import *
 
 
 class graph:
-    def __init__(self, fileName, explore_IP_types, rowStep):
+    def __init__(self, fileName, explore_IP_types, hw_layers, rowStep):
         self.rowStep = rowStep
         self.G = nx.DiGraph()
         self.mapping = dict()
@@ -18,9 +18,18 @@ class graph:
         self.root_nodes = dict()
 #        maxPipelineLayer = dict()
         self.graphs = []
-        self.construct(fileName, explore_IP_types)
+        self.layerIdxTable = dict()
+        self.readLayerId("./inputFiles/layerIDMapping")
+        self.construct(fileName, explore_IP_types, hw_layers)
 
-    def construct(self, filename, explore_IP_types):
+    def readLayerId(self,fileName):
+        f = open(fileName)
+        for l in f:
+            layer, idx = l.replace(" ", "").strip().split(":")
+            self.layerIdxTable[layer] = idx
+        f.close()
+
+    def construct(self, filename, explore_IP_types, hw_layers):
         """
         The function to construct the graph from a file that is dumped from CHaiDNN
         Args:
@@ -40,9 +49,9 @@ class graph:
                     if l == "\n":
                         break
                     bot_str, layer_str, top_str = l.split("-->")
-
                     layer_str = layer_str[1:-1]
-                    layer_tmp = layer(layer_str, self.rowStep)
+                    layer_tmp = layer(layer_str, self.rowStep, self.layerIdxTable)
+            
 
                     for tmp_str in bot_str[1:-1].split(","):
                         bot_str = tmp_str.split(":")[0]
@@ -117,7 +126,7 @@ class graph:
         for s in connectd_sets:
             g = nx.DiGraph(self.G.subgraph(list(s)))
             self.graphs.append(g)
-
+        
         for g in self.graphs:
             #Add the exploreLayerQueue
             self.exploreLayerQueue[g] = dict()
