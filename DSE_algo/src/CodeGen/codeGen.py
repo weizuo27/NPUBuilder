@@ -31,7 +31,7 @@ def expandGraph(g):
             outD += 1
         if inD > 1:
             expandingNodeList.append(n)
-        if outD > 1:
+        elif outD > 1:
             expandingNodeList.append(n)
 
     #update the graph
@@ -47,11 +47,10 @@ def expandGraph(g):
                     continue
                 g.add_edge(s, mux)
                 g[s][mux]['weight'] = 1
-                muxSelTable[(s, mux)] = idx
                 g.remove_edge(s, t)
             g.add_edge(mux, n)
             g[mux][n]['weight'] = 1
-        elif outD > 1:
+        if outD > 1:
             muxtype = "MUX1to"+str(outD)
             mux = MUX(muxtype, 1, outD)
             g.add_node(mux)
@@ -60,10 +59,28 @@ def expandGraph(g):
                     continue
                 g.add_edge(mux, t)
                 g[mux][t]['weight'] = 1
-                muxSelTable[(mux, t)] = idx
                 g.remove_edge(s, t)
             g.add_edge(n, mux)
             g[n][mux]['weight'] = 1
+
+def assignMuxSelTable(g):
+    muxIdxTable = dict()
+    muxSelTable = dict()
+    for n in g.nodes:
+        print "ccc", n.name
+        if n not in muxIdxTable:
+            muxIdxTable[n] = 0
+        if "MUX" in n.name:
+            if g.in_degree(n) > 1:
+                for s, t in g.in_edges(n):
+                    print s.name, t.name
+                    muxSelTable[n, (s, t)] = muxIdxTable[n]
+                    muxIdxTable[n] += 1
+            elif g.out_degree(n) > 1:
+                for s, t in g.out_edges(n):
+                    print s.name, t.name
+                    muxSelTable[n, (s, t)] = muxIdxTable[n]
+                    muxIdxTable[n] += 1
     return muxSelTable
 
 def assignStreamPorts(g, streamPortsNum, memInPortsNum, memOutPortsNum):

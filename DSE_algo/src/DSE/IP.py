@@ -27,8 +27,24 @@ class IP():
         self.name = str(name)
         self.type = str(type)
         self.orig_name = str(name)
+        self.csvUneceNums = 0
         #The followings are used to generate csv
-        self.CSVparameterList = []
+        if self.type == "Convolution":
+            self.csvUneceNums = 4
+        elif self.type == "Convolution_g":
+            self.csvUneceNums = 4
+        elif self.type == "MUX":
+            self.csvUneceNums = 4
+        elif self.type == "Pooling":
+            self.csvUneceNums = 6
+        elif self.type == "Eltwise":
+            self.csvUneceNums = 5
+        if type == "Convolution_g":
+            self.CSVparameterListUnNece = [self.csvUneceNums * [0]]
+            self.CSVparameterListUnNece.append(self.csvUneceNums * [0])
+        else:
+            self.CSVparameterListUnNece = self.csvUneceNums * [0]
+        self.CSVparameterListNecessary = []
         self.memInFlag = False
         self.memOutFlag = False
         self.necessaryHasSet = False
@@ -37,6 +53,14 @@ class IP():
             self.BRAM, self.DSP, self.FF, self.LUT = map(int, resource_list)
         if paramList != None:
             self.paramList =map(int, paramList)
+
+    def resetForCSVUnNece(self):
+        if type == "Convolution_g":
+            self.CSVparameterListUnNece = [self.csvUneceNums * [0]]
+            self.CSVparameterListUnNece.append(self.csvUneceNums * [0])
+        else:
+            self.CSVparameterListUnNece = self.csvUneceNums * [0]
+
 
     #This actually needs to be overide by different IP types
     #This function should give latency of the using the IP with a 
