@@ -27,6 +27,7 @@ class IPSel():
         #Hard code the IP types we would like to explore
         explore_IP_types = { 
             "Convolution": 1,
+            "Pooling" : 1,
             "Convolution_g" : 1 
         }   
 
@@ -53,6 +54,8 @@ class IPSel():
         mapping_solution = dict()
         self.abandonTable = dict()
         #pick 3 IPs out of the IP list
+        for i in IP_list:
+            print i.name
         numIters = ncr(len(IP_list), numIPs)
         print "There are", numIters, "iterations"
         nums = 0
@@ -146,15 +149,20 @@ class IPSel():
 
         print "Final latency_achieved", lat_achieved
 
+
         #After the is done, re-order the mapping
-        reorderMapping(mapping_solution, hw_layers)
+        reorderMapping(mapping_solution, hw_layers) 
+
+        for g in mapping_solution:
+            print gs.printNodesMapping(hw_layers, mapping_solution[g])
+
 
         IP_g = createIPGraph(mapping_solution, hw_layers)
-        expandGraph(IP_g)
-        muxSelTable = assignMuxSelTable(IP_g)
 #        nx.draw(IP_g, with_labels=True, font_weight = 'bold')
 #        plt.show()
-        assignStreamPorts(IP_g, 2, 2, 2)
+        expandGraph(IP_g)
+        muxSelTable = assignMuxSelTable(IP_g)
+        assignStreamPorts(IP_g, 2)
         genTop(IP_g)
         #Gen CSV
         genCSVConfigs(mapping_solution, IP_g, muxSelTable, hw_layers)

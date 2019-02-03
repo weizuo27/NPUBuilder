@@ -6,6 +6,7 @@ from copy import copy
 from MUX import *
 from codeGenUtils import *
 from codeGenUtils2 import *
+from genDispatcher import *
 
 class ip:
     def __init__(self, name, type_):
@@ -82,17 +83,21 @@ def assignMuxSelTable(g):
                     muxIdxTable[n] += 1
     return muxSelTable
 
-def assignStreamPorts(g, streamPortsNum, memInPortsNum, memOutPortsNum):
+def assignStreamPorts(g, streamPortsNum):
     Ports = dict()
-    idx_stream = idx_memIn = idx_memOut = 0;
+    idx_stream = 0;
+#    idx_memIn = idx_memOut = 0;
     for (s, t) in g.edges():
         if s.type == "DDR":
-            Ports[(s, t)] = [x for x in range(idx_memIn, memInPortsNum+idx_memIn)]
-            idx_memIn += memInPortsNum
+#            continue
+            Ports[(s, t)] = [x for x in range(2)]
+#            idx_memIn += memInPortsNum
         elif t.type == "DDR":
-            Ports[(s, t)] = [x for x in range(idx_memOut, memOutPortsNum+idx_memOut)]
-            idx_memOut += memOutPortsNum
+#            continue
+            Ports[(s, t)] = [x for x in range(2)]
+#            idx_memOut += memOutPortsNum
         else:
+            print "bca", s.name, t.name
             Ports[(s, t)] = [x for x in range(idx_stream, streamPortsNum+idx_stream)]
             idx_stream += streamPortsNum
     nx.set_edge_attributes(g, Ports, 'portNames')
@@ -120,17 +125,30 @@ def genSubFunction(n, fileName):
 def genTop(g):
     topArgs = []
     streamArgs = []
+    ArgDispatchArgs = []
+
+    memName = "int * MemArgs"
+    memNameOnly = "MemArgs"
+
+    topArgs.append([memName])
+
+
     for n in g:
         if n.type == "DDR":
             continue
-        a, b = (genWrapper(g, n))
+        a, b, c = (genWrapper(g, n))
         topArgs.append(a)
         streamArgs += b
+        ArgDispatchArgs += c
+
     fileName = "top.cpp"
     genIncludeHeaders(fileName)
+    dispatcherDeclare(fileName, ArgDispatchArgs)
     genTopFunctionPre(topArgs, fileName)
     genHLSPragmas(fileName)
     genStreamPorts(list(set(streamArgs)), fileName)
+    dispatcherCall(fileName, memNameOnly, ArgDispatchArgs)
+
     for n in g:
         genSubFunction(n, fileName)
     genTopFunctionSub(fileName)
@@ -139,11 +157,12 @@ def genWrapper(g, n):
     n.args = []
     streamArgs = []
     topArg = []
+    dispatcherList = []
     memIns, memOuts, neces, streamIns, streamOuts = readTemplate(n.type)
 #    print n.name, n.type, memIns, memOuts, neces, streamIns, streamOuts
 
-    streamInFlag = not(g.in_degree(n) == 1 and list(g.in_edges(n))[0][0].type == "DDR")
-    streamOutFlag = not(g.out_degree(n) == 1 and list(g.out_edges(n))[0][1].type == "DDR")
+    n.streamInFlag = not(g.in_degree(n) == 1 and list(g.in_edges(n))[0][0].type == "DDR")
+    n.streamOutFlag = not(g.out_degree(n) == 1 and list(g.out_edges(n))[0][1].type == "DDR")
     for (s,t) in g.in_edges(n):
         if s.type == "DDR":
             n.memInFlag = True
@@ -156,31 +175,34 @@ def genWrapper(g, n):
             break
     #MEM IN
     if(n.memInFlag):
-        ports = g.edges[inEdge]['portNames']
-        for i in range(len(list(ports))):
-            portName = n.name + "_M_in"+str(ports[i])
+#        ports = g.edges[inEdge]['portNames']
+#        for i in range(len(list(ports))):
+        for i in range(len(memIns)):
+            portName = n.name + "_M_in"+str(i)
             n.args.append(portName)
             topArg.append(memIns[i] + " " + portName)
     #MEM OUT
     if(n.memOutFlag):
-        ports = g.edges[outEdge]['portNames']
+#        ports = g.edges[outEdge]['portNames']
 #        print "ports", ports
-        for i in range(len(list(ports))):
-            portName = n.name + "_M_out"+str(ports[i])
+#        for i in range(len(list(ports))):
+        for i in range(len(memOuts)):
+            portName = n.name + "_M_out"+str(i)
             n.args.append(portName);
             topArg.append(memOuts[i] + " " + portName)
     #STREAM IN
-    if(streamInFlag):
+    if(n.streamInFlag):
         for edge in g.in_edges(n):
             if edge[0].type == "DDR":
                 continue
+            print "abc", edge[0].name, edge[1].name
             ports = g.edges[edge]['portNames']
             for i in range(len(list(ports))):
                 portName = "S"+str(ports[i])
                 n.args.append(portName)
                 streamArgs.append((streamIns[i], portName))
     #SRTEAM OUT
-    if(streamOutFlag):
+    if(n.streamOutFlag):
         for edge in g.in_edges(n):
             if edge[1].type == "DDR":
                 continue
@@ -194,11 +216,37 @@ def genWrapper(g, n):
         portName = "M_ness_" + n.name + str(i)
         n.args.append(portName)
         topArg.append(neces[i] + " " + portName)
+    #Args:
+    if n.type == "Convolution_g":
+        if n.streamInFlag:
+            portName = "streamArgs_"+n.name + "_Div"
+            n.args.append(portName)
+            streamArgs.append(("int", portName))
+            dispatcherList.append((portName, 'Divider'))
+
+        portName = "streamArgs_"+n.name
+        n.args.append(portName)
+        streamArgs.append(("int", portName))
+        dispatcherList.append((portName, n.type))
+
+        if n.streamOutFlag:
+            portName = "streamArgs_"+n.name + "_Comb"
+            n.args.append(portName)
+            streamArgs.append(("int", portName))
+            dispatcherList.append(("portNames", 'Combiner'))
+    else:
+        portName = "streamArgs_"+n.name
+        n.args.append(portName)
+        streamArgs.append(("int", portName))
+        dispatcherList.append((portName, n.type))
+
+    #dispatcherList:
+        
 #    print "streamArgs", streamArgs
-    return topArg, streamArgs
+    return topArg, streamArgs, dispatcherList
 
 def genTopFunctionPre(topArgs, fileName):
-    f = open(fileName, "w")
+    f = open(fileName, "a")
 
     f.write("void pipeSystem(\n");
     for args in topArgs:
@@ -218,7 +266,7 @@ def genHLSPragmas(fileName):
     f.close()
 
 def genIncludeHeaders(fileName):
-    f =open(fileName, "a")
+    f =open(fileName, "w")
 #FIXME
     f.close()
 

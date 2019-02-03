@@ -249,7 +249,7 @@ def computeLatency (
     #* return the maximum of above three as the one row latency. usually it is latProcInputBuff_fd
 
 
-    print "return value", max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
+#    print "return value", max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
    
 
 
