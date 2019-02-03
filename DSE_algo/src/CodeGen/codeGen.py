@@ -116,8 +116,11 @@ def genSubFunction(n, fileName):
         functionName = n.type
     f = open(fileName, 'a');
     f.write("\t\t"+functionName + "(\n");
-    for arg in n.args:
-        f.write("\t\t\t"+arg+",\n")
+    for idx, arg in enumerate(n.args):
+        if(idx != len(n.args)-1):
+            f.write("\t\t\t"+arg+",\n")
+        else:
+            f.write("\t\t\t"+arg+"\n")
     f.write("\t\t);\n");
     f.close()
     
@@ -195,7 +198,6 @@ def genWrapper(g, n):
         for edge in g.in_edges(n):
             if edge[0].type == "DDR":
                 continue
-            print "abc", edge[0].name, edge[1].name
             ports = g.edges[edge]['portNames']
             for i in range(len(list(ports))):
                 portName = "S"+str(ports[i])
@@ -203,7 +205,7 @@ def genWrapper(g, n):
                 streamArgs.append((streamIns[i], portName))
     #SRTEAM OUT
     if(n.streamOutFlag):
-        for edge in g.in_edges(n):
+        for edge in g.out_edges(n):
             if edge[1].type == "DDR":
                 continue
             ports = g.edges[edge]['portNames']
@@ -233,7 +235,7 @@ def genWrapper(g, n):
             portName = "streamArgs_"+n.name + "_Comb"
             n.args.append(portName)
             streamArgs.append(("int", portName))
-            dispatcherList.append(("portNames", 'Combiner'))
+            dispatcherList.append((portName, 'Combiner'))
     else:
         portName = "streamArgs_"+n.name
         n.args.append(portName)

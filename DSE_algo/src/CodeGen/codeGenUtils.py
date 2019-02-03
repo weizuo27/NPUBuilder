@@ -43,7 +43,7 @@ def createIPGraph(gs, hw_layers):
         for n in list(g.nodes):
             if n.type not in hw_layers:
                 g.remove_node(n)
-    assignOriginalNodeMapping(gs, hw_layers)
+#    assignOriginalNodeMapping(gs, hw_layers)
     #collect the set of IPs used 
     IPSet = set()
     for g in gs:

@@ -149,15 +149,14 @@ class IPSel():
 
         print "Final latency_achieved", lat_achieved
 
-
         #After the is done, re-order the mapping
-        reorderMapping(mapping_solution, hw_layers) 
+        final_graph_list = reorderMapping(mapping_solution, hw_layers) 
 
-        for g in mapping_solution:
+        for g in final_graph_list:
             print gs.printNodesMapping(hw_layers, mapping_solution[g])
 
-
-        IP_g = createIPGraph(mapping_solution, hw_layers)
+        #CodeGen process
+        IP_g = createIPGraph(final_graph_list, hw_layers)
 #        nx.draw(IP_g, with_labels=True, font_weight = 'bold')
 #        plt.show()
         expandGraph(IP_g)
@@ -236,6 +235,7 @@ class IPSel():
 def reorderMapping(mapping_solution, hw_layers):
     #For the solution, for each IP collect the mapping, 
     #reassign using the best order
+    graph_list = []
     for g in mapping_solution:
         for n in list(g.nodes):
             if n.type not in hw_layers:
@@ -245,16 +245,19 @@ def reorderMapping(mapping_solution, hw_layers):
 
     #Collect the set of IPs for each IP ID
     IPs = dict()
+    pipelinedDict = dict()
     IPsIdx =  dict()
     for g in mapping_solution:
-        for n in g:
+        for n in mapping_solution[g].nodes():
             if n.type is "combineNode":
                 for m in n.node_list:
                     if m.type in hw_layers:
+                        pipelinedDict[m.name] = m.Pipelined
                         IPName = m.mappedIP.name.split("_")[0]
                         IPs[IPName] = [m.mappedIP] if IPName not in IPs else (IPs[IPName] + [m.mappedIP])
             if n.type in hw_layers:
                 if n.type in hw_layers:
+                    pipelinedDict[n.name] = n.Pipelined
                     IPName = n.mappedIP.name.split("_")[0]
                     IPs[IPName] = [n.mappedIP] if IPName not in IPs else (IPs[IPName] + [n.mappedIP])
 
@@ -268,16 +271,22 @@ def reorderMapping(mapping_solution, hw_layers):
         for IPName in IPsIdx:
             IPsIdx[IPName] = 0
 
-        for n in mapping_solution[g]:
-            if n.type is "combineNode":
-                for m in n.node_list:
-                    if m.type in hw_layers:
-                        IPName = m.mappedIP.name.split("_")[0]
-                        m.mappedIP = IPs[IPName][IPsIdx[IPName]]
-                        IPsIdx[IPName] += 1
+        for n in g.nodes():
             if n.type in hw_layers:
                 IPName = n.mappedIP.name.split("_")[0]
                 n.mappedIP = IPs[IPName][IPsIdx[IPName]]
+                n.Pipelined = pipelinedDict[n.name]
                 IPsIdx[IPName] += 1
+            print "pod", n.name, n.mappedIP.name, n.Pipelined
 
+        graph_list.append(g)
 
+    #If the node is not pipelined, then remove in edges
+    #FIXME:::: FINISH THIS: Chop the un-pipeilned nodes
+
+    for g in graph_list:
+        for n in g.nodes():
+            if n.type in hw_layers:
+                if not n.Pipelined:
+                    g.remove_edges_from(list(g.in_edges(n)))
+    return graph_list
