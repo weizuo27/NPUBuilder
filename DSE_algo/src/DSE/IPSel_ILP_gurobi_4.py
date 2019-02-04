@@ -153,7 +153,7 @@ class IPSel():
         final_graph_list = reorderMapping(mapping_solution, hw_layers) 
 
         for g in final_graph_list:
-            print gs.printNodesMapping(hw_layers, mapping_solution[g])
+            print gs.printNodesMapping(hw_layers, g)
 
         #CodeGen process
         IP_g = createIPGraph(final_graph_list, hw_layers)
@@ -235,6 +235,8 @@ class IPSel():
 def reorderMapping(mapping_solution, hw_layers):
     #For the solution, for each IP collect the mapping, 
     #reassign using the best order
+
+    #This function is so messy !!! :( 
     graph_list = []
     for g in mapping_solution:
         for n in list(g.nodes):
@@ -247,19 +249,33 @@ def reorderMapping(mapping_solution, hw_layers):
     IPs = dict()
     pipelinedDict = dict()
     IPsIdx =  dict()
+    firstLayerName = ""
     for g in mapping_solution:
         for n in mapping_solution[g].nodes():
             if n.type is "combineNode":
                 for m in n.node_list:
                     if m.type in hw_layers:
+                        if m.firstLayer:
+                            firstLayerName = m.name
                         pipelinedDict[m.name] = m.Pipelined
                         IPName = m.mappedIP.name.split("_")[0]
-                        IPs[IPName] = [m.mappedIP] if IPName not in IPs else (IPs[IPName] + [m.mappedIP])
+                        if IPName not in IPs:
+                            IPs[IPName] = set([m.mappedIP]) 
+                        else:
+                            IPs[IPName].add(m.mappedIP)
             if n.type in hw_layers:
                 if n.type in hw_layers:
+                    if n.firstLayer:
+                        firstLayerName = n.name
                     pipelinedDict[n.name] = n.Pipelined
                     IPName = n.mappedIP.name.split("_")[0]
-                    IPs[IPName] = [n.mappedIP] if IPName not in IPs else (IPs[IPName] + [n.mappedIP])
+                    if IPName not in IPs:
+                        IPs[IPName] = set([n.mappedIP]) 
+                    else:
+                        IPs[IPName].add(n.mappedIP)
+
+    for IPName in IPs:
+        IPs[IPName] = list(IPs[IPName])
 
     #initialize idx
     for IPName in IPs:
@@ -271,11 +287,20 @@ def reorderMapping(mapping_solution, hw_layers):
         for IPName in IPsIdx:
             IPsIdx[IPName] = 0
 
-        for n in g.nodes():
+        def comp(n):
+            return n.ID
+
+        nodes_list = list(g.nodes())
+        nodes_list.sort(key = comp)
+
+        for n in nodes_list:
             if n.type in hw_layers:
                 IPName = n.mappedIP.name.split("_")[0]
                 n.mappedIP = IPs[IPName][IPsIdx[IPName]]
                 n.Pipelined = pipelinedDict[n.name]
+                if n.name == firstLayerName:
+                    n.firstLayer = True
+                    n.mappedIP.firstLayer = True
                 IPsIdx[IPName] += 1
             print "pod", n.name, n.mappedIP.name, n.Pipelined
 

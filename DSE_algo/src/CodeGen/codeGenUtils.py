@@ -29,7 +29,16 @@ def assignOriginalNodeMapping(gs, hw_layers):
 
     for g in gs:
         for n in g.nodes:
-            n.mappedIP = mappingNodes[n.name]
+            if n.type in hw_layers:
+                n.mappedIP = mappingNodes[n.name]
+            
+        for n in gs[g].nodes:
+            if n.type is "combineNode":
+                for m in n.node_list:
+                    if m.type in hw_layers:
+                        m.mappedIP = mappingNodes[m.name]
+            if n.type in hw_layers:
+                n.mappedIP = mappingNodes[n.name]
 
 def drawGraph(g, mapping):
     h = nx.relabel_nodes(g, mapping)

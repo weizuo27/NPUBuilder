@@ -16,6 +16,7 @@ class ip:
 
 #Add in mux nodes and edges
 def expandGraph(g):
+    print "in Expand graph"
     muxSelTable = dict()
     expandingNodeList = []
     for n in g.nodes():
@@ -36,8 +37,8 @@ def expandGraph(g):
             expandingNodeList.append((n, "out", outD))
 
     #update the graph
+    print len(expandingNodeList)
     for n, inOrOut, D in expandingNodeList:
-        print "dsdas", n.name, inOrOut, D
         if inOrOut == "in":
             muxtype = "MUX"+str(D)+"to1"
             mux = MUX(muxtype, D, 1)
@@ -67,18 +68,15 @@ def assignMuxSelTable(g):
     muxIdxTable = dict()
     muxSelTable = dict()
     for n in g.nodes:
-        print "ccc", n.name
         if n not in muxIdxTable:
             muxIdxTable[n] = 0
         if "MUX" in n.name:
             if g.in_degree(n) > 1:
                 for s, t in g.in_edges(n):
-                    print s.name, t.name
                     muxSelTable[n, (s, t)] = muxIdxTable[n]
                     muxIdxTable[n] += 1
             elif g.out_degree(n) > 1:
                 for s, t in g.out_edges(n):
-                    print s.name, t.name
                     muxSelTable[n, (s, t)] = muxIdxTable[n]
                     muxIdxTable[n] += 1
     return muxSelTable
@@ -97,7 +95,6 @@ def assignStreamPorts(g, streamPortsNum):
             Ports[(s, t)] = [x for x in range(2)]
 #            idx_memOut += memOutPortsNum
         else:
-            print "bca", s.name, t.name
             Ports[(s, t)] = [x for x in range(idx_stream, streamPortsNum+idx_stream)]
             idx_stream += streamPortsNum
     nx.set_edge_attributes(g, Ports, 'portNames')
@@ -135,6 +132,10 @@ def genTop(g):
 
     topArgs.append([memName])
 
+    #collect the IP names
+    IPNames = []
+    for n in g:
+        IPNames.append(n.name)
 
     for n in g:
         if n.type == "DDR":
@@ -144,8 +145,9 @@ def genTop(g):
         streamArgs += b
         ArgDispatchArgs += c
 
-    fileName = "top.cpp"
-    genIncludeHeaders(fileName)
+    #genCPP
+    fileName = "pipeSystem.cpp"
+    genIncludeHeaders(fileName, IPNames)
     dispatcherDeclare(fileName, ArgDispatchArgs)
     genTopFunctionPre(topArgs, fileName)
     genHLSPragmas(fileName)
@@ -154,7 +156,19 @@ def genTop(g):
 
     for n in g:
         genSubFunction(n, fileName)
-    genTopFunctionSub(fileName)
+    genTopFunctionRail(fileName)
+
+    #genHeaderFile
+    fileName = "pipeSystem.h"
+    genHeaderFilePre(fileName)
+    genSDSOCZero_Copy(fileName, topArgs)
+    genSDSOCSYS_Port(fileName, topArgs)
+    genTopFunctionPre(topArgs, fileName, True)
+    genHeaderFileRail(fileName)
+
+    #genWrapperDNN file
+    wrapperFileName = "dnn_wrapper.cpp"
+    genWrapperDnnFile(wrapperFileName, topArgs)
 
 def genWrapper(g, n):
     n.args = []
@@ -214,7 +228,8 @@ def genWrapper(g, n):
                 n.args.append(portName)
                 streamArgs.append((streamOuts[i], portName))
     #NECESSARY:
-    for i in range(len(neces)):
+    notFirstLayer = 1 -int(n.firstLayer)
+    for i in range(len(neces) - notFirstLayer):
         portName = "M_ness_" + n.name + str(i)
         n.args.append(portName)
         topArg.append(neces[i] + " " + portName)
@@ -247,28 +262,117 @@ def genWrapper(g, n):
 #    print "streamArgs", streamArgs
     return topArg, streamArgs, dispatcherList
 
-def genTopFunctionPre(topArgs, fileName):
+def genTopFunctionPre(topArgs, fileName, headerFile = False):
     f = open(fileName, "a")
 
     f.write("void pipeSystem(\n");
+    args_cmd = ""
     for args in topArgs:
         for arg in args:
-            f.write("\t"+arg+",\n");
-    f.write("){\n");
+            args_cmd += ("\t"+arg+",\n")
+
+    args_cmd = args_cmd[0:-2] + "\n"
+    f.write(args_cmd)
+
+    f.write("#ifdef __SDSVHLS__\n")
+    f.write("\t, bool ap_clk_div2\n")
+    f.write("#endif\n")
+    
+    if headerFile:
+        f.write(");\n")
+    else:
+        f.write("){\n")
     f.close() 
 
-def genTopFunctionSub(fileName):
+def genTopFunctionRail(fileName):
     f=open(fileName, "a")
     f.write("}")
     f.close()
+
 def genHLSPragmas(fileName):
     f=open(fileName, "a")
     f.write("\t#pragma HLS dataflow\n")
     f.write("\t#pragma HLS INTERFACE ap_stable port=ap_clk_div2\n")
     f.close()
 
-def genIncludeHeaders(fileName):
+def genIncludeHeaders(fileName, IPNames):
     f =open(fileName, "w")
-#FIXME
+    f.write("#include <ap_int.h>\n")
+    f.write("#include <hls_stream.h>\n")
+    f.write("#include \"pipeSystem.h\"\n")
+    for ipName in IPNames:
+        f.write("#include \"../" + ipName+"/"+ipName+".h\"\n")
     f.close()
 
+##################Gen header file functions
+def genHeaderFilePre(fileName):
+    f = open(fileName, "w")
+    f.write("#include <ap_int.h>\n")
+    f.write("#ifndef _PIPE_SYSTEM_H_\n")
+    f.write("#define _PIPE_SYSTEM_H_\n")
+
+    f.write("#ifdef __HLS_SYN__\n")
+    f.write("#define __SDSVHLS__\n")
+    f.write("#endif\n")
+
+    f.close()
+
+def genSDSOCZero_Copy(fileName, topArgs):
+    f = open(fileName, 'a')
+    for args in topArgs:
+        for arg in args:
+            argName = arg.split()[-1]
+            f.write("#pragma SDS data zero_copy("+argName+")\n")
+    f.close()
+
+def genSDSOCSYS_Port(fileName, topArgs):
+    idx = 0
+    MaxPorts = 4
+    f = open(fileName, 'a')
+    for args in topArgs:
+        for arg in args:
+            argName = arg.split()[-1]
+            f.write("#pragma SDS data sys_port("+argName+\
+                    ": ps_e_S_AXI_HP"+str(idx)+"_FPD)\n")
+            idx = (idx + 1)%MaxPorts
+    f.close()
+
+def genHeaderFileRail(fileName):
+    f = open(fileName, "a")
+    f.write("#endif\n")
+    f.close()
+
+def genWrapperDnnFile(fileName, topArgs):
+    f =open(fileName, "w")
+    f.write("#ifdef __SDSOC\n")
+    f.write("#include \"pipeSystem.h\"\n")
+    f.write("#endif\n")
+    f.write("#include \"ap_int.h\"\n")
+    f.write("int ConvolutionPipeWrapper(\n")
+
+    args_cmd = ""
+    for args in topArgs:
+        for arg in args:
+            args_cmd += "\t"+arg+",\n"
+    args_cmd = args_cmd[0:-2] + "\n"
+    f.write(args_cmd)
+    f.write("){\n")
+
+    f.write("#if __SDSOC\n")
+    f.write("#pragma SDS async(1)\n")
+    f.write("#endif\n")
+
+    #call pipeSystem
+    f.write("\tpipeSystem(\n")
+    args_cmd = ""
+    for args in topArgs:
+        for arg in args:
+            argName = arg.split()[-1]
+            args_cmd += ("\t\t" + argName + ",\n")
+    args_cmd = args_cmd[0:-2] + "\n"
+    f.write(args_cmd)
+    f.write("\t);\n")
+    f.write("\treturn 0;\n")
+    f.write("}\n")
+
+    f.close()

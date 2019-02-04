@@ -23,18 +23,19 @@ class IP():
     """
     def __init__(self, name, type, resource_list, 
             #The following are chaiDNN conv specific configs
-            paramList):
+            paramList, firstLayer = False):
         self.name = str(name)
         self.type = str(type)
         self.orig_name = str(name)
         self.csvUneceNums = 0
+        self.firstLayer = firstLayer
         #The followings are used to generate csv
         if self.type == "Convolution":
             self.csvUneceNums = 4
         elif self.type == "Convolution_g":
             self.csvUneceNums = 4
         elif "MUX" in self.type:
-            self.csvUneceNums = 4
+            self.csvUneceNums = 5
         elif self.type == "Pooling":
             self.csvUneceNums = 6
         elif self.type == "Eltwise":
