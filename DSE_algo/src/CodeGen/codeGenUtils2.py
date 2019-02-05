@@ -107,6 +107,9 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers):
 
     #Config all the changable colums
     roundIdx = 0
+    fileName = "round.csv"
+    f = open(fileName, "w")
+    f.close()
     for g in gs_list:
         for s, t in g.edges():
             ip_s = s.mappedIP
@@ -134,7 +137,8 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers):
 
                 CSVconfigUnNece(n, ip_inst, s, t, False, layerIdxTable, poolingTypeTable,  muxSel)
 
-        genCSVFile(IP_g, roundIdx)
+
+        genCSVFile(IP_g, roundIdx, fileName)
         roundIdx += 1
         
         # reset the network
@@ -143,17 +147,19 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers):
             ip_inst.resetForCSVUnNece()
             print "after", ip_inst.name, ip_inst.CSVparameterListUnNece
 
-def genCSVFile(IP_g, roundIdx):
-    f = open("round.csv", "a")
+def genCSVFile(IP_g, roundIdx, fileName):
+    f = open(fileName, "a")
     csvParamList = [roundIdx]
     for ip_inst in IP_g.nodes():
+        if(ip_inst.type == "DDR"):
+            continue
         csvParamList.append(ip_inst.type)
         if ip_inst.type == "Convolution_g":
             for i in range(2):
                 csvParamList += (ip_inst.CSVparameterListNecessary[i] + ip_inst.CSVparameterListUnNece[i])
         else:
             csvParamList += (ip_inst.CSVparameterListNecessary + ip_inst.CSVparameterListUnNece)
-    print "csvParamList", csvParamList
+    csvParamList.append("end")
     line = ",".join(map(str, csvParamList))
     line += "\n"
     f.write(line)

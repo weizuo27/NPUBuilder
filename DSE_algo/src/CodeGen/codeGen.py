@@ -118,6 +118,13 @@ def genSubFunction(n, fileName):
             f.write("\t\t\t"+arg+",\n")
         else:
             f.write("\t\t\t"+arg+"\n")
+    #FIXME This is specific to chaidnn
+    if(n.type == "Convolution"):
+        f.write("#ifdef __SDSVHLS__\n")
+        f.write("\t, bool ap_clk_div2\n")
+        f.write("#else\n")
+        f.write("\t, 0\n")
+        f.write("#endif")
     f.write("\t\t);\n");
     f.close()
     
@@ -136,6 +143,8 @@ def genTop(g):
     IPNames = []
     for n in g:
         IPNames.append(n.name)
+
+
 
     for n in g:
         if n.type == "DDR":
@@ -170,6 +179,8 @@ def genTop(g):
     wrapperFileName = "dnn_wrapper.cpp"
     genWrapperDnnFile(wrapperFileName, topArgs)
 
+    #genIPPack cmds
+    genIPPackCmd("ippackGen.sh", g)
 def genWrapper(g, n):
     n.args = []
     streamArgs = []
@@ -301,7 +312,11 @@ def genIncludeHeaders(fileName, IPNames):
     f.write("#include <hls_stream.h>\n")
     f.write("#include \"pipeSystem.h\"\n")
     for ipName in IPNames:
+        print "ipName", ipName
+        if "IP" not in ipName:
+            continue
         f.write("#include \"../" + ipName+"/"+ipName+".h\"\n")
+    f.write("#include \"../otherIPs/otherIPs.hpp\"\n")
     f.close()
 
 ##################Gen header file functions
@@ -374,5 +389,43 @@ def genWrapperDnnFile(fileName, topArgs):
     f.write("\t);\n")
     f.write("\treturn 0;\n")
     f.write("}\n")
+
+    f.close()
+
+def genIPPackCmd(fileName, IP_g):
+    f = open(fileName, 'w')
+    for ip in IP_g:
+        if "IP" not in ip.name:
+            continue
+        if ip.type == "Convolution":
+            IPNAME = ip.name
+
+            XI_KER_PROC, XI_PIX_PROC, XI_ISTAGE_BUFF, \
+            XI_OSTAGE_BUFF, XI_WEIGHT_BUFF = ip.paramList
+
+            STREAM_OUT = int(ip.streamOutFlag)
+            STREAM_IN = int(ip.streamInFlag)
+            MEM_IN = int(ip.memInFlag)
+            MEM_OUT = int(ip.memOutFlag)
+            LAYER1 = int(ip.firstLayer)
+
+            paramList = ["IPCONV", IPNAME, XI_ISTAGE_BUFF, XI_OSTAGE_BUFF, XI_WEIGHT_BUFF,\
+            XI_KER_PROC, XI_PIX_PROC, STREAM_OUT, STREAM_IN, MEM_IN, MEM_OUT, LAYER1]
+            paramList = map(str, paramList)
+
+        elif ip.type == "Pooling":
+            IPNAME = ip.name
+            STREAM_OUT = int(ip.streamOutFlag)
+            STREAM_IN = int(ip.streamInFlag)
+            MEM_IN = int(ip.memInFlag)
+            MEM_OUT = int(ip.memOutFlag)
+            paramList = ["IPPOOL", IPNAME, MEM_IN, MEM_OUT, STREAM_IN, STREAM_OUT]
+            paramList = map(str, paramList)
+        else:
+            print "Unsupprted IP type"
+            exit()
+        print ip.name, ip.streamOutFlag, ip.streamInFlag, ip.memInFlag, ip.memOutFlag
+        f.write("python ippack.py " + " ".join(paramList)+"\n")
+            
 
     f.close()

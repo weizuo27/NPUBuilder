@@ -27,7 +27,7 @@ class IPSel():
         #Hard code the IP types we would like to explore
         explore_IP_types = { 
             "Convolution": 1,
-            "Pooling" : 1,
+#            "Pooling" : 1,
             "Convolution_g" : 1 
         }   
 
@@ -296,12 +296,14 @@ def reorderMapping(mapping_solution, hw_layers):
         for n in nodes_list:
             if n.type in hw_layers:
                 IPName = n.mappedIP.name.split("_")[0]
+                print IPName, IPsIdx[IPName], IPs[IPName]
                 n.mappedIP = IPs[IPName][IPsIdx[IPName]]
                 n.Pipelined = pipelinedDict[n.name]
                 if n.name == firstLayerName:
                     n.firstLayer = True
                     n.mappedIP.firstLayer = True
                 IPsIdx[IPName] += 1
+                IPsIdx[IPName] %= len(IPs[IPName])
             print "pod", n.name, n.mappedIP.name, n.Pipelined
 
         graph_list.append(g)
