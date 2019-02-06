@@ -38,7 +38,6 @@ class IPSel():
                 FF_budget, gs.exploreLayerQueue, explore_IP_types, numIPs)
 
         IP_table_per_layer_org = genIPTablePerLayer(IP_table, gs.exploreLayerQueue, hw_layers)
-        print "aaaa", IP_table_per_layer_org
 
         layerIPLatencyTable_org = computeIPLatencyPerLayer(IP_table, gs.exploreLayerQueue, hw_layers, IP_table_per_layer_org)
 

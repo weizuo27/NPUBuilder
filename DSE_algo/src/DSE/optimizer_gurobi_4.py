@@ -1,4 +1,5 @@
 from resourceILPBuilder_gurobi_4 import resourceILPBuilder
+from vertex import layer
 from graph_4 import graph
 from graph_4 import pipeNode
 from graph_4 import combineNode
@@ -71,6 +72,7 @@ class optimizer:
             firstIter = False
             #assign the mapping result
             self.assignMappingResult(graphs.exploreLayerQueue[g], explore_IP_types, hw_layers, IP_table, g, IP_table_org)
+            self.updateGraph(g, hw_layers)
             self.setPipelineFlag(hw_layers, g)
             graphs.computeLatency(g)
             self.addPipelineNodes(g)
@@ -250,3 +252,21 @@ class optimizer:
     def printSchedulingMappingSol(self, graphs, hw_layers):
 #        graphs.printNodesMapping(hw_layers, self.mapping_solution)
         print "achieved latency", self.latency_achieved
+
+    def updateGraph(self, g, hw_layers ):
+        iPMappingTable = dict()
+        for n in nx.topological_sort(g):
+            if not isinstance(n, layer):
+                continue
+#            print "abcddd", n.name, n.mappedIP
+            if n.mappedIP.type not in hw_layers:
+                continue
+#            print "abcdd", n.name, n.mappedIP
+            if n.mappedIP not in iPMappingTable:
+                iPMappingTable[n.mappedIP] = [n]
+            else:
+                iPMappingTable[n.mappedIP].append(n)
+        print "aaaaa", iPMappingTable
+        for ip in iPMappingTable:
+            for idx in range(len(iPMappingTable[ip])-1):
+                g.add_edge(iPMappingTable[ip][idx], iPMappingTable[ip][idx+1])

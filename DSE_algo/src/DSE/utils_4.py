@@ -206,7 +206,7 @@ def computeIPLatencyPerLayer(IP_table, layerQueue, hw_layers, IPTablePerLayer):
                 row = []
                 row_final = []
                 for idx, ip in enumerate(ip_q):
-                    print layer_inst.name, idx, IPTablePerLayer
+#                    print layer_inst.name, idx, IPTablePerLayer
                     if IPTablePerLayer[layer_inst][idx] == 0:
                         continue
                     lat = layer_inst.computeLatencyIfMappedToOneIP(ip)
