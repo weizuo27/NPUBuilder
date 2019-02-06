@@ -112,6 +112,12 @@ def genSubFunction(n, fileName):
     if "MUX" in n.name:
         functionName = n.type
     f = open(fileName, 'a');
+
+    #add csim labels
+    f.write("#ifdef __CSIM___\n")
+    f.write("LABEL_"+n.name+":\n")
+    f.write("#endif\n")
+
     f.write("\t\t"+functionName + "(\n");
     for idx, arg in enumerate(n.args):
         if(idx != len(n.args)-1):
@@ -121,11 +127,17 @@ def genSubFunction(n, fileName):
     #FIXME This is specific to chaidnn
     if(n.type == "Convolution"):
         f.write("#ifdef __SDSVHLS__\n")
-        f.write("\t, bool ap_clk_div2\n")
+        f.write("\t, ap_clk_div2\n")
         f.write("#else\n")
         f.write("\t, 0\n")
-        f.write("#endif")
+        f.write("#endif\n")
     f.write("\t\t);\n");
+
+    #add csim labels
+    f.write("#ifdef __CSIM___\n")
+    f.write("goto LABEL_"+n.name+"_NEXT;\n")
+    f.write("#endif\n")
+
     f.close()
     
 
@@ -297,6 +309,8 @@ def genTopFunctionPre(topArgs, fileName, headerFile = False):
 
 def genTopFunctionRail(fileName):
     f=open(fileName, "a")
+    f.write("END:\n")
+    f.write("\treturn;" )
     f.write("}")
     f.close()
 

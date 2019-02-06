@@ -110,35 +110,49 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers):
     fileName = "round.csv"
     f = open(fileName, "w")
     f.close()
+    fileNameCallOrder = "callOrder.csv"
+    f = open(fileNameCallOrder, "w")
+    f.close()
     for g in gs_list:
-        for s, t in g.edges():
-            ip_s = s.mappedIP
-            ip_t = t.mappedIP
-            ips = list(nx.bellman_ford_path(IP_g, ip_s, ip_t))
-            for ip in ips:
-                print ip.name
-            for idx, ip_inst in enumerate(ips):
-                if ip_inst == ip_s:
-                    n = s
-                elif ip_inst == ip_t:
-                    n = t
-                else:
-                    n = None
-                if idx == 0:
-                    muxSel =None 
-                else:
-                    if "MUX" in ip_inst.type:
-                        if (ip_inst, (ips[idx-1], ip_inst)) in muxSelTable:
-                            muxSel = muxSelTable[(ip_inst, (ips[idx-1], ip_inst))]
-                        elif(ip_inst, (ip_inst, ips[idx+1]))in muxSelTable:
-                            muxSel = muxSelTable[(ip_inst, (ip_inst, ips[idx+1]))]
+        callOrder = []
+        node_list = list(nx.topological_sort(g))
+        for idx in range(len(node_list)-1):
+            s = node_list[idx]
+            t = node_list[idx+1]
+            if (s,t) not in g.edges():
+                callOrder.append(s.mappedIP.name)
+            else:
+                ip_s = s.mappedIP
+                ip_t = t.mappedIP
+                ips = list(nx.bellman_ford_path(IP_g, ip_s, ip_t))
+
+                for ip in ips[0:-1]:
+                    callOrder.append(ip.name)
+
+                for ip in ips:
+                    print ip.name
+                for idx, ip_inst in enumerate(ips):
+                    if ip_inst == ip_s:
+                        n = s
+                    elif ip_inst == ip_t:
+                        n = t
                     else:
-                         muxSel == None
+                        n = None
+                    if idx == 0:
+                        muxSel =None 
+                    else:
+                        if "MUX" in ip_inst.type:
+                            if (ip_inst, (ips[idx-1], ip_inst)) in muxSelTable:
+                                muxSel = muxSelTable[(ip_inst, (ips[idx-1], ip_inst))]
+                            elif(ip_inst, (ip_inst, ips[idx+1]))in muxSelTable:
+                                muxSel = muxSelTable[(ip_inst, (ip_inst, ips[idx+1]))]
+                        else:
+                             muxSel == None
 
-                CSVconfigUnNece(n, ip_inst, s, t, False, layerIdxTable, poolingTypeTable,  muxSel)
-
-
+                    CSVconfigUnNece(n, ip_inst, s, t, False, layerIdxTable, poolingTypeTable,  muxSel)
+        callOrder.append(t.mappedIP.name)
         genCSVFile(IP_g, roundIdx, fileName)
+        genCallOrderFile(callOrder, fileNameCallOrder, roundIdx)
         roundIdx += 1
         
         # reset the network
@@ -146,6 +160,13 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers):
             print "before", ip_inst.name, ip_inst.CSVparameterListUnNece
             ip_inst.resetForCSVUnNece()
             print "after", ip_inst.name, ip_inst.CSVparameterListUnNece
+
+def genCallOrderFile(callOrder, fileNameCallOrder, roundIdx):
+    f=open(fileNameCallOrder, "a")
+    f.write(str(roundIdx)+",")
+    f.write(",".join(callOrder))
+    f.write(",END\n")
+    f.close()
 
 def genCSVFile(IP_g, roundIdx, fileName):
     f = open(fileName, "a")
@@ -159,7 +180,7 @@ def genCSVFile(IP_g, roundIdx, fileName):
                 csvParamList += (ip_inst.CSVparameterListNecessary[i] + ip_inst.CSVparameterListUnNece[i])
         else:
             csvParamList += (ip_inst.CSVparameterListNecessary + ip_inst.CSVparameterListUnNece)
-    csvParamList.append("end")
+    csvParamList.append("END")
     line = ",".join(map(str, csvParamList))
     line += "\n"
     f.write(line)
