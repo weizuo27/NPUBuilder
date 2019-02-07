@@ -90,7 +90,7 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers):
     layerIdxTable = readLayerId( "./inputFiles/layerIDMapping")
     poolingTypeTable = readLayerId("./inputFiles/PoolingTyping")
     #reorder the gs
-    gs_list = gs.keys()
+    gs_list = gs
 
     #reorder the graph
     def comp(elem):
@@ -99,6 +99,10 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers):
                 return n.ID
 
     gs_list.sort(key = comp)
+
+    #reorder the nodes in g
+    def comp1(elem):
+        return elem.ID
 
     #Config all the necessary columns
     for g in gs_list:
@@ -115,7 +119,8 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers):
     f.close()
     for g in gs_list:
         callOrder = []
-        node_list = list(nx.topological_sort(g))
+        node_list = list(g.nodes())
+        node_list.sort(key = comp1)
         for idx in range(len(node_list)-1):
             s = node_list[idx]
             t = node_list[idx+1]
@@ -150,8 +155,12 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers):
                              muxSel == None
 
                     CSVconfigUnNece(n, ip_inst, s, t, False, layerIdxTable, poolingTypeTable,  muxSel)
-        callOrder.append(t.mappedIP.name)
         genCSVFile(IP_g, roundIdx, fileName)
+
+        callOrder.append(t.mappedIP.name)
+        callOrderList = []
+#        nSplit(callOrder, callOrderList)
+#        for n in callOrderList:
         genCallOrderFile(callOrder, fileNameCallOrder, roundIdx)
         roundIdx += 1
         
@@ -185,3 +194,18 @@ def genCSVFile(IP_g, roundIdx, fileName):
     line += "\n"
     f.write(line)
     f.close()
+
+
+def nSplit(inList, outLists):
+    hasElem = dict()
+    subList = []
+    for idx, n in enumerate(inList):
+        if n not in hasElem:
+            subList.append(n)
+            hasElem[n] = 1 
+        else:
+            outLists.append(subList)
+            nSplit(inList[idx:], outLists)
+        return
+    outLists.append(subList)
+

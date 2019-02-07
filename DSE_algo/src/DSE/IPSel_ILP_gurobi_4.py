@@ -36,6 +36,9 @@ class IPSel():
 
         IP_table = constructIPTable(IPs, BRAM_budget, DSP_budget, LUT_budget, \
                 FF_budget, gs.exploreLayerQueue, explore_IP_types, numIPs)
+        if IP_table is None:
+            print "Cannot fit in " + str(numIPs) +", exiting...\n"
+            return
 
         IP_table_per_layer_org = genIPTablePerLayer(IP_table, gs.exploreLayerQueue, hw_layers)
 
@@ -164,7 +167,7 @@ class IPSel():
         assignStreamPorts(IP_g, 2)
         genTop(IP_g)
         #Gen CSV
-        genCSVConfigs(mapping_solution, IP_g, muxSelTable, hw_layers)
+        genCSVConfigs(final_graph_list, IP_g, muxSelTable, hw_layers)
 
     def updateAbandonTable(self, IPs):
         ipNames = []
@@ -296,7 +299,6 @@ def reorderMapping(mapping_solution, hw_layers):
         for n in nodes_list:
             if n.type in hw_layers:
                 IPName = n.mappedIP.name.split("_")[0]
-                print IPName, IPsIdx[IPName], IPs[IPName]
                 n.mappedIP = IPs[IPName][IPsIdx[IPName]]
                 n.Pipelined = pipelinedDict[n.name]
                 if n.name == firstLayerName:
@@ -304,16 +306,41 @@ def reorderMapping(mapping_solution, hw_layers):
                     n.mappedIP.firstLayer = True
                 IPsIdx[IPName] += 1
                 IPsIdx[IPName] %= len(IPs[IPName])
-            print "pod", n.name, n.mappedIP.name, n.Pipelined
-
-        graph_list.append(g)
+            
 
     #If the node is not pipelined, then remove in edges
     #FIXME:::: FINISH THIS: Chop the un-pipeilned nodes
 
-    for g in graph_list:
+    for g in mapping_solution:
         for n in g.nodes():
             if n.type in hw_layers:
                 if not n.Pipelined:
                     g.remove_edges_from(list(g.in_edges(n)))
+
+    for g in mapping_solution:
+        nodes_list= [x for x in list(g.nodes()) if x.type in hw_layers]
+        nodes_nodes_list = list()
+        nSplit(nodes_list, nodes_nodes_list)
+        
+        for nl in nodes_nodes_list:
+            sub_g = g.subgraph(nl)
+#            nx.draw(sub_g)
+#            plt.show()
+            graph_list.append(sub_g)
+
+    print "abcdef", len(graph_list)
     return graph_list
+
+def nSplit(inList, outLists):
+    hasElem = dict()
+    subList = []
+    for idx, n in enumerate(inList):
+        if n.mappedIP.name not in hasElem:
+            subList.append(n)
+            hasElem[n.mappedIP.name] = 1 
+        else:
+            outLists.append(subList)
+            nSplit(inList[idx:], outLists)
+            return
+    outLists.append(subList)
+

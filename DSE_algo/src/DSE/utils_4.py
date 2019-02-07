@@ -18,6 +18,7 @@ def constructIPTable(IPs, BRAM_budget, DSP_budget, FF_budget, LUT_budget, layerQ
     #Namely, there is no type of the IP that cannot be used in the application
 
     IP_table = dict()
+    maxIPnum = 0
 
     minResourceIP = dict() #The minimum resource for each IP. key: IP_type. value [BRAM, DSP, FF, LUT]
 
@@ -67,6 +68,7 @@ def constructIPTable(IPs, BRAM_budget, DSP_budget, FF_budget, LUT_budget, layerQ
             IP_num = min(IP_num, pipelineLength)
 
         IP_type = ip.type
+        maxIPnum = max(maxIPnum, IP_num)
         print ip.name, ip.type, "IP_num", IP_num
         for i in range(IP_num):
             new_ip = deepcopy(ip)
@@ -75,6 +77,8 @@ def constructIPTable(IPs, BRAM_budget, DSP_budget, FF_budget, LUT_budget, layerQ
                 IP_table[IP_type].append(new_ip)
             else:
                 IP_table[IP_type] = [new_ip]
+#    if maxIPnum < pipelineLength:
+#        return None
     return IP_table
 
 def generateIPs(fileName):

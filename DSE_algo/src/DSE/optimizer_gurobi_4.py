@@ -73,10 +73,12 @@ class optimizer:
             #assign the mapping result
             self.assignMappingResult(graphs.exploreLayerQueue[g], explore_IP_types, hw_layers, IP_table, g, IP_table_org)
             self.updateGraph(g, hw_layers)
+#            graphs.drawGraph(g)
             self.setPipelineFlag(hw_layers, g)
             graphs.computeLatency(g)
             self.addPipelineNodes(g)
             self.simplifyGraph(g)
+
             status, ret = self.scheduling(g, explore_IP_types)
 
             if status == "Success":
@@ -110,10 +112,11 @@ class optimizer:
                 for ip_idx in range(len(variables[layer_idx])):
                     if (hasattr(variables[layer_idx][ip_idx], "X") and variables[layer_idx][ip_idx].X> 0.5 ): 
                         node.set_IP(IP_table[layer_type][ip_idx])
+        idx = 0
         for n in g.nodes:
-            idx = 0
             if n.type not in explore_IP_types and n.type in hw_layers:
-                n.set_IP(deepcopy(IP_table_org[n.type][idx]))
+                n.set_IP(deepcopy(IP_table_org[n.type][0]))
+                n.mappedIP.name = n.mappedIP.name+"_" + str(idx)
                 idx += 1
 
     def setPipelineFlag(self, hw_layers, g):
@@ -254,19 +257,26 @@ class optimizer:
         print "achieved latency", self.latency_achieved
 
     def updateGraph(self, g, hw_layers ):
-        iPMappingTable = dict()
-        for n in nx.topological_sort(g):
+        def comp12(n):
+            return int(n.ID)
+
+        IPMappingTable = dict()
+
+        for n in g.nodes():
             if not isinstance(n, layer):
                 continue
 #            print "abcddd", n.name, n.mappedIP
             if n.mappedIP.type not in hw_layers:
                 continue
 #            print "abcdd", n.name, n.mappedIP
-            if n.mappedIP not in iPMappingTable:
-                iPMappingTable[n.mappedIP] = [n]
+            if n.mappedIP not in IPMappingTable:
+                IPMappingTable[n.mappedIP] = [n]
             else:
-                iPMappingTable[n.mappedIP].append(n)
-        print "aaaaa", iPMappingTable
-        for ip in iPMappingTable:
-            for idx in range(len(iPMappingTable[ip])-1):
-                g.add_edge(iPMappingTable[ip][idx], iPMappingTable[ip][idx+1])
+                IPMappingTable[n.mappedIP].append(n)
+
+        for ip in IPMappingTable:
+            IPMappingTable[ip].sort(key = comp12)
+
+        for ip in IPMappingTable:
+            for idx in range(len(IPMappingTable[ip])-1):
+                g.add_edge(IPMappingTable[ip][idx], IPMappingTable[ip][idx+1])

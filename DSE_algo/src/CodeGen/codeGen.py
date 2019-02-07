@@ -108,37 +108,67 @@ def genStreamPorts(streamArgs, fileName):
 def genSubFunction(n, fileName):
     if n.type == "DDR":
         return
-    functionName = n.name+"::"+n.type
-    if "MUX" in n.name:
-        functionName = n.type
-    f = open(fileName, 'a');
+    if n.type == "IP_l":
+        return
+    if n.type is "Eltwise":
+        functionName = n.name+"::"+n.type
+        f = open(fileName, 'a')
 
-    #add csim labels
-    f.write("#ifdef __CSIM___\n")
-    f.write("LABEL_"+n.name+":\n")
-    f.write("#endif\n")
-
-    f.write("\t\t"+functionName + "(\n");
-    for idx, arg in enumerate(n.args):
-        if(idx != len(n.args)-1):
-            f.write("\t\t\t"+arg+",\n")
-        else:
-            f.write("\t\t\t"+arg+"\n")
-    #FIXME This is specific to chaidnn
-    if(n.type == "Convolution"):
-        f.write("#ifdef __SDSVHLS__\n")
-        f.write("\t, ap_clk_div2\n")
-        f.write("#else\n")
-        f.write("\t, 0\n")
+        #add csim labels
+        f.write("#ifdef __CSIM___\n")
+        f.write("LABEL_"+n.name+":\n")
         f.write("#endif\n")
-    f.write("\t\t);\n");
 
-    #add csim labels
-    f.write("#ifdef __CSIM___\n")
-    f.write("goto LABEL_"+n.name+"_NEXT;\n")
-    f.write("#endif\n")
+        f.write("\t\t"+functionName + "(\n")
+        ip_l = n.ip_l
+        for arg in ip_l.args:
+            f.write("\t\t\t"+arg+",\n")
+        for idx, arg in enumerate(n.args):
+            if(idx != len(n.args)-1):
+                f.write("\t\t\t"+arg+",\n")
+            else:
+                f.write("\t\t\t"+arg+"\n")
+        f.write("\t\t);\n");
 
-    f.close()
+        #add csim labels
+        f.write("#ifdef __CSIM___\n")
+        f.write("goto LABEL_"+n.name+"_NEXT;\n")
+        f.write("#endif\n")
+
+        f.close()
+
+    else:
+        functionName = n.name+"::"+n.type
+        if "MUX" in n.name:
+            functionName = n.type
+        f = open(fileName, 'a')
+
+        #add csim labels
+        f.write("#ifdef __CSIM___\n")
+        f.write("LABEL_"+n.name+":\n")
+        f.write("#endif\n")
+
+        f.write("\t\t"+functionName + "(\n")
+        for idx, arg in enumerate(n.args):
+            if(idx != len(n.args)-1):
+                f.write("\t\t\t"+arg+",\n")
+            else:
+                f.write("\t\t\t"+arg+"\n")
+        #FIXME This is specific to chaidnn
+        if(n.type == "Convolution"):
+            f.write("#ifdef __SDSVHLS__\n")
+            f.write("\t, ap_clk_div2\n")
+            f.write("#else\n")
+            f.write("\t, 0\n")
+            f.write("#endif\n")
+        f.write("\t\t);\n");
+
+        #add csim labels
+        f.write("#ifdef __CSIM___\n")
+        f.write("goto LABEL_"+n.name+"_NEXT;\n")
+        f.write("#endif\n")
+
+        f.close()
     
 
 def genTop(g):
@@ -192,7 +222,7 @@ def genTop(g):
     genWrapperDnnFile(wrapperFileName, topArgs)
 
     #genIPPack cmds
-    genIPPackCmd("ippackGen.sh", g)
+    genIPPackCmd("ippackGen.sh", "ipNameList", g)
 def genWrapper(g, n):
     n.args = []
     streamArgs = []
@@ -201,17 +231,16 @@ def genWrapper(g, n):
     memIns, memOuts, neces, streamIns, streamOuts = readTemplate(n.type)
 #    print n.name, n.type, memIns, memOuts, neces, streamIns, streamOuts
 
-    n.streamInFlag = not(g.in_degree(n) == 1 and list(g.in_edges(n))[0][0].type == "DDR")
-    n.streamOutFlag = not(g.out_degree(n) == 1 and list(g.out_edges(n))[0][1].type == "DDR")
+    n.streamInFlag = not(g.in_degree(n) == 1 and list(g.in_edges(n))[0][0].type == "DDR") and g.in_degree(n) > 0
+    n.streamOutFlag = not(g.out_degree(n) == 1 and list(g.out_edges(n))[0][1].type == "DDR") and g.out_degree(n) > 0
+
     for (s,t) in g.in_edges(n):
         if s.type == "DDR":
             n.memInFlag = True
-            inEdge =(s,t)
             break
     for (s,t) in g.out_edges(n):
         if t.type == "DDR":
             n.memOutFlag = True
-            outEdge = (s,t)
             break
     #MEM IN
     if(n.memInFlag):
@@ -309,7 +338,7 @@ def genTopFunctionPre(topArgs, fileName, headerFile = False):
 
 def genTopFunctionRail(fileName):
     f=open(fileName, "a")
-    f.write("END:\n")
+    f.write("LABEL_END:\n")
     f.write("\treturn;" )
     f.write("}")
     f.close()
@@ -325,6 +354,9 @@ def genIncludeHeaders(fileName, IPNames):
     f.write("#include <ap_int.h>\n")
     f.write("#include <hls_stream.h>\n")
     f.write("#include \"pipeSystem.h\"\n")
+    f.write("#ifdef __CSIM___\n")
+    f.write("#include \"IPorder.h\"\n")
+    f.write("#endif\n")
     for ipName in IPNames:
         print "ipName", ipName
         if "IP" not in ipName:
@@ -406,7 +438,7 @@ def genWrapperDnnFile(fileName, topArgs):
 
     f.close()
 
-def genIPPackCmd(fileName, IP_g):
+def genIPPackCmd(fileName, fileNameIPNameList, IP_g):
     f = open(fileName, 'w')
     for ip in IP_g:
         if "IP" not in ip.name:
@@ -441,5 +473,10 @@ def genIPPackCmd(fileName, IP_g):
         print ip.name, ip.streamOutFlag, ip.streamInFlag, ip.memInFlag, ip.memOutFlag
         f.write("python ippack.py " + " ".join(paramList)+"\n")
             
-
+    fw = open(fileNameIPNameList, 'w')
+    for ip in IP_g:
+        if ip.type == "DDR":
+            continue
+        fw.write(ip.name+"\n")
+    fw.close()
     f.close()

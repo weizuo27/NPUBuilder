@@ -30,6 +30,7 @@ class IP():
         self.csvUneceNums = 0
         self.firstLayer = firstLayer
         #The followings are used to generate csv
+        self.ip_l = None
         if self.type == "Convolution":
             self.csvUneceNums = 4
         elif self.type == "Convolution_g":

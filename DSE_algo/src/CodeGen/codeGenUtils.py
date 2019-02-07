@@ -60,6 +60,10 @@ def createIPGraph(gs, hw_layers):
             IPSet.add(n.mappedIP)
     #create one node for an IP
     for ip in IPSet:
+        if ip.type == "Eltwise":
+            ip_l = deepcopy(ip)
+            IP.g.add_node(ip_l)
+            ip.l_ip = ip_l
         IP_g.add_node(ip)
     #add the DDR node
     IPDDR = IP("DDR", "DDR", None, None)
@@ -71,8 +75,16 @@ def createIPGraph(gs, hw_layers):
     #for each edge in the graph, add the stream edge
     for g in gs:
         for (s,t) in g.edges():
-            IP_g.add_edge(s.mappedIP, t.mappedIP)
-            IP_g[s.mappedIP][t.mappedIP]['weight'] = 1000
+            if t.type == "Eltwise":
+                assert g.in_degree(t) == 2, "The in-edge of Eltwise is not 2"
+                (s_el0, t_el0), (s_el1, t_el1) = list(g.in_edges(t))
+                IP_g.add_edge(s_el0.mappedIP, t_el0.mappedIP.ip_l)
+                IP_g.add_edge(s_el1.mappedIP, t_el1.mappedIP)
+                IP_g[s_el0.mappedIP][t_el0.mappedIP.ip_l]['weight'] = 1000
+                IP_g[s_el1.mappedIP][t_el1.mappedIP]['weight'] = 1000
+            else:
+                IP_g.add_edge(s.mappedIP, t.mappedIP)
+                IP_g[s.mappedIP][t.mappedIP]['weight'] = 1000
     #for the node that has not in degree or out degree, add edge to DDR
     for g in gs:
         for n in g.nodes():
