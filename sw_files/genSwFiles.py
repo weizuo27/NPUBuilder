@@ -56,7 +56,7 @@ def genXkernelCPP(functionArgs):
             f_w.write(l)
         else:
             #generate ConvolutionPipeWrapper
-            f_w.write("int ConvlutionPipeWrapper(")
+            f_w.write("int ConvolutionPipeWrapper(")
             idx = 0
             length = len(functionArgs) - 1
             for t,v in functionArgs:
@@ -80,7 +80,7 @@ def genXkernelCPP(functionArgs):
             f_w.write("){\n")
             f_w.write("\tlong long int start =sds_clock_counter();\n\
     long long int frequency = sds_clock_frequency();\n")
-            f_w.write("\tConvlutionPipeWrapper(\n")
+            f_w.write("\tConvolutionPipeWrapper(\n")
             idx = 0
             for t, v in functionArgs:
                 if idx == length:

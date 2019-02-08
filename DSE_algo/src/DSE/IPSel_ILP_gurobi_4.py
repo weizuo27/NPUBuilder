@@ -32,10 +32,14 @@ class IPSel():
         }   
 
         gs = graph(app_fileName, explore_IP_types, hw_layers, rowStep)
+#        for g in gs.graphs:
+#            gs.drawGraph(g)
+
         IPs = generateIPs(IP_fileName)
 
         IP_table = constructIPTable(IPs, BRAM_budget, DSP_budget, LUT_budget, \
                 FF_budget, gs.exploreLayerQueue, explore_IP_types, numIPs)
+
         if IP_table is None:
             print "Cannot fit in " + str(numIPs) +", exiting...\n"
             return
@@ -52,13 +56,14 @@ class IPSel():
 
         def comp(elem):
             return -(elem.BRAM + elem.DSP)
+
         IP_list.sort(key = comp)
         lat_achieved = Lat_budget
         mapping_solution = dict()
         self.abandonTable = dict()
-        #pick 3 IPs out of the IP list
-        for i in IP_list:
-            print i.name
+
+        #pick N IPs out of the IP list
+
         numIters = ncr(len(IP_list), numIPs)
         print "There are", numIters, "iterations"
         nums = 0
@@ -68,13 +73,15 @@ class IPSel():
             for ip in IPs:
                 tmp += ip.name + " "
             print str(nums), "iteration", " selected IPs: ", tmp
+
             #if the selected set of IPs are subset of the abandoned set, continue
             if self.isInAbandonTable(IPs):
                 print "IPs in abandonTable"
                 continue
-            self.updateAbandonTable(IPs)
+#            self.updateAbandonTable(IPs)
 
             BRAMs, LUTs, FFs, DSPs  = 0, 0, 0, 0
+
             IP_dict = dict()
             valid = True
             for ip in IPs:
@@ -92,9 +99,8 @@ class IPSel():
             #If the resource summation exceeds the budget, continue
             if not valid:
                 print "resource violation, continue"
-#                print self.abandonTable
                 continue
-            if BRAM_budget/2 >= BRAMs or DSP_budget*0.8>= DSPs:
+            if BRAM_budget/2 >= BRAMs or DSP_budget*0.5>= DSPs:
                 print "resource too small, continue"
                 continue
             #If some of the layers'type is not in the current IP selection, then continue
@@ -124,17 +130,19 @@ class IPSel():
             lat_left = lat_achieved
             layerQueue = []
             mapping_solution_tmp = dict()
+
             for g in gs.graphs:
                 if g not in gs.exploreLayerQueue:
                     continue
                 self.updateLayerQueue(gs.exploreLayerQueue[g], layerQueue)
-                opt = optimizer(lat_left+1, rowStep)
+                opt = optimizer(lat_left, rowStep)
                 #If some of the graph, there is no feasible solution, then the current selection of IPs cannot work
                 lat, sol = opt.run(IP_dict, gs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table)
                 if lat == None:
                     valid = False
                     break
                 acc_lat += lat
+#                print gs.printNodesMapping(hw_layers, sol)
                 #If the current latency is worse than the achieved latency, then the current selection of IPs won't work
                 if acc_lat > lat_achieved:
                     valid = False
@@ -142,7 +150,7 @@ class IPSel():
                 lat_left = lat_achieved - acc_lat
                 mapping_solution_tmp[g] = sol
 #            print "update!", "lat_achieved_old = ", lat_achieved, "acc_lat = ", acc_lat, "lat = ", lat
-            self.updateAbandonSet(IPs, layerQueue, IP_table, IP_table_per_layer_org, layerIPLatencyTable_org, numIPs)
+#            self.updateAbandonSet(IPs, layerQueue, IP_table, IP_table_per_layer_org, layerIPLatencyTable_org, numIPs)
             if not valid:
                 print "cannot find valid latency, continue"
                 continue
@@ -175,6 +183,7 @@ class IPSel():
             ip_original_name = ip.name.split("_")[0]
             ipNames.append(ip_original_name)
         ipNames.sort()
+
         #assert(tuple(ipNames) not in self.abandonTable), "ip name should not be in abandon table"
         if tuple(ipNames) not in self.abandonTable:
             self.abandonTable[tuple(ipNames)] = 1
@@ -319,6 +328,7 @@ def reorderMapping(mapping_solution, hw_layers):
 
     for g in mapping_solution:
         nodes_list= [x for x in list(g.nodes()) if x.type in hw_layers]
+        nodes_list.sort(key =comp)
         nodes_nodes_list = list()
         nSplit(nodes_list, nodes_nodes_list)
         

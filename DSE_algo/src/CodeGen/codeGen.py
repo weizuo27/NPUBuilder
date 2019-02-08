@@ -16,7 +16,6 @@ class ip:
 
 #Add in mux nodes and edges
 def expandGraph(g):
-    print "in Expand graph"
     muxSelTable = dict()
     expandingNodeList = []
     for n in g.nodes():
@@ -37,7 +36,6 @@ def expandGraph(g):
             expandingNodeList.append((n, "out", outD))
 
     #update the graph
-    print len(expandingNodeList)
     for n, inOrOut, D in expandingNodeList:
         if inOrOut == "in":
             muxtype = "MUX"+str(D)+"to1"
@@ -247,7 +245,7 @@ def genWrapper(g, n):
 #        ports = g.edges[inEdge]['portNames']
 #        for i in range(len(list(ports))):
         for i in range(len(memIns)):
-            portName = n.name + "_M_in"+str(i)
+            portName = n.name+ "i"+str(i)
             n.args.append(portName)
             topArg.append(memIns[i] + " " + portName)
     #MEM OUT
@@ -256,7 +254,7 @@ def genWrapper(g, n):
 #        print "ports", ports
 #        for i in range(len(list(ports))):
         for i in range(len(memOuts)):
-            portName = n.name + "_M_out"+str(i)
+            portName = n.name + "o"+str(i)
             n.args.append(portName);
             topArg.append(memOuts[i] + " " + portName)
     #STREAM IN
@@ -282,29 +280,29 @@ def genWrapper(g, n):
     #NECESSARY:
     notFirstLayer = 1 -int(n.firstLayer)
     for i in range(len(neces) - notFirstLayer):
-        portName = "M_ness_" + n.name + str(i)
+        portName = "n" + n.name + str(i)
         n.args.append(portName)
         topArg.append(neces[i] + " " + portName)
     #Args:
     if n.type == "Convolution_g":
         if n.streamInFlag:
-            portName = "streamArgs_"+n.name + "_Div"
+            portName = "sArg"+n.name + "Div"
             n.args.append(portName)
             streamArgs.append(("int", portName))
             dispatcherList.append((portName, 'Divider'))
 
-        portName = "streamArgs_"+n.name
+        portName = "sArg"+n.name
         n.args.append(portName)
         streamArgs.append(("int", portName))
         dispatcherList.append((portName, n.type))
 
         if n.streamOutFlag:
-            portName = "streamArgs_"+n.name + "_Comb"
+            portName = "sArg"+n.name + "Comb"
             n.args.append(portName)
             streamArgs.append(("int", portName))
             dispatcherList.append((portName, 'Combiner'))
     else:
-        portName = "streamArgs_"+n.name
+        portName = "sArg"+n.name
         n.args.append(portName)
         streamArgs.append(("int", portName))
         dispatcherList.append((portName, n.type))
@@ -358,7 +356,6 @@ def genIncludeHeaders(fileName, IPNames):
     f.write("#include \"IPorder.h\"\n")
     f.write("#endif\n")
     for ipName in IPNames:
-        print "ipName", ipName
         if "IP" not in ipName:
             continue
         f.write("#include \"../" + ipName+"/"+ipName+".h\"\n")
@@ -470,7 +467,6 @@ def genIPPackCmd(fileName, fileNameIPNameList, IP_g):
         else:
             print "Unsupprted IP type"
             exit()
-        print ip.name, ip.streamOutFlag, ip.streamInFlag, ip.memInFlag, ip.memOutFlag
         f.write("python ippack.py " + " ".join(paramList)+"\n")
             
     fw = open(fileNameIPNameList, 'w')

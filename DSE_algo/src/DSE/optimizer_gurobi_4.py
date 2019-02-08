@@ -72,7 +72,7 @@ class optimizer:
             firstIter = False
             #assign the mapping result
             self.assignMappingResult(graphs.exploreLayerQueue[g], explore_IP_types, hw_layers, IP_table, g, IP_table_org)
-            self.updateGraph(g, hw_layers)
+#            self.updateGraph(g, hw_layers)
 #            graphs.drawGraph(g)
             self.setPipelineFlag(hw_layers, g)
             graphs.computeLatency(g)
@@ -91,7 +91,7 @@ class optimizer:
                 print "new_ub", self.latency_ub, "new_lb", self.latency_lb, "new target,", self.new_latency_target
             else: #Failed
 #                print "scheduling", status
-#                printViolationPath(ret[0])
+                printViolationPath(ret[0])
                 self.rb.addViolationPaths(ret[0], graphs.exploreLayerQueue[g], IP_table, layerIPLatencyTable)
 
             graphs.retriveOriginalGraph(g)
@@ -280,3 +280,4 @@ class optimizer:
         for ip in IPMappingTable:
             for idx in range(len(IPMappingTable[ip])-1):
                 g.add_edge(IPMappingTable[ip][idx], IPMappingTable[ip][idx+1])
+

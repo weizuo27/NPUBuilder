@@ -48,6 +48,7 @@ class graph:
                         continue
                     if l == "\n":
                         break
+                    print l
                     bot_str, layer_str, top_str = l.split("-->")
                     layer_str = layer_str[1:-1]
                     layer_tmp = layer(layer_str, self.rowStep, self.layerIdxTable)
