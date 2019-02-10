@@ -5,22 +5,24 @@ from math import ceil
 from IP import softwareIP
 from vertex import *
 
-
 class graph:
     def __init__(self, fileName, explore_IP_types, hw_layers, rowStep):
         self.rowStep = rowStep
         self.G = nx.DiGraph()
         self.mapping = dict()
+        self.NameMapping = dict()
         self.SWMapping = dict()
         self.exploreLayerQueue = dict()
         self.original_edges = dict()
         self.original_nodes = dict()
         self.root_nodes = dict()
-#        maxPipelineLayer = dict()
+
         self.graphs = []
+        self.groups = []
         self.layerIdxTable = dict()
         self.readLayerId("./inputFiles/layerIDMapping")
         self.construct(fileName, explore_IP_types, hw_layers)
+
 
     def readLayerId(self,fileName):
         f = open(fileName)
@@ -29,18 +31,22 @@ class graph:
             self.layerIdxTable[layer] = idx
         f.close()
 
-    def construct(self, filename, explore_IP_types, hw_layers):
-        """
-        The function to construct the graph from a file that is dumped from CHaiDNN
-        Args:
-            filename: the name of the file
-        """
+    def construct(self, fileName, explore_IP_types, hw_layers):
         bottom_table = dict()
-        pipeStartTable = dict()
+        pipeEndTable = dict()
         top_table = dict()
-        f = open(filename)
+
+        f = open(fileName)
+
         for l in f:
             l = l.replace(" ", "")
+            #Collect the groups of layers
+            if l.find("--LayerGroups--") >= 0:
+                for l in f:
+                    if l== "\n":
+                        break
+                    self.groups.append(l.strip().split(','))
+
             if l.find("--Layers--") >= 0:
                 for l in f:
                     l = l.replace(" ", "")
@@ -51,7 +57,8 @@ class graph:
                     bot_str, layer_str, top_str = l.split("-->")
                     layer_str = layer_str[1:-1]
                     layer_tmp = layer(layer_str, self.rowStep, self.layerIdxTable)
-            
+                    if layer_str in pipeEndTable:
+                        pipeEndTable[layer_str] = layer_tmp
 
                     for tmp_str in bot_str[1:-1].split(","):
                         bot_str = tmp_str.split(":")[0]
@@ -74,65 +81,41 @@ class graph:
                     if l == "\n":
                         break
                     list_tmp = l.split(":")
-                    pipeStart = len(list_tmp) == 3
                     blobname, dims =list_tmp[0:2]
                     if blobname in bottom_table:
                         for ll in bottom_table[blobname]:
                             ll.set_input_params(dims)
-                        if pipeStart:
-                            pipeStartTable[blobname] = 1
                     if blobname in top_table:
                         for ll in top_table[blobname]:
                             ll.set_output_params(dims)
-
-            if l.find("--Softwarelayerlatency--") >= 0:
-                for l in f:
-                    if l == "\n":
-                        break
-                    l = l.replace(" ", "")[0:-1]
-                    layer_name, layer_lat = l.split(":")
-                    self.SWMapping[layer_name] = int(layer_lat)
+            
         f.close()
 
-        print "pipeStart", pipeStartTable
-        #Build Edges
-        idx = 0
+        #build Edges
         for bb in bottom_table:
-            if bb in pipeStartTable:
-                blob_tmp = blob(bb)
-                self.add_node(blob_tmp)
-                for n in bottom_table[bb]:
-                    self.G.add_edge(blob_tmp, n)
-                    print "1, add_edge", blob_tmp.name, "to", n.name
-
-                if bb in top_table:
-                    blob_tmp_end = blob(bb+"_end")
-                    self.add_node(blob_tmp_end)
-                    for n in top_table[bb]:
-                        self.G.add_edge(n, blob_tmp_end)
-                        print "2, add_edge", n.name, "to", blob_tmp_end.name
-
-            elif bb in top_table:
-                print "bb", bb
+            if bb in top_table:
                 for bbb in bottom_table[bb]:
                     for ttt in top_table[bb]:
-                        self.G.add_edge(ttt, bbb) 
-                        print "3, add_edge", ttt.name, "to", bbb.name
+                        self.G.add_edge(ttt, bbb)
 
         for bb in top_table:
             if bb not in bottom_table:
-                blob_tmp_end = blob(bb+"_end")
-                self.add_node(blob_tmp_end)
                 for n in top_table[bb]:
-                    self.G.add_edge(n, blob_tmp_end)
-                    print "4, add_edge", n.name, "to", blob_tmp_end
-        
-        connectd_sets = nx.weakly_connected_components(self.G)
-    
-        for s in connectd_sets:
-            g = nx.DiGraph(self.G.subgraph(list(s)))
-            self.graphs.append(g)
-        
+                    self.G.add_edge(n, bb)
+
+        for groupNames in self.groups:
+            groupNodes = [self.NameMapping[n] for n in groupNames]
+            subGraph = nx.DiGraph(self.G.subgraph(groupNodes))
+            blob_begin = blob("begin")
+            blob_end = blob("end")
+            nodes_list = list(subGraph.nodes)
+            for n in nodes_list:
+                if subGraph.in_degree(n) == 0:
+                    subGraph.add_edge(blob_begin,  n)
+                if subGraph.out_degree(n) == 0:
+                    subGraph.add_edge(n, blob_end)
+            self.graphs.append(subGraph)
+
         for g in self.graphs:
             #Add the exploreLayerQueue
             self.exploreLayerQueue[g] = dict()
@@ -184,10 +167,6 @@ class graph:
                 n.computeLatencyRowStep(prevLayers, total_bandWidth)
                 n.computeLatency()
 
-    def add_node(self, node):
-        self.G.add_node(node)
-        self.mapping[node] = node.name
-
 #    def computeResource(self, node):
 #        BRAMs, DSPs, LUTs, FFs = 0, 0, 0, 0
 #        for ip in self.IP_table:
@@ -204,7 +183,7 @@ class graph:
         g.add_nodes_from(self.original_nodes[g])
 #            self.maxPipelineLayer[g] = []
         #Node level clear
-        for n in self.G.nodes:
+        for n in g.nodes:
             n.mappedIP = None
             n.IP_latency_rowStep = None
             n.lat_rowStep = None
@@ -236,3 +215,9 @@ class graph:
         nodes_list.sort(key = comp)
         for n in nodes_list:
             print "IP", n.name, "type", n.type, "mappedIP", n.mappedIP, "is pipeined ?", n.Pipelined, n.lat_rowStep, n.latency
+
+    def add_node(self, node):
+        print "node", node.name
+        self.G.add_node(node)
+        self.mapping[node] = node.name
+        self.NameMapping[node.name] = node

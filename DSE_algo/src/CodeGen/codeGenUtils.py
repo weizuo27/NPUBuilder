@@ -1,5 +1,6 @@
 import os
 import sys
+from copy import deepcopy
 import networkx as nx
 import matplotlib.pyplot as plt
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -52,7 +53,7 @@ def createIPGraph(gs, hw_layers):
         for n in list(g.nodes):
             if n.type not in hw_layers:
                 g.remove_node(n)
-#    assignOriginalNodeMapping(gs, hw_layers)
+#   assignOriginalNodeMapping(gs, hw_layers)
     #collect the set of IPs used 
     IPSet = set()
     for g in gs:
@@ -62,7 +63,8 @@ def createIPGraph(gs, hw_layers):
     for ip in IPSet:
         if ip.type == "Eltwise":
             ip_l = deepcopy(ip)
-            IP.g.add_node(ip_l)
+            ip_l.name += "ip_l"
+            IP_g.add_node(ip_l)
             ip.l_ip = ip_l
         IP_g.add_node(ip)
     #add the DDR node
@@ -78,9 +80,9 @@ def createIPGraph(gs, hw_layers):
             if t.type == "Eltwise":
                 assert g.in_degree(t) == 2, "The in-edge of Eltwise is not 2"
                 (s_el0, t_el0), (s_el1, t_el1) = list(g.in_edges(t))
-                IP_g.add_edge(s_el0.mappedIP, t_el0.mappedIP.ip_l)
+                IP_g.add_edge(s_el0.mappedIP, t_el0.mappedIP.l_ip)
                 IP_g.add_edge(s_el1.mappedIP, t_el1.mappedIP)
-                IP_g[s_el0.mappedIP][t_el0.mappedIP.ip_l]['weight'] = 1000
+                IP_g[s_el0.mappedIP][t_el0.mappedIP.l_ip]['weight'] = 1000
                 IP_g[s_el1.mappedIP][t_el1.mappedIP]['weight'] = 1000
             else:
                 IP_g.add_edge(s.mappedIP, t.mappedIP)
@@ -113,6 +115,7 @@ def readTemplate(funcType):
     while(idx < len(fList)):
         lList = fList[idx].split()
         if lList[0] == "MEMIN":
+            print lList
             inPortNums = int(lList[1])
             for i in range(inPortNums):
                 idx+=1

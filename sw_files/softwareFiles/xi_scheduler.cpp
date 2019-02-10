@@ -314,7 +314,19 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 			argsToFunction[i][16],
 			argsToFunction[i][17],
 			argsToFunction[i][18],
-			argsToFunction[i][19]
+			argsToFunction[i][19],
+			argsToFunction[i][20],
+			argsToFunction[i][21],
+			argsToFunction[i][22],
+			argsToFunction[i][23],
+			argsToFunction[i][24],
+			argsToFunction[i][25],
+			argsToFunction[i][26],
+			argsToFunction[i][27],
+			argsToFunction[i][28],
+			argsToFunction[i][29],
+			argsToFunction[i][30],
+			argsToFunction[i][31]
 		);
             pipeInUse = true; 
             }

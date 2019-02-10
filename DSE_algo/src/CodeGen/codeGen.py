@@ -106,9 +106,10 @@ def genStreamPorts(streamArgs, fileName):
 def genSubFunction(n, fileName):
     if n.type == "DDR":
         return
-    if n.type == "IP_l":
+    if "ip_l" in n.name:
         return
-    if n.type is "Eltwise":
+    print "n.type", n.type, n.name
+    if n.type == "Eltwise":
         functionName = n.name+"::"+n.type
         f = open(fileName, 'a')
 
@@ -118,7 +119,7 @@ def genSubFunction(n, fileName):
         f.write("#endif\n")
 
         f.write("\t\t"+functionName + "(\n")
-        ip_l = n.ip_l
+        ip_l = n.l_ip
         for arg in ip_l.args:
             f.write("\t\t\t"+arg+",\n")
         for idx, arg in enumerate(n.args):
@@ -227,7 +228,6 @@ def genWrapper(g, n):
     topArg = []
     dispatcherList = []
     memIns, memOuts, neces, streamIns, streamOuts = readTemplate(n.type)
-#    print n.name, n.type, memIns, memOuts, neces, streamIns, streamOuts
 
     n.streamInFlag = not(g.in_degree(n) == 1 and list(g.in_edges(n))[0][0].type == "DDR") and g.in_degree(n) > 0
     n.streamOutFlag = not(g.out_degree(n) == 1 and list(g.out_edges(n))[0][1].type == "DDR") and g.out_degree(n) > 0

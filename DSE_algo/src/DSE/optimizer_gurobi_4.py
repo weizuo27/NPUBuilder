@@ -1,8 +1,8 @@
 from resourceILPBuilder_gurobi_4 import resourceILPBuilder
 from vertex import layer
-from graph_4 import graph
-from graph_4 import pipeNode
-from graph_4 import combineNode
+from graph_5 import graph
+from graph_5 import pipeNode
+from graph_5 import combineNode
 from utils_4 import *
 from copy import deepcopy
 import networkx as nx
@@ -77,7 +77,7 @@ class optimizer:
             self.setPipelineFlag(hw_layers, g)
             graphs.computeLatency(g)
             self.addPipelineNodes(g)
-            self.simplifyGraph(g)
+#            self.simplifyGraph(g)
 
             status, ret = self.scheduling(g, explore_IP_types)
 
@@ -91,7 +91,7 @@ class optimizer:
                 print "new_ub", self.latency_ub, "new_lb", self.latency_lb, "new target,", self.new_latency_target
             else: #Failed
 #                print "scheduling", status
-                printViolationPath(ret[0])
+#                printViolationPath(ret[0])
                 self.rb.addViolationPaths(ret[0], graphs.exploreLayerQueue[g], IP_table, layerIPLatencyTable)
 
             graphs.retriveOriginalGraph(g)
@@ -192,6 +192,7 @@ class optimizer:
         end_n_table = dict()
 
         for n in nx.topological_sort(g):
+            print "aba", n.name
             if n.type == "pipeNode":
                 pred_n = list(g.predecessors(n))[0]
                 succ_n = list(g.successors(n))[0]
@@ -209,6 +210,7 @@ class optimizer:
             cb_node = combineNode(path)
             cb_node.computeLatency()
             g.add_node(cb_node)
+            print "abc", path[0], path[0].name
             for pre in g.predecessors(path[0]):
                 g.add_edge(pre, cb_node)
             for succ in g.successors(path[-1]):

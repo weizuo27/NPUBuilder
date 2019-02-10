@@ -2,7 +2,7 @@ import os
 import networkx as nx
 import sys
 from optimizer_gurobi_4 import optimizer
-from graph_4 import graph
+from graph_5 import graph
 from utils_4 import *
 import itertools
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -63,7 +63,6 @@ class IPSel():
         self.abandonTable = dict()
 
         #pick N IPs out of the IP list
-
         numIters = ncr(len(IP_list), numIPs)
         print "There are", numIters, "iterations"
         nums = 0
@@ -168,8 +167,6 @@ class IPSel():
 
         #CodeGen process
         IP_g = createIPGraph(final_graph_list, hw_layers)
-#        nx.draw(IP_g, with_labels=True, font_weight = 'bold')
-#        plt.show()
         expandGraph(IP_g)
         muxSelTable = assignMuxSelTable(IP_g)
         assignStreamPorts(IP_g, 2)
@@ -211,25 +208,17 @@ class IPSel():
             for ii in range(idx, -1, -1):
                 lat_tmp_ii = layerIPLatencyTable[l][0][ii][1]
                 if lat_tmp_ii > lat:
-#                    ii = ii + 1
                     break
             idx_tmp = ii
-#            print "idx_tmp =", idx_tmp
             #Intersect the set of the IPs that are smaller than all layers
-#            print "layerIPLatencyTable[l][1][idx_tmp :]\n"
-#            for ip in layerIPLatencyTable[l][1][idx_tmp :]:
-#                print ip[1].name
             geqIPSet = set([x[1] for x in layerIPLatencyTable[l][1][idx_tmp : ]]) if geqIPSet is None else \
                 geqIPSet & set([x[1] for x in layerIPLatencyTable[l][1][idx_tmp : ]])
 
-#            print "geqIPSet", "layer", l.name
-#            for ip in geqIPSet:
-#                print ip.name
         #Update the abandonset
-        print "updateAbandonSet, before", len(self.abandonTable)
+#        print "updateAbandonSet, before", len(self.abandonTable)
         for IPs in itertools.combinations(list(geqIPSet),  numIPs):
             self.updateAbandonTable(IPs)
-        print "updateAbandonSet, after", len(self.abandonTable)
+#        print "updateAbandonSet, after", len(self.abandonTable)
     def isInAbandonTable(self, IPs):
         ipNames = []
         for ip in IPs:
@@ -243,12 +232,12 @@ class IPSel():
         for layer_type in layerQueueIn:
             layerQueueOut += layerQueueIn[layer_type]
 
-
 def reorderMapping(mapping_solution, hw_layers):
     #For the solution, for each IP collect the mapping, 
     #reassign using the best order
 
     #This function is so messy !!! :( 
+
     graph_list = []
     for g in mapping_solution:
         for n in list(g.nodes):
@@ -338,7 +327,7 @@ def reorderMapping(mapping_solution, hw_layers):
 #            plt.show()
             graph_list.append(sub_g)
 
-    print "abcdef", len(graph_list)
+#    print "abcdef", len(graph_list)
     return graph_list
 
 def nSplit(inList, outLists):

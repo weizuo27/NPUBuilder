@@ -129,24 +129,37 @@ class layer(vertex):
                 XI_OBUFF_DEPTH, XI_WEIGHTBUFF_DEPTH = IP.paramList
 
             if(ceil(float(cin)/4) * ceil(float(cout)/XI_KER_PROC) * kh * kw <= XI_WEIGHTBUFF_DEPTH * 2):
-#                print "a"
                 self.bandWidth = cin * cout * kh * kw
             else:
-#                print "b"
                 self.bandWidth = cin * cout * kh * kw * ceil(float(out_height)/self.rowStep)
-#            print "33333", self.name, cin, cout, kh, kw, out_height, self.bandWidth
 
     def set_input_params(self, line):
         """
         The function sets the input parameters
         """
+        if self.type == "Convolution" or self.type == "Convolution_g":
+            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x")) 
+        elif self.type == "Pooling":
+            cout=cin = int(self.params[1].split("=")[1])
+        elif self.type == "Eltwise":
+            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x"))
+
         self.input_params = map(int,line.split("x")) #[batch, channel, height, width]
+        self.input_params[1] = int(cin)
 
     def set_output_params(self, line):
         """
         The function sets the output parameters
         """
+        if self.type == "Convolution" or self.type == "Convolution_g":
+            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x")) 
+        elif self.type == "Pooling":
+            cout=cin = int(self.params[1].split("=")[1])
+        elif self.type == "Eltwise":
+            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x"))
+
         self.output_params = map(int,line.split("x")) #[batch, channel, height, width]
+        self.output_params[1]=int(cout)
 
     def computeLatencyIfMappedToOneIP(self, ip, totalBandwidth = None):
         """
@@ -174,6 +187,7 @@ class layer(vertex):
 #                print "total111 ", totalBandwidth, self.name, self.type, self.bandWidth
 #            print "total222 ", totalBandwidth, self.name, self.type, self.bandWidth
 
+            print self.name
             latency_rowStep = ip.computeLatency(
                     [cout, cin, kw, kh, S, padding, group],
                     in_height, 
@@ -287,7 +301,6 @@ class layer(vertex):
             cannot seperately compute N rows"
 
         assert (self.lat_rowStep != None), "layer " + self.name + "'s lat_one_row is not computed, cannot compute N rows"
-#        print "aa", self.name, n, self.rowStep
         return self.lat_rowStep * ceil(float(n)/self.rowStep)
 
     def computeLatency(self):

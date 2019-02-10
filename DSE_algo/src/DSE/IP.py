@@ -104,6 +104,26 @@ class IP():
             else:
                 oneTime = False
 
+#            print in_height
+#            print in_width
+#            print out_height
+#            print out_width
+#            print cout
+#            print cin
+#            print S
+#            print kh
+#            print kw
+#            print padding
+#            print int(int(group) > 1)  #group
+#            print rowStep,
+#            print int(XI_KER_PROC),
+#            print int(XI_PIX_PROC),
+#            print int(XI_WEIGHTBUFF_DEPTH),
+#            print True,
+#            print layerID, 
+#            print AXILatency, 
+#            print oneTime
+
             lat = computeLatency(
                     int(in_height),
                     int(in_width), 

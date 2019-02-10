@@ -336,32 +336,31 @@ XI_WEIGHTBUFF_DEPTH = 1024
 #XI_PIX_PROC = 32
 #XI_WEIGHTBUFF_DEPTH = 1024
 
-aa = computeLatency(
-    conv_inp_height  , 
-    conv_inp_width   , 
-    conv_out_height  , 
-    conv_out_width   , 
-    conv_out_planes  , 
-    conv_inp_planes  , 
-    conv_stride      , 
-    conv_filter_height,
-    conv_filter_width, 
-    conv_pad         , 
-    conv_group       , 
-    rowStep,
-    XI_KER_PROC,
-    XI_PIX_PROC,
-    XI_WEIGHTBUFF_DEPTH,
-    1,
-    1,
-    1,
-    False
-    )
+#aa = computeLatency(
+#    conv_inp_height  , 
+#    conv_inp_width   , 
+#    conv_out_height  , 
+#    conv_out_width   , 
+#    conv_out_planes  , 
+#    conv_inp_planes  , 
+#    conv_stride      , 
+#    conv_filter_height,
+#    conv_filter_width, 
+#    conv_pad         , 
+#    conv_group       , 
+#    rowStep,
+#    XI_KER_PROC,
+#    XI_PIX_PROC,
+#    XI_WEIGHTBUFF_DEPTH,
+#    1,
+#    1,
+#    1,
+#    False
+#    )
 
 #print aa, aa*conv_out_height/rowStep
 #
 #
-#computeLatency(224,224,55,55,96,4,4,11,11,0,0,1,16,32,1024,1,0)
 def computeLatency_pooling(ow, fw, fh, odepth, pipelined):
     
     pipelined = False
@@ -372,3 +371,5 @@ def computeLatency_pooling(ow, fw, fh, odepth, pipelined):
 
 def computeLatency_eltwise(ow, odepth):
     return ow*odepth/16
+
+print computeLatency(28,28,28,28,96,192,1,1,1,0,0,2,16,32,1024,True,1, None, 0)
