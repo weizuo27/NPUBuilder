@@ -173,7 +173,7 @@ def genSubFunction(n, fileName):
         f.close()
     
 
-def genTop(g):
+def genTop(g, outDir):
     topArgs = []
     streamArgs = []
     ArgDispatchArgs = []
@@ -201,7 +201,7 @@ def genTop(g):
         ArgDispatchArgs += c
 
     #genCPP
-    fileName = "pipeSystem.cpp"
+    fileName = outDir + "/pipeSystem.cpp"
     genIncludeHeaders(fileName, IPNames)
     dispatcherDeclare(fileName, ArgDispatchArgs)
     genTopFunctionPre(topArgs, fileName)
@@ -214,7 +214,7 @@ def genTop(g):
     genTopFunctionRail(fileName)
 
     #genHeaderFile
-    fileName = "pipeSystem.h"
+    fileName = outDir + "/pipeSystem.h"
     genHeaderFilePre(fileName)
     genSDSOCZero_Copy(fileName, topArgs)
     genSDSOCSYS_Port(fileName, topArgs)
@@ -222,11 +222,15 @@ def genTop(g):
     genHeaderFileRail(fileName)
 
     #genWrapperDNN file
-    wrapperFileName = "dnn_wrapper.cpp"
+    wrapperFileName = outDir + "/dnn_wrapper.cpp"
     genWrapperDnnFile(wrapperFileName, topArgs)
 
     #genIPPack cmds
-    genIPPackCmd("ippackGen.sh", "ipNameList", g)
+    genIPPackCmd(outDir + "/ippackGen.sh", outDir + "/ipNameList", g)
+
+    #genPipeTemp (for Scheduler)
+    genPipeSystemTemp(topArgs, outDir + "/pipeSystemTemp")
+
 def genWrapper(g, n):
     n.args = []
     streamArgs = []
@@ -347,6 +351,16 @@ def genTopFunctionPre(topArgs, fileName, headerFile = False):
     else:
         f.write("){\n")
     f.close() 
+
+def genPipeSystemTemp(topArgs, fileName):
+    f=open(fileName, "w")
+    args_cmd = ""
+    for args in topArgs:
+        for arg in args:
+            arg = arg.replace("*", "*,")
+            args_cmd += arg+"\n"
+    f.write(args_cmd)
+    f.close()
 
 def genTopFunctionRail(fileName):
     f=open(fileName, "a")

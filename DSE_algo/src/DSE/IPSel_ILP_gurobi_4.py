@@ -9,6 +9,8 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir_path + "/../CodeGen");
 from codeGenUtils import *
 from codeGen import *
+sys.path.append(dir_path + "/../SchedulerCodeGen");
+from genSwFiles import *
 
 DEBUG = False
 class IPSel():
@@ -167,13 +169,28 @@ class IPSel():
             print gs.printNodesMapping(hw_layers, g)
 
         #CodeGen process
+        outHwDir = "./outputFiles/hw"
+        outSwDir = "./outputFiles/sw"
+        os.system("mkdir -p " + outHwDir)
+        os.system("mkdir -p " + outSwDir)
+
+        #Gen HW
         IP_g = createIPGraph(final_graph_list, hw_layers)
         expandGraph(IP_g)
         muxSelTable = assignMuxSelTable(IP_g)
         assignStreamPorts(IP_g, 2)
-        genTop(IP_g)
+        genTop(IP_g, outHwDir)
         #Gen CSV
-        genCSVConfigs(final_graph_list, IP_g, muxSelTable, hw_layers)
+        genCSVConfigs(final_graph_list, IP_g, muxSelTable, hw_layers, outHwDir)
+
+        #Gen Scheduler
+
+
+        functionArgs = readFunctionArgs(outHwDir)
+        genSchedulerFile(functionArgs, outSwDir)
+        genXkernelH(functionArgs, outSwDir)
+        genXkernelCPP(functionArgs, outSwDir)
+        copyUtilsCSV(outSwDir)
 
     def updateAbandonTable(self, IPs):
         ipNames = []

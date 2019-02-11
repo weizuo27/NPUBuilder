@@ -107,7 +107,7 @@ def CSVconfigUnNece(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxS
         assert 0, "Unsupported IP type" #Should not come here
 
 
-def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers):
+def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers, outDir):
         
     layerIdxTable = readLayerId( "./inputFiles/layerIDMapping")
     poolingTypeTable = readLayerId("./inputFiles/PoolingTyping")
@@ -133,10 +133,10 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers):
 
     #Config all the changable colums
     roundIdx = 0
-    fileName = "round.csv"
+    fileName = outDir + "/round.csv"
     f = open(fileName, "w")
     f.close()
-    fileNameCallOrder = "callOrder.csv"
+    fileNameCallOrder = outDir + "/callOrder.csv"
     f = open(fileNameCallOrder, "w")
     f.close()
     for g in gs_list:

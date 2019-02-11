@@ -1,5 +1,8 @@
-def readRunctionArgs():
-    f_wrapper = open("pipeSystemTemp.cpp", 'r')
+import os
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
+def readFunctionArgs(inDir):
+    f_wrapper = open(inDir +"/pipeSystemTemp", 'r')
     functionArgs = list()
     for l in f_wrapper:
        functionArgs.append(l.strip().split(","))
@@ -7,9 +10,9 @@ def readRunctionArgs():
 
     return functionArgs
 
-def genSchedulerFile(functionArgs):
-    f_scheduler = open('schedulerTmp.cpp', 'r')
-    f_w_scheduler = open('./softwareFiles/xi_scheduler.cpp', 'w')
+def genSchedulerFile(functionArgs, outDir):
+    f_scheduler = open(dir_path +'/templateFiles/schedulerTmp.cpp', 'r')
+    f_w_scheduler = open(outDir + '/xi_scheduler.cpp', 'w')
 
     for l in f_scheduler:
         if l != "//INSERT PIPE FUNCTION\n":
@@ -25,9 +28,9 @@ def genSchedulerFile(functionArgs):
     f_scheduler.close()
     f_w_scheduler.close()
 
-def genXkernelH(functionArgs):
-    f_r = open("kernelsTemp.h", "r")
-    f_w = open("./softwareFiles/xi_kernels.h", "w")
+def genXkernelH(functionArgs, outDir):
+    f_r = open(dir_path +"/templateFiles/kernelsTemp.h", "r")
+    f_w = open(outDir +"/xi_kernels.h", "w")
     for l in f_r:
         if l != "//INSERT PIPE FUNCTION\n":
             f_w.write(l)
@@ -47,9 +50,9 @@ def genXkernelH(functionArgs):
     f_r.close()
     f_w.close()
 
-def genXkernelCPP(functionArgs):
-    f_r = open("kernelsTemp.cpp", "r")
-    f_w = open("./softwareFiles/xi_kernels.cpp", "w")
+def genXkernelCPP(functionArgs, outDir):
+    f_r = open(dir_path +"/templateFiles/kernelsTemp.cpp", "r")
+    f_w = open(outDir + "/xi_kernels.cpp", "w")
 
     for l in f_r:
         if l != "//INSERT PIPE FUNCTION\n":
@@ -99,8 +102,12 @@ def genXkernelCPP(functionArgs):
 
     f_r.close()
     f_w.close()
-    
-functionArgs = readRunctionArgs()
-genSchedulerFile(functionArgs)
-genXkernelH(functionArgs)
-genXkernelCPP(functionArgs)
+def copyUtilsCSV(outDir): 
+    cmd = "cp " + dir_path+"/templateFiles/csvParser.cpp " + outDir
+    os.system(cmd)
+    cmd = "cp " + dir_path+"/templateFiles/csvParser.hpp " + outDir
+    os.system(cmd)
+    cmd = "cp " + dir_path+"/templateFiles/utils_wei.cpp " + outDir
+    os.system(cmd)
+    cmd = "cp " + dir_path+"/templateFiles/utils_wei.hpp " + outDir
+    os.system(cmd)
