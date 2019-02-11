@@ -110,9 +110,12 @@ class graph:
             blob_end = blob("end")
             nodes_list = list(subGraph.nodes)
             for n in nodes_list:
-                if subGraph.in_degree(n) == 0:
+                inD = outD = 0
+                if n.type == "Eltwise":
+                    inD = outD = 1
+                if subGraph.in_degree(n) == inD:
                     subGraph.add_edge(blob_begin,  n)
-                if subGraph.out_degree(n) == 0:
+                if subGraph.out_degree(n) == outD:
                     subGraph.add_edge(n, blob_end)
             self.graphs.append(subGraph)
 

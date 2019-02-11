@@ -18,7 +18,7 @@ def CSVconfigNece(n, ip_inst):
             In1st = int(n.firstLayer)
             ipName  = ip_inst.name.split("_")[0]
             ip_inst.CSVparameterListNecessary += [weight, Out, In, In1st, ipName]
-    if ip_inst.type == "Convolution_g":
+    elif ip_inst.type == "Convolution_g":
         groupNums = 2 #FIXME: Hard coded group num
         for i in range(groupNums):
             if(not ip_inst.necessaryHasSet):
@@ -31,7 +31,7 @@ def CSVconfigNece(n, ip_inst):
                 ip_inst.CSVparameterListNecessary += [weight, Out, In, In1st, ip_inst]
 
                 ip_inst.CSVparameterListNecessary.append([weight, Out, In, In1st,ipName])
-    if ip_inst.type == "Pooling":
+    elif ip_inst.type == "Pooling":
         if(not ip_inst.necessaryHasSet):
             In = int(ip_inst.memInFlag)
             Out = int(ip_inst.memOutFlag)
@@ -39,8 +39,19 @@ def CSVconfigNece(n, ip_inst):
             ipName  = ip_inst.name.split("_")[0]
             ip_inst.CSVparameterListNecessary += [In, Out, ipName]
             ip_inst.necessaryHasSet = True
-    if ip_inst.type == "MUX":
+    elif ip_inst.type == "MUX":
         None
+    elif ip_inst.type == "Eltwise":
+        if(not ip_inst.necessaryHasSet):
+            RIn = int(ip_inst.memInFlag)
+            Out = int(ip_inst.memOutFlag)
+            LIn = int(ip_inst.ip_l.memInFlag)
+            ipName = ip_inst.name.split("_")[0]
+            ip_inst.CSVparameterListUnNece += [LIn, RIn, Out, ipName]
+            ip_inst.necessaryHasSet = True
+    else: 
+        assert 0, "Unsupported IP type" #Should not come here
+        
     ip_inst.necessaryHasSet = True
 
 def CSVconfigUnNece(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxSel):
@@ -83,7 +94,19 @@ def CSVconfigUnNece(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxS
             preIpName  = s.mappedIP.name.split("_")[0]
             ip_inst.CSVparameterListUnNece = [int(idle), muxSel, preIdx, preLayerType, preIpName]
         else:
-            ip_inst.CSVparameterListUnNece = [1, 0, -1,"X", "X"]
+           ip_inst.CSVparameterListUnNece = [1, 0, -1,"X", "X"]
+    elif ip_inst.type == "Eltwise":
+        ip_inst.CSVparameterListUnNece[0] = int(idle)
+        #FIXME: We currently do not allow ELE to have stream in.
+#        if n == t:
+#            ip_inst.CSVparameterListUnNece[1] = 1 #in
+        if n == s:
+            ip_inst.CSVparameterListUnNece[3] = 1 #out
+        layerIdx = layerIdxTable[n.name]
+        ip_inst.CSVparameterListUnNece[4] = layerIdx
+    else:
+        assert 0, "Unsupported IP type" #Should not come here
+
 
 def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers):
         
@@ -183,6 +206,8 @@ def genCSVFile(IP_g, roundIdx, fileName):
     f = open(fileName, "a")
     csvParamList = [roundIdx]
     for ip_inst in IP_g.nodes():
+        if "ip_l" in ip_inst.name:
+            continue
         if(ip_inst.type == "DDR"):
             continue
         csvParamList.append(ip_inst.type)
