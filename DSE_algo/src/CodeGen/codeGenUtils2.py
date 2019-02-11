@@ -29,8 +29,7 @@ def CSVconfigNece(n, ip_inst):
 
                 ipName  = ip_inst.name.split("_")[0]
                 ip_inst.CSVparameterListNecessary += [weight, Out, In, In1st, ip_inst]
-
-                ip_inst.CSVparameterListNecessary.append([weight, Out, In, In1st,ipName])
+#                ip_inst.CSVparameterListNecessary.append([weight, Out, In, In1st,ipName])
     elif ip_inst.type == "Pooling":
         if(not ip_inst.necessaryHasSet):
             In = int(ip_inst.memInFlag)
@@ -47,7 +46,7 @@ def CSVconfigNece(n, ip_inst):
             Out = int(ip_inst.memOutFlag)
             LIn = int(ip_inst.ip_l.memInFlag)
             ipName = ip_inst.name.split("_")[0]
-            ip_inst.CSVparameterListUnNece += [LIn, RIn, Out, ipName]
+            ip_inst.CSVparameterListNecessary += [LIn, RIn, Out, ipName]
             ip_inst.necessaryHasSet = True
     else: 
         assert 0, "Unsupported IP type" #Should not come here
@@ -206,8 +205,8 @@ def genCSVFile(IP_g, roundIdx, fileName):
     f = open(fileName, "a")
     csvParamList = [roundIdx]
     for ip_inst in IP_g.nodes():
-        if "ip_l" in ip_inst.name:
-            continue
+#        if "ip_l" in ip_inst.name:
+#            continue
         if(ip_inst.type == "DDR"):
             continue
         csvParamList.append(ip_inst.type)

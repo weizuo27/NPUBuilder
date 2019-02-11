@@ -131,7 +131,7 @@ class layer(vertex):
             if(ceil(float(cin)/4) * ceil(float(cout)/XI_KER_PROC) * kh * kw <= XI_WEIGHTBUFF_DEPTH * 2):
                 self.bandWidth = cin * cout * kh * kw
             else:
-                self.bandWidth = cin * cout * kh * kw * ceil(float(out_height)/self.rowStep)
+                self.bandWidth = cin * cout * kh * kw * (float(out_height)/self.rowStep)
 
     def set_input_params(self, line):
         """
@@ -233,7 +233,7 @@ class layer(vertex):
         else: 
             assert(0), "Unsupported layer type"
 
-        return latency_rowStep * ceil(float(out_height)/self.rowStep)
+        return latency_rowStep * (float(out_height)/self.rowStep)
 
     def computeLatencyRowStep(self, prevLayers, totalBandwidth):
         """
@@ -248,7 +248,7 @@ class layer(vertex):
             return
 
         out_height, out_width = map(int, self.output_params[2:4])
-        self.IP_latency_rowStep = self.computeLatencyIfMappedToOneIP(self.mappedIP, totalBandwidth)/ceil(float(out_height)/self.rowStep)
+        self.IP_latency_rowStep = self.computeLatencyIfMappedToOneIP(self.mappedIP, totalBandwidth)/(float(out_height)/self.rowStep)
 
         #This part need to hard code for different layer type
         if self.type == "Convolution"or self.type == "Convolution_g":
@@ -263,6 +263,9 @@ class layer(vertex):
             kw = kh = int(self.params[2].split("=")[1])
             S = int(self.params[3].split("=")[1])
             P = int(self.params[4].split("=")[1])
+
+        elif self.type == "Eltwise":
+            S = 1
 
         #Now start computing the latency for computing one row
 
@@ -301,7 +304,7 @@ class layer(vertex):
             cannot seperately compute N rows"
 
         assert (self.lat_rowStep != None), "layer " + self.name + "'s lat_one_row is not computed, cannot compute N rows"
-        return self.lat_rowStep * ceil(float(n)/self.rowStep)
+        return self.lat_rowStep * (float(n)/self.rowStep)
 
     def computeLatency(self):
         """

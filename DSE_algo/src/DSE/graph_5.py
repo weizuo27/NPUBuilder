@@ -111,8 +111,8 @@ class graph:
             nodes_list = list(subGraph.nodes)
             for n in nodes_list:
                 inD = outD = 0
-                if n.type == "Eltwise":
-                    inD = outD = 1
+#                if n.type == "Eltwise":
+#                    inD = outD = 1
                 if subGraph.in_degree(n) == inD:
                     subGraph.add_edge(blob_begin,  n)
                 if subGraph.out_degree(n) == outD:

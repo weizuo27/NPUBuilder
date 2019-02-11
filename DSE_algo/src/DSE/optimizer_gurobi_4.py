@@ -130,6 +130,8 @@ class optimizer:
                     preds = list(g.predecessors(m))
                     numPreds = len(preds)
                     numSuccs = len(list(g.successors(m)))
+                    if m.type == "Eltwise":
+                        print "abc", numPreds, numSuccs
                     if m.type not in hw_layers:
 #                            print m.name, m.type, "not in hw_layers"
                         m.Pipelined = False

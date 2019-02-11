@@ -106,8 +106,8 @@ def genStreamPorts(streamArgs, fileName):
 def genSubFunction(n, fileName):
     if n.type == "DDR":
         return
-    if "ip_l" in n.name:
-        return
+#    if "ip_l" in n.name:
+#        return
     print "n.type", n.type, n.name
     if n.type == "Eltwise":
         functionName = n.name+"::"+n.type
@@ -119,10 +119,12 @@ def genSubFunction(n, fileName):
         f.write("#endif\n")
 
         f.write("\t\t"+functionName + "(\n")
-        ip_l = n.ip_l
-        for arg in ip_l.args:
-            print "left", arg
-            f.write("\t\t\t"+arg+",\n")
+#        if n.type == "Eltwise":
+        #write left mem in
+
+#        ip_l = n.ip_l
+#        for arg in ip_l.args:
+#            f.write("\t\t\t"+arg+",\n")
         for idx, arg in enumerate(n.args):
             if(idx != len(n.args)-1):
                 f.write("\t\t\t"+arg+",\n")
@@ -184,8 +186,8 @@ def genTop(g):
     #collect the IP names
     IPNames = []
     for n in g:
-        if "ip_l" in n.name:
-            continue
+#        if "ip_l" in n.name:
+#            continue
         IPNames.append(n.name)
 
 
@@ -243,6 +245,12 @@ def genWrapper(g, n):
         if t.type == "DDR":
             n.memOutFlag = True
             break
+    if(n.type == "Eltwise"):
+    #add mem-in left
+        for i in range(len(memIns)):
+            portName =n.name + "il"+str(i)
+            n.args.append(portName)
+            topArg.append(memIns[i] + " " + portName)
     #MEM IN
     if(n.memInFlag):
 #        ports = g.edges[inEdge]['portNames']
@@ -287,8 +295,8 @@ def genWrapper(g, n):
         n.args.append(portName)
         topArg.append(neces[i] + " " + portName)
     #Args:
-    if "ip_l" in n.name:
-        return topArg, streamArgs, dispatcherList
+#    if "ip_l" in n.name:
+#        return topArg, streamArgs, dispatcherList
         
     if n.type == "Convolution_g":
         if n.streamInFlag:
@@ -476,10 +484,12 @@ def genIPPackCmd(fileName, fileNameIPNameList, IP_g):
             paramList = map(str, paramList)
         elif ip.type == "Eltwise":
             IPNAME = ip.name
-            if "ip_l" in ip.name:
-                continue
-            L_STREAM_IN = int(ip.ip_l.streamInFlag)
-            L_MEM_IN = int(ip.ip_l.memInFlag)
+#            if "ip_l" in ip.name:
+#                continue
+#            L_STREAM_IN = int(ip.ip_l.streamInFlag)
+#            L_MEM_IN = int(ip.ip_l.memInFlag)
+            L_STREAM_IN = 0
+            L_MEM_IN = 1
 
             R_STREAM_IN = int(ip.streamInFlag)
             R_MEM_IN = int(ip.memInFlag)

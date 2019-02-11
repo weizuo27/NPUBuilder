@@ -64,7 +64,8 @@ def createIPGraph(gs, hw_layers):
         if ip.type == "Eltwise":
             ip_l = deepcopy(ip)
             ip_l.name += "ip_l"
-            IP_g.add_node(ip_l)
+            ip_l.memOutFlag = True
+#            IP_g.add_node(ip_l)
             ip.ip_l = ip_l
         IP_g.add_node(ip)
     #add the DDR node
@@ -77,27 +78,37 @@ def createIPGraph(gs, hw_layers):
     #for each edge in the graph, add the stream edge
     for g in gs:
         for (s,t) in g.edges():
-            if t.type == "Eltwise":
-                assert g.in_degree(t) == 2, "The in-edge of Eltwise is not 2"
-                (s_el0, t_el0), (s_el1, t_el1) = list(g.in_edges(t))
-                IP_g.add_edge(s_el0.mappedIP, t_el0.mappedIP.ip_l)
-                IP_g.add_edge(s_el1.mappedIP, t_el1.mappedIP)
-                IP_g[s_el0.mappedIP][t_el0.mappedIP.ip_l]['weight'] = 1000
-                IP_g[s_el1.mappedIP][t_el1.mappedIP]['weight'] = 1000
-            else:
-                IP_g.add_edge(s.mappedIP, t.mappedIP)
-                IP_g[s.mappedIP][t.mappedIP]['weight'] = 1000
+#            if t.type == "Eltwise":
+#                assert g.in_degree(t) == 2, "The in-edge of Eltwise is not 2"
+#                (s_el0, t_el0), (s_el1, t_el1) = list(g.in_edges(t))
+#                IP_g.add_edge(s_el0.mappedIP, t_el0.mappedIP.ip_l)
+#                IP_g.add_edge(s_el1.mappedIP, t_el1.mappedIP)
+#                IP_g[s_el0.mappedIP][t_el0.mappedIP.ip_l]['weight'] = 1000
+#                IP_g[s_el1.mappedIP][t_el1.mappedIP]['weight'] = 1000
+#            if s.type == "Eltwise":
+#                assert g.out_degree(s) == 2, "The out-edge of Eltwise is not 2"
+#                (s_el0, t_el0), (s_el1, t_el1) = list(g.in_edges(t))
+#                IP_g.add_edge(s_el0.mappedIP.ip_l, t_el0.mappedIP)
+#                IP_g.add_edge(s_el1.mappedIP.ip_l, t_el1.mappedIP)
+#                IP_g[s_el0.mappedIP][t_el0.mappedIP.ip_l]['weight'] = 1000
+#                IP_g[s_el1.mappedIP][t_el1.mappedIP]['weight'] = 1000
+#            else:
+            IP_g.add_edge(s.mappedIP, t.mappedIP)
+            IP_g[s.mappedIP][t.mappedIP]['weight'] = 1000
     #for the node that has not in degree or out degree, add edge to DDR
     for g in gs:
         for n in g.nodes():
             print "abc", n.name, n.type
             if n.type == "Eltwise":
-                if g.in_degree(n) == 0:
-                    IP_g.add_edge(IPDDR, n.mappedIP.ip_l)
-                    IP_g[IPDDR][n.mappedIP.ip_l]['weight'] = 1000
+#                IP_g.add_edge(IPDDR, n.mappedIP.ip_l)
+#                IP_g[IPDDR][n.mappedIP.ip_l]['weight'] = 1000
 
+                if g.in_degree(n) == 0:
                     IP_g.add_edge(IPDDR, n.mappedIP)
                     IP_g[IPDDR][n.mappedIP]['weight'] = 1000
+                if g.out_degree(n) == 0:
+                    IP_g.add_edge(n.mappedIP, IPDDR)
+                    IP_g[n.mappedIP][IPDDR]['weight'] = 1000
             else:
                 if g.in_degree(n) == 0:
                     IP_g.add_edge(IPDDR, n.mappedIP)
