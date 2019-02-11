@@ -80,7 +80,7 @@ class IPSel():
             if self.isInAbandonTable(IPs):
                 print "IPs in abandonTable"
                 continue
-#            self.updateAbandonTable(IPs)
+            self.updateAbandonTable(IPs)
 
             BRAMs, LUTs, FFs, DSPs  = 0, 0, 0, 0
 
