@@ -1,0 +1,8 @@
+STREAMIN 2
+    ap_uint<128>
+    ap_uint<128> 
+STREAMOUT 4
+    ap_uint<128>
+    ap_uint<128>
+    ap_uint<128>
+    ap_uint<128>

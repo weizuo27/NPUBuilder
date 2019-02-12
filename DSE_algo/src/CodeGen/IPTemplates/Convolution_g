@@ -1,0 +1,18 @@
+MEMIN 2
+    ap_uint<128> *
+    ap_uint<128> *
+MEMOUT 2
+    ap_uint<128> *
+    ap_uint<128> *
+STREAMIN 2
+    ap_uint<128>
+    ap_uint<128>
+STREAMOUT 2
+    ap_uint<128>
+    ap_uint<128>
+NECESSARY 5
+    ap_uint<128> *
+    ap_uint<128> *
+    ap_uint<128> *
+    ap_uint<128> *
+    ap_uint<64> *
