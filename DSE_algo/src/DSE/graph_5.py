@@ -12,6 +12,7 @@ class graph:
         self.mapping = dict()
         self.NameMapping = dict()
         self.SWMapping = dict()
+        self.containedHwType = dict()
         self.exploreLayerQueue = dict()
         self.original_edges = dict()
         self.original_nodes = dict()
@@ -127,6 +128,7 @@ class graph:
             explore_node_list = []
             for n in g.nodes:
                 if n.type in explore_IP_types:
+                    self.containedHwType[n.type] = 1
                     explore_node_list.append(n)
 
 #            explore_node_list.sort(key = comp)

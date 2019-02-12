@@ -37,7 +37,7 @@ class IPSel():
 #        for g in gs.graphs:
 #            gs.drawGraph(g)
 
-        IPs = generateIPs(IP_fileName)
+        IPs = generateIPs(IP_fileName, gs.containedHwType)
 
         IP_table = constructIPTable(IPs, BRAM_budget, DSP_budget, LUT_budget, \
                 FF_budget, gs.exploreLayerQueue, explore_IP_types, numIPs)

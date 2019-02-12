@@ -15,7 +15,7 @@ parser.add_argument('BW_budget', type=int, help= "Interger for description of ba
 parser.add_argument('latency_budget', type=int, help= "Interger for description of latency budget")
 parser.add_argument("app_fileName", type=str, help= "The file name of the graph dumpped from ChaiDNN")
 parser.add_argument("IP_fileName", type=str, help= "The file name of the graph dumpped from ChaiDNN")
-parser.add_argument("pipelineLength", type=int, help= "The number of pipeline stages (IPs)")
+parser.add_argument("numIPs", type=int, help= "The total number of IPs, integer")
 #parser.add_argument("DSE", type=int, help= "Whether run DSE or just heuristic for unconstraint case")
 
 
@@ -29,7 +29,7 @@ BW_budget = args.BW_budget
 latency_budget = args.latency_budget
 app_fileName = args.app_fileName
 IP_fileName = args.IP_fileName
-pipelineLength = args.pipelineLength
+pipelineLength = args.numIPs
 #assert (args.DSE < 2), "herusitic can only be 0 (False) or 1 (True)"
 #DSE = args.DSE == 1
 #assert(args.assumptionLevel < 3), "assumptionLevel can only be 0, 1, 2"
