@@ -1,0 +1,8 @@
+conv1 : 0
+pool1 : 1
+conv2 : 2
+pool2 : 3
+conv3 : 4
+conv4 : 5
+conv5 : 6
+pool5 : 7

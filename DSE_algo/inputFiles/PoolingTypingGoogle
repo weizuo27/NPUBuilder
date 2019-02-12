@@ -1,0 +1,14 @@
+pool1/3x3_s2: max
+pool2/3x3_s2: max
+inception_3a/pool: max
+inception_3b/pool: max
+pool3/3x3_s2: max
+inception_4a/pool: max
+inception_4b/pool: max
+inception_4c/pool: max
+inception_4d/pool: max
+inception_4e/pool: max
+pool4/3x3_s2: max
+inception_5a/pool: max
+inception_5b/pool: max
+conv_pool0: avg
