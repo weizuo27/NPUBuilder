@@ -44,8 +44,9 @@ def CSVconfigNece(n, ip_inst):
         if(not ip_inst.necessaryHasSet):
             RIn = int(ip_inst.memInFlag)
             Out = int(ip_inst.memOutFlag)
-            LIn = int(ip_inst.ip_l.memInFlag)
+            LIn = int(True)
             ipName = ip_inst.name.split("_")[0]
+            print "abc", RIn, RIn, Out
             ip_inst.CSVparameterListNecessary += [LIn, RIn, Out, ipName]
             ip_inst.necessaryHasSet = True
     else: 
