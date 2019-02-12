@@ -12,7 +12,6 @@ from codeGen import *
 sys.path.append(dir_path + "/../SchedulerCodeGen");
 from genSwFiles import *
 
-DEBUG = False
 class IPSel():
     def __init__(self, BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, Lat_budget, numIPs,
             app_fileName, IP_fileName, ESP, rowStep):
@@ -29,9 +28,9 @@ class IPSel():
         #Hard code the IP types we would like to explore
         explore_IP_types = { 
             "Convolution": 1,
-            "Pooling" : 1,
+#            "Pooling" : 1,
             "Convolution_g" : 1 ,
-            "Eltwise" : 1
+#            "Eltwise" : 1
         }   
 
         gs = graph(app_fileName, explore_IP_types, hw_layers, rowStep)
@@ -65,11 +64,23 @@ class IPSel():
         mapping_solution = dict()
         self.abandonTable = dict()
 
+
+        allIPs = [ip for ip in itertools.combinations(IP_list, numIPs) if (\
+        (sum(item.BRAM for item in ip) < BRAM_budget) and \
+        (sum(item.DSP for item in ip) < DSP_budget) and \
+        (sum(item.LUT for item in ip) < LUT_budget) and \
+        (sum(item.FF for item in ip) < FF_budget) and \
+        (sum(item.BRAM for item in ip) > 0.5 * BRAM_budget) and \
+        (sum(item.DSP for item in ip) > 0.5 * DSP_budget)) ]
+        
         #pick N IPs out of the IP list
         numIters = ncr(len(IP_list), numIPs)
-        print "There are", numIters, "iterations"
+        print "There are", numIters, "iterations before optimization, Now there are " + \
+            str(len(allIPs)) + " iterations."
+
         nums = 0
-        for IPs in itertools.combinations(IP_list,  numIPs):
+
+        for IPs in allIPs:
             nums += 1
             tmp = ""
             for ip in IPs:
@@ -82,29 +93,14 @@ class IPSel():
                 continue
             self.updateAbandonTable(IPs)
 
-            BRAMs, LUTs, FFs, DSPs  = 0, 0, 0, 0
-
             IP_dict = dict()
             valid = True
             for ip in IPs:
-                BRAMs += ip.BRAM
-                LUTs += ip.LUT
-                FFs += ip.FF
-                DSPs += ip.DSP
-                if BRAM_budget < BRAMs or LUT_budget < LUTs or FF_budget < FFs or DSP_budget < DSPs:
-                    valid = False
-                    break
                 if ip.type not in IP_dict:
                     IP_dict[ip.type] = [ip]
                 else:
                     IP_dict[ip.type].append(ip)
-            #If the resource summation exceeds the budget, continue
-            if not valid:
-                print "resource violation, continue"
-                continue
-            if BRAM_budget/2 >= BRAMs or DSP_budget*0.5>= DSPs:
-                print "resource too small, continue"
-                continue
+
             #If some of the layers'type is not in the current IP selection, then continue
             layerQueue = []
             for g in gs.graphs:

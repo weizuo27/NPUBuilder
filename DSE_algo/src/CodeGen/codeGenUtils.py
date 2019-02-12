@@ -98,7 +98,6 @@ def createIPGraph(gs, hw_layers):
     #for the node that has not in degree or out degree, add edge to DDR
     for g in gs:
         for n in g.nodes():
-            print "abc", n.name, n.type
             if n.type == "Eltwise":
 #                IP_g.add_edge(IPDDR, n.mappedIP.ip_l)
 #                IP_g[IPDDR][n.mappedIP.ip_l]['weight'] = 1000
@@ -135,7 +134,6 @@ def readTemplate(funcType):
     while(idx < len(fList)):
         lList = fList[idx].split()
         if lList[0] == "MEMIN":
-            print lList
             inPortNums = int(lList[1])
             for i in range(inPortNums):
                 idx+=1

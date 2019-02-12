@@ -7,7 +7,6 @@ from utils_4 import *
 from copy import deepcopy
 import networkx as nx
 from scheduler_4 import scheduler
-
 class optimizer:
     def __init__(self, latency_Budget, rowStep):
         self.rb = resourceILPBuilder()
@@ -23,7 +22,7 @@ class optimizer:
         self.numIPs=dict()
         self.rowStep = rowStep
 
-    def run(self,IP_table, graphs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table_org):
+    def run(self,IP_table, graphs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table_org, verbose = False):
         for ip_type in IP_table:
             self.numIPs[ip_type] = len(IP_table[ip_type])
 
@@ -33,38 +32,43 @@ class optimizer:
         while(-self.latency_lb + self.latency_ub > ESP):
             assert(oneIter < 300), "Something is wrong"
                 
-            print oneIter, "iteration\n"
-            print "Latency target changed? ", latency_target_changed 
+            if(verbose):
+                print oneIter, "iteration\n"
+                print "Latency target changed? ", latency_target_changed 
             if(latency_target_changed):
                 #reset the latency target change flag
                 latency_target_changed = False
                 self.rb.constraints = []
                 self.rb.violation_constraints_table.clear()
                 self.rb.status = "Undecided"
-                status = self.rb.createVs(IP_table, IP_table_per_layer, graphs.exploreLayerQueue[g], hw_layers, self.new_latency_target)
-                status = self.rb.createConstraints(IP_table, graphs.exploreLayerQueue[g], self.numIPs)
-                print self.rb.status, self.rb.status != "Failed"
+                status = self.rb.createVs(IP_table, IP_table_per_layer, graphs.exploreLayerQueue[g], hw_layers, self.new_latency_target, verbose)
+                status = self.rb.createConstraints(IP_table, graphs.exploreLayerQueue[g], self.numIPs, verbose)
+                if(verbose):
+                    print self.rb.status, self.rb.status != "Failed"
                 if self.rb.status != "Failed":
                     #re-add in the violation constraints, if we know they already cannot be the answer
                     for lat in self.latency_table:
                         if lat > self.new_latency_target:
                             for violation_path in self.latency_table[lat]:
 #                                printViolationPath(violation_path)
-                                self.rb.addViolationPaths(violation_path, graphs.exploreLayerQueue[g], IP_table, layerIPLatencyTable)
+                                self.rb.addViolationPaths(violation_path, graphs.exploreLayerQueue[g], IP_table, layerIPLatencyTable, verbose)
                     #re create the problem
-                    self.rb.createProblem() 
-            self.rb.solveProblem()
+                    self.rb.createProblem(verbose) 
+            self.rb.solveProblem(verbose)
             if(self.rb.status != "Optimal"):
                 if firstIter:
-                    print "The resource budget is too tight, no feasible mapping solution."
+                    if(verbose):
+                        print "The resource budget is too tight, no feasible mapping solution."
                     return self.latency_achieved, self.mapping_solution
-                print "cannot find a solution under the current latency budget: ", self.new_latency_target, \
+                if(verbose):
+                    print "cannot find a solution under the current latency budget: ", self.new_latency_target, \
                     "lossen the target"
 
                 self.latency_lb = self.new_latency_target
                 self.new_latency_target = (self.latency_lb + self.latency_ub)/2 
                 latency_target_changed = True
-                print "new_ub", self.latency_ub, "new_lb", self.latency_lb, "new target,", self.new_latency_target
+                if(verbose):
+                    print "new_ub", self.latency_ub, "new_lb", self.latency_lb, "new target,", self.new_latency_target
                 firstIter = False
                 oneIter += 1
                 continue
@@ -87,21 +91,24 @@ class optimizer:
                 self.mapping_solution = deepcopy(g)
                 self.new_latency_target = (self.latency_ub + self.latency_lb) /2 
                 latency_target_changed = True
-                print "scheduling", status
-                print "new_ub", self.latency_ub, "new_lb", self.latency_lb, "new target,", self.new_latency_target
+                if(verbose):
+                    print "scheduling", status
+                    print "new_ub", self.latency_ub, "new_lb", self.latency_lb, "new target,", self.new_latency_target
             else: #Failed
 #                print "scheduling", status
 #                printViolationPath(ret[0])
-                self.rb.addViolationPaths(ret[0], graphs.exploreLayerQueue[g], IP_table, layerIPLatencyTable)
+                self.rb.addViolationPaths(ret[0], graphs.exploreLayerQueue[g], IP_table, layerIPLatencyTable, verbose)
 
             graphs.retriveOriginalGraph(g)
             oneIter += 1
         if self.latency_achieved == None:
-            print "The latency budget is too small, cannot find any feasible solution."
+            if(verbose):
+                print "The latency budget is too small, cannot find any feasible solution."
             return self.latency_achieved, self.mapping_solution
         else:
-            print "Final solution"
-            self.printSchedulingMappingSol(graphs, hw_layers)
+            if(verbose):
+                print "Final solution"
+                self.printSchedulingMappingSol(graphs, hw_layers)
             return self.latency_achieved, self.mapping_solution
 
     def assignMappingResult(self, exploreLayerQueue, explore_IP_types, hw_layers, IP_table, g, IP_table_org):
@@ -130,8 +137,6 @@ class optimizer:
                     preds = list(g.predecessors(m))
                     numPreds = len(preds)
                     numSuccs = len(list(g.successors(m)))
-                    if m.type == "Eltwise":
-                        print "abc", numPreds, numSuccs
                     if m.type not in hw_layers:
 #                            print m.name, m.type, "not in hw_layers"
                         m.Pipelined = False
@@ -194,7 +199,6 @@ class optimizer:
         end_n_table = dict()
 
         for n in nx.topological_sort(g):
-            print "aba", n.name
             if n.type == "pipeNode":
                 pred_n = list(g.predecessors(n))[0]
                 succ_n = list(g.successors(n))[0]
@@ -212,7 +216,6 @@ class optimizer:
             cb_node = combineNode(path)
             cb_node.computeLatency()
             g.add_node(cb_node)
-            print "abc", path[0], path[0].name
             for pre in g.predecessors(path[0]):
                 g.add_edge(pre, cb_node)
             for succ in g.successors(path[-1]):

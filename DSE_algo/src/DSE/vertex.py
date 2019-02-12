@@ -187,7 +187,6 @@ class layer(vertex):
 #                print "total111 ", totalBandwidth, self.name, self.type, self.bandWidth
 #            print "total222 ", totalBandwidth, self.name, self.type, self.bandWidth
 
-            print self.name
             latency_rowStep = ip.computeLatency(
                     [cout, cin, kw, kh, S, padding, group],
                     in_height, 

@@ -11,8 +11,9 @@ class resourceILPBuilder():
         self.mappingVariables = dict()
         self.violation_constraints_table = dict()
 
-    def createVs(self, IP_table, IP_table_per_layer, layerQueue, hw_supported_layers, latency):
-        print "create Variables", self.status
+    def createVs(self, IP_table, IP_table_per_layer, layerQueue, hw_supported_layers, latency, verbose):
+        if(verbose):
+            print "create Variables", self.status
         self.model = Model("resource")
         self.model.Params.OutputFlag = 0
         for layer_type in layerQueue:
@@ -42,8 +43,9 @@ class resourceILPBuilder():
 
         self.model.update()
 
-    def createConstraints(self, IP_table, layerQueue, numIPs):
-        print "create Constraints", self.status
+    def createConstraints(self, IP_table, layerQueue, numIPs, verbose):
+        if(verbose):
+            print "create Constraints", self.status
         if(self.status == "Failed"):
             return
         #1. one layer is mapped to one IP
@@ -64,9 +66,10 @@ class resourceILPBuilder():
         #would like to force them use all the resource possible
                 self.constraints.append(sum(exp) <= -(-num_layers//numIPs[layer_type]))
 
-    def addViolationPaths(self, violation_path, layerQueue, IP_table, layerIPLatencyTable):
-        print "addViolationPaths"
-        print "Status: ", self.status
+    def addViolationPaths(self, violation_path, layerQueue, IP_table, layerIPLatencyTable, verbose):
+        if(verbose):
+            print "addViolationPaths"
+            print "Status: ", self.status
         if(self.status == "Failed"):
             return
         
@@ -134,9 +137,10 @@ class resourceILPBuilder():
                 for l in violate_layers[keys_list[idx]]:
                     exp_list.pop()
 
-    def createProblem(self):
-        print("Create Problem")
-        print "Status: ", self.status
+    def createProblem(self, verbose):
+        if(verbose):
+            print("Create Problem")
+            print "Status: ", self.status
 
         if(self.status == "Failed"):
             return
@@ -146,11 +150,12 @@ class resourceILPBuilder():
         for i in self.constraints:
             self.model.addConstr(i)
 
-    def solveProblem(self):
+    def solveProblem(self, verbose):
         """
             return: True if the optimal solution can be found. False otherwise
         """
-        print ("Solve Problem")
+        if(verbose):
+            print ("Solve Problem")
         if(self.status == "Failed"):
             return
         #self.model.params.MIPFocus = 3
@@ -160,7 +165,8 @@ class resourceILPBuilder():
         if(self.model.status == GRB.Status.OPTIMAL or self.model.status == GRB.Status.USER_OBJ_LIMIT):
             if(self.model.ConstrVio > 0.5):
                 self.status = "Failed"
-                print "ConstrVio", self.model.ConstrVio, self.model.ConstrVio > 0.5, self.status
+                if(verbose):
+                    print "ConstrVio", self.model.ConstrVio, self.model.ConstrVio > 0.5, self.status
                 return False
 
         if(self.model.status == GRB.Status.OPTIMAL or self.model.status == GRB.Status.USER_OBJ_LIMIT):

@@ -220,7 +220,6 @@ class graph:
             print "IP", n.name, "type", n.type, "mappedIP", n.mappedIP, "is pipeined ?", n.Pipelined, n.lat_rowStep, n.latency
 
     def add_node(self, node):
-        print "node", node.name
         self.G.add_node(node)
         self.mapping[node] = node.name
         self.NameMapping[node.name] = node

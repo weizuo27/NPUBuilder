@@ -44,8 +44,12 @@ class IP():
         if type == "Convolution_g":
             self.CSVparameterListUnNece = [self.csvUneceNums * [0]]
             self.CSVparameterListUnNece.append(self.csvUneceNums * [0])
+            self.CSVparameterListUnNece[0][0] = 1
+            self.CSVparameterListUnNece[0][1] = 1
         else:
             self.CSVparameterListUnNece = self.csvUneceNums * [0]
+            if(self.csvUneceNums > 0):
+                self.CSVparameterListUnNece[0] = 1
         self.CSVparameterListNecessary = []
         self.memInFlag = False
         self.memOutFlag = False

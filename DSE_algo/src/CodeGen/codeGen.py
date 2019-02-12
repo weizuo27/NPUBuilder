@@ -108,7 +108,6 @@ def genSubFunction(n, fileName):
         return
 #    if "ip_l" in n.name:
 #        return
-    print "n.type", n.type, n.name
     if n.type == "Eltwise":
         functionName = n.name+"::"+n.type
         f = open(fileName, 'a')
