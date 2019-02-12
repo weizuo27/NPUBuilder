@@ -19,8 +19,8 @@ for ibuffersize in ibufferArray:
                     idx += 1
                     ID = "IP"+ str(idx)
                     brams, dsps = resource_estimate_batch(ibuffersize, obuffersize, wbuffersize, ker, proc)
-                    BRAM = str(brams + 18 + 18 *(ker > 16))
-                    DSP = str(dsps)
+                    BRAM = str(int(brams) + 18 + 18 *(ker > 16))
+                    DSP = str(int(dsps))
                     #FIXME: FF, LUT are fake
                     FF = LUT = str(1000)
                     writeList.append([ID, "Convolution", BRAM, str(int(DSP)), FF, LUT, str(ker), str(proc), str(ibuffersize), str(obuffersize), str(wbuffersize)])
@@ -35,7 +35,7 @@ for ibuffersize in ibufferArray:
                     ID = "IP"+ str(idx)
                     brams, dsps = resource_estimate_batch(ibuffersize, obuffersize, wbuffersize, ker, proc)
                     BRAM = str(int(brams) + 18 + 18 *(ker > 16))
-                    DSP = str(dsps)
+                    DSP = str(int(dsps))
                     #FIXME: FF, LUT are fake
                     FF = LUT = str(1000)
                     writeList.append([ID, "Convolution_g", str(int(BRAM)*2), str(int(DSP)*2), str(int(FF) * 2), str(int(LUT) * 2), str(ker), str(proc), str(ibuffersize), str(obuffersize), str(wbuffersize)])
