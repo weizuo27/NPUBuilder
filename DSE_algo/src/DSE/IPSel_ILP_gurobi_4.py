@@ -40,7 +40,11 @@ class IPSel():
         legalNumIPs = False
         for g in gs.graphs:
             if g in gs.exploreLayerQueue:
-                if len(gs.exploreLayerQueue[g]) > numIPs:
+		length = 0
+		for layerType in gs.exploreLayerQueue[g]:
+		    length += len(gs.exploreLayerQueue[g][layerType])
+		print length
+                if length >= numIPs:
                     legalNumIPs = True
                     break
         if not legalNumIPs:
@@ -87,6 +91,8 @@ class IPSel():
         numIters = ncr(len(IP_list), numIPs)
         print "There are", numIters, "iterations before optimization, Now there are " + \
             str(len(allIPs)) + " iterations."
+	if len(allIPs) == 0:
+	    return
 
         nums = 0
 
