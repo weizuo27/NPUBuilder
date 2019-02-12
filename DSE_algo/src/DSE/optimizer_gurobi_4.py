@@ -20,7 +20,6 @@ class optimizer:
 
         self.latency_table = dict()
         self.numIPs=dict()
-        self.rowStep = rowStep
 
     def run(self,IP_table, graphs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table_org, verbose = False):
         for ip_type in IP_table:
@@ -288,3 +287,4 @@ class optimizer:
             for idx in range(len(IPMappingTable[ip])-1):
                 g.add_edge(IPMappingTable[ip][idx], IPMappingTable[ip][idx+1])
 
+        
