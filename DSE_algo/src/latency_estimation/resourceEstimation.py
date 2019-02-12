@@ -21,6 +21,8 @@ def resource_estimate_batch(iBufferSize, oBufferSize, wBufferSizei, ker_proc, pi
     bias_scale = 24
     brams = inBrams + outBrams + wBrams + feedingBrams + resulting + bias_scale
     #This is given my the linear regression
-    dsps = int(round(1 * ker_proc*pix_proc*2 + 3.33928571*pix_proc*2 + 22))
+    dsps = int(round(1 * ker_proc*pix_proc*2 + 3.33928571*pix_proc + 22))
     return brams, dsps
 
+
+print resource_estimate_batch(2048,1024,1024,16,32)

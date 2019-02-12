@@ -14,7 +14,7 @@ from genSwFiles import *
 
 class IPSel():
     def __init__(self, BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, Lat_budget, numIPs,
-            app_fileName, IP_fileName, ESP, rowStep):
+            app_fileName, IP_fileName, ESP, rowStep, batchSize):
         status = "Undecided" 
 
         #Hard code the hardware supported layers
@@ -175,7 +175,7 @@ class IPSel():
         expandGraph(IP_g)
         muxSelTable = assignMuxSelTable(IP_g)
         assignStreamPorts(IP_g, 2)
-        genTop(IP_g, outHwDir)
+        genTop(IP_g, outHwDir, batchSize)
         #Gen CSV
         genCSVConfigs(final_graph_list, IP_g, muxSelTable, hw_layers, outHwDir)
 

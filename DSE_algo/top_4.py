@@ -16,6 +16,7 @@ parser.add_argument('latency_budget', type=int, help= "Interger for description 
 parser.add_argument("app_fileName", type=str, help= "The file name of the graph dumpped from ChaiDNN")
 parser.add_argument("IP_fileName", type=str, help= "The file name of the graph dumpped from ChaiDNN")
 parser.add_argument("numIPs", type=int, help= "The total number of IPs, integer")
+parser.add_argument("batchSize", type=int, help= "number of batch, integer")
 #parser.add_argument("DSE", type=int, help= "Whether run DSE or just heuristic for unconstraint case")
 
 
@@ -30,6 +31,7 @@ latency_budget = args.latency_budget
 app_fileName = args.app_fileName
 IP_fileName = args.IP_fileName
 pipelineLength = args.numIPs
+batchSize = args.batchSize
 #assert (args.DSE < 2), "herusitic can only be 0 (False) or 1 (True)"
 #DSE = args.DSE == 1
 #assert(args.assumptionLevel < 3), "assumptionLevel can only be 0, 1, 2"
@@ -38,6 +40,6 @@ pipelineLength = args.numIPs
 
 #opt = optimizer(BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, latency_budget, app_fileName, IP_fileName, pipelineLength, 5000, DSE, assumptionLevel)
 opt = IPSel(BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, latency_budget,
-        pipelineLength, app_fileName, IP_fileName, 2000, 2)
+        pipelineLength, app_fileName, IP_fileName, 2000, 2, batchSize)
 
 

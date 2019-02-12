@@ -127,8 +127,9 @@ class graph:
 #                return elem.ID
             explore_node_list = []
             for n in g.nodes:
-                if n.type in explore_IP_types:
+		if n.type in hw_layers:
                     self.containedHwType[n.type] = 1
+                if n.type in explore_IP_types:
                     explore_node_list.append(n)
 
 #            explore_node_list.sort(key = comp)

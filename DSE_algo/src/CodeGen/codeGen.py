@@ -172,7 +172,7 @@ def genSubFunction(n, fileName):
         f.close()
     
 
-def genTop(g, outDir):
+def genTop(g, outDir, batchSize):
     topArgs = []
     streamArgs = []
     ArgDispatchArgs = []
@@ -225,7 +225,7 @@ def genTop(g, outDir):
     genWrapperDnnFile(wrapperFileName, topArgs)
 
     #genIPPack cmds
-    genIPPackCmd(outDir + "/ippackGen.sh", outDir + "/ipNameList", g)
+    genIPPackCmd(outDir + "/ippackGen.sh", outDir + "/ipNameList", g, batchSize)
 
     #genPipeTemp (for Scheduler)
     genPipeSystemTemp(topArgs, outDir + "/pipeSystemTemp")
@@ -466,8 +466,9 @@ def genWrapperDnnFile(fileName, topArgs):
 
     f.close()
 
-def genIPPackCmd(fileName, fileNameIPNameList, IP_g):
+def genIPPackCmd(fileName, fileNameIPNameList, IP_g, batchSize):
     f = open(fileName, 'w')
+    batchSurfix = "" if batchSize == 1 else "BATCH"
     for ip in IP_g:
         if "IP" not in ip.name:
             continue
@@ -483,7 +484,7 @@ def genIPPackCmd(fileName, fileNameIPNameList, IP_g):
             MEM_OUT = int(ip.memOutFlag)
             LAYER1 = int(ip.firstLayer)
 
-            paramList = ["IPCONV", IPNAME, XI_ISTAGE_BUFF, XI_OSTAGE_BUFF, XI_WEIGHT_BUFF,\
+            paramList = ["IPCONV"+batchSurfix, IPNAME, XI_ISTAGE_BUFF, XI_OSTAGE_BUFF, XI_WEIGHT_BUFF,\
             XI_KER_PROC, XI_PIX_PROC, STREAM_OUT, STREAM_IN, MEM_IN, MEM_OUT, LAYER1]
             paramList = map(str, paramList)
 
@@ -493,7 +494,7 @@ def genIPPackCmd(fileName, fileNameIPNameList, IP_g):
             STREAM_IN = int(ip.streamInFlag)
             MEM_IN = int(ip.memInFlag)
             MEM_OUT = int(ip.memOutFlag)
-            paramList = ["IPPOOL", IPNAME, MEM_IN, MEM_OUT, STREAM_IN, STREAM_OUT]
+            paramList = ["IPPOOL"+batchSurfix, IPNAME, MEM_IN, MEM_OUT, STREAM_IN, STREAM_OUT]
             paramList = map(str, paramList)
         elif ip.type == "Eltwise":
             IPNAME = ip.name

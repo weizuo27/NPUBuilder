@@ -372,4 +372,25 @@ def computeLatency_pooling(ow, fw, fh, odepth, pipelined):
 def computeLatency_eltwise(ow, odepth):
     return ow*odepth/16
 
-print computeLatency(28,28,28,28,96,192,1,1,1,0,0,2,16,32,1024,True,1, None, 0)
+
+    # conv_inp_height  , 
+    # conv_inp_width   , 
+    # conv_out_height  , 
+    # conv_out_width   , 
+    # conv_out_planes  , 
+    # conv_inp_planes  , 
+    # conv_stride      , 
+    # conv_filter_height,
+    # conv_filter_width, 
+    # conv_pad         , 
+    # conv_group       , 
+    # rowStep,
+    # XI_KER_PROC,
+    # XI_PIX_PROC,
+    # XI_WEIGHTBUFF_DEPTH,
+    # int6bit,
+    # layerID, 
+    # AXILATENCY, 
+    # oneTime,
+
+print computeLatency(14,14,14,14,512,512,1,3,3,1,0,2,16,32,1024,True,1, None, 0)
