@@ -76,6 +76,7 @@ class IPSel():
         IP_list.sort(key = comp)
         lat_achieved = Lat_budget
         mapping_solution = dict()
+        latency_solution = dict()
         self.abandonTable = dict()
 
 
@@ -144,6 +145,7 @@ class IPSel():
             lat_left = lat_achieved
             layerQueue = []
             mapping_solution_tmp = dict()
+            latency_solution_tmp = dict()
 
             for g in gs.graphs:
                 if g not in gs.exploreLayerQueue:
@@ -151,7 +153,7 @@ class IPSel():
                 self.updateLayerQueue(gs.exploreLayerQueue[g], layerQueue)
                 opt = optimizer(lat_left, rowStep)
                 #If some of the graph, there is no feasible solution, then the current selection of IPs cannot work
-                lat, sol = opt.run(IP_dict, gs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table)
+                lat, sol = opt.run(IP_dict, gs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table, fixedRowStep)
                 if lat == None:
                     valid = False
                     break
@@ -163,6 +165,7 @@ class IPSel():
                     break
                 lat_left = lat_achieved - acc_lat
                 mapping_solution_tmp[g] = sol
+                latency_solution_tmp[g] = lat
 #            print "update!", "lat_achieved_old = ", lat_achieved, "acc_lat = ", acc_lat, "lat = ", lat
 #            self.updateAbandonSet(IPs, layerQueue, IP_table, IP_table_per_layer_org, layerIPLatencyTable_org, numIPs)
             if not valid:
@@ -172,7 +175,15 @@ class IPSel():
             for g in mapping_solution_tmp:
                 mapping_solution[g] = mapping_solution_tmp[g]
 
-        print "Final latency_achieved", lat_achieved
+            for g in latency_solution_tmp:
+                latency_solution[g] = latency_solution_tmp[g]
+
+        print "Final latency_achieved", lat_achieved, "each round latency is as follows"
+        for g in latency_solution:
+            print "round contain"
+            for n in g.nodes:
+                print n.name,
+            print ", total latency is ", latency_solution[g], "\n"
 
         #After the is done, re-order the mapping
         final_graph_list = reorderMapping(mapping_solution, hw_layers) 

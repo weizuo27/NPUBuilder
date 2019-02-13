@@ -21,7 +21,7 @@ class optimizer:
         self.latency_table = dict()
         self.numIPs=dict()
 
-    def run(self,IP_table, graphs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table_org, verbose = False):
+    def run(self,IP_table, graphs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table_org, fixedRowStep, verbose = False):
         for ip_type in IP_table:
             self.numIPs[ip_type] = len(IP_table[ip_type])
 
@@ -78,7 +78,8 @@ class optimizer:
 #            self.updateGraph(g, hw_layers)
 #            graphs.drawGraph(g)
             self.setPipelineFlag(hw_layers, g)
-            self.setRowStep(graphs.exploreLayerQueue[g])
+            if not fixedRowStep:
+                self.setRowStep(graphs.exploreLayerQueue[g])
             graphs.computeLatency(g)
             self.addPipelineNodes(g)
 #            self.simplifyGraph(g)
@@ -288,7 +289,7 @@ class optimizer:
             for idx in range(len(IPMappingTable[ip])-1):
                 g.add_edge(IPMappingTable[ip][idx], IPMappingTable[ip][idx+1])
 
-    def setRowStep(exploreLayerQueue):
+    def setRowStep(self, exploreLayerQueue):
         for ntype in exploreLayerQueue:
             for n in exploreLayerQueue[ntype]:
                 n.setRowStep()
