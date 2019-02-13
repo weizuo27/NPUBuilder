@@ -23,12 +23,13 @@ class IP():
     """
     def __init__(self, name, type, resource_list, 
             #The following are chaiDNN conv specific configs
-            paramList, firstLayer = False):
+            paramList, numIPs, firstLayer = False):
         self.name = str(name)
         self.type = str(type)
         self.orig_name = str(name)
         self.csvUneceNums = 0
         self.firstLayer = firstLayer
+        self.numIPs = numIPs
         #The followings are used to generate csv
         self.ip_l = None
         if self.type == "Convolution":
@@ -101,7 +102,8 @@ class IP():
 
             layerID = 0 if isFirstLayer else 1
 
-            AXILatency = None if totalBandWidth == None else int(float(totalBandWidth)/layerBandWidth)
+#            AXILatency = None if totalBandWidth == None else int(float(totalBandWidth)/layerBandWidth)
+            AXILatency =1
 
             if(ceil(float(cin)/4) * ceil(float(cout)/XI_KER_PROC) * kh * kw <= XI_WEIGHTBUFF_DEPTH * 2):
                 oneTime = True

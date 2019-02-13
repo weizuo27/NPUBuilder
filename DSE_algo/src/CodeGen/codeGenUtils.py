@@ -69,7 +69,7 @@ def createIPGraph(gs, hw_layers):
             ip.ip_l = ip_l
         IP_g.add_node(ip)
     #add the DDR node
-    IPDDR = IP("DDR", "DDR", None, None)
+    IPDDR = IP("DDR", "DDR", None, None, None)
     IP_g.add_node(IPDDR)
 
     for n in IP_g.nodes:

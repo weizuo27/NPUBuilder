@@ -81,7 +81,7 @@ def constructIPTable(IPs, BRAM_budget, DSP_budget, FF_budget, LUT_budget, layerQ
 #        return None
     return IP_table
 
-def generateIPs(fileName, containedHwType):
+def generateIPs(fileName, containedHwType, numIPs):
     """
     To generate the list of IPs from the IP_config file.
     Args:
@@ -99,7 +99,7 @@ def generateIPs(fileName, containedHwType):
         if layer_type not in containedHwType:
             continue
         IP_inst = IP(IP_name, layer_type, map(int, [BRAM, DSP, FF, LUT]), \
-                [XI_KER_PROC, XI_PIX_PROC, XI_IBUFF_DEPTH, XI_OBUFF_DEPTH, XI_WEIGHTBUFF_DEPTH])
+                [XI_KER_PROC, XI_PIX_PROC, XI_IBUFF_DEPTH, XI_OBUFF_DEPTH, XI_WEIGHTBUFF_DEPTH], numIPs)
         IPs.append(IP_inst)
     f.close()
     return IPs

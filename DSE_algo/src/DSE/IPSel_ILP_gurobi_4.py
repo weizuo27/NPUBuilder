@@ -13,7 +13,7 @@ sys.path.append(dir_path + "/../SchedulerCodeGen");
 from genSwFiles import *
 
 class IPSel():
-    def __init__(self, BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, Lat_budget, numIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, fixedRowStep):
+    def __init__(self, BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, Lat_budget, numIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, fixedRowStep, numConvIPs):
         status = "Undecided" 
 
         #Hard code the hardware supported layers
@@ -51,7 +51,7 @@ class IPSel():
             print "The number of IPs is "+str(numIPs) + "which is bigger than the biggest group size"
             return
 
-        IPs = generateIPs(IP_fileName, gs.containedHwType)
+        IPs = generateIPs(IP_fileName, gs.containedHwType, numConvIPs)
 
         IP_table = constructIPTable(IPs, BRAM_budget, DSP_budget, LUT_budget, \
                 FF_budget, gs.exploreLayerQueue, explore_IP_types, numIPs)

@@ -192,6 +192,7 @@ class graph:
         for n in g.nodes:
             n.mappedIP = None
             n.IP_latency_rowStep = None
+            n.latency = None
             n.lat_rowStep = None
             n.Pipelined = False
             n.start_time = None
