@@ -78,6 +78,7 @@ class optimizer:
 #            self.updateGraph(g, hw_layers)
 #            graphs.drawGraph(g)
             self.setPipelineFlag(hw_layers, g)
+            self.setRowStep(graphs.exploreLayerQueue[g])
             graphs.computeLatency(g)
             self.addPipelineNodes(g)
 #            self.simplifyGraph(g)
@@ -287,4 +288,7 @@ class optimizer:
             for idx in range(len(IPMappingTable[ip])-1):
                 g.add_edge(IPMappingTable[ip][idx], IPMappingTable[ip][idx+1])
 
-        
+    def setRowStep(exploreLayerQueue):
+        for ntype in exploreLayerQueue:
+            for n in exploreLayerQueue[ntype]:
+                n.setRowStep()

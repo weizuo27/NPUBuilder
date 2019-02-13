@@ -328,3 +328,22 @@ class layer(vertex):
         """
         self.start_time = timeStamp
 
+    def setRowStep(self):
+        assert self.mappedIP != None, "Cannot set row step if the mapped IP is not decided."
+        if self.type == "Convolution_g" or "Convolution":
+            XI_KER_PROC, XI_PIX_PROC, XI_IBUFF_DEPTH, \
+            XI_OBUFF_DEPTH, XI_WEIGHTBUFF_DEPTH = self.mappedIP.paramList
+            cout, cin, kw, kh, S, padding, group = map(int, self.paramList)
+            in_depth, in_height, in_width = map(int, layer.input_params[1:4])
+            out_depth, out_height, out_width = map(int, layer.output_params[1:4]) 
+
+            XI_IBUFF_DEPTH = int(XI_IBUFF_DEPTH)
+            XI_OBUFF_DEPTH - int(XI_OBUFF_DEPTH)
+
+            if self.firstLayer:
+                maxRowStepIn = ((XI_IBUFF_DEPTH/64)-kh) / S +1
+            else:
+                maxRowStepIn =((XI_IBUFF_DEPTH/(in_width * math.ceil(float(in_depth)/64))-kh)/S+1)/2
+            maxRowStepOut = XI_OBUFF_DEPTH/(out_width * math.ceil(float(out_depth)/32))
+
+            self.rowStep = max(maxRowStepIn, maxRowStepOut)
