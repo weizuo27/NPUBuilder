@@ -27,9 +27,9 @@ class IPSel():
         #Hard code the IP types we would like to explore
         explore_IP_types = { 
             "Convolution": 1,
-#            "Pooling" : 1,
+           # "Pooling" : 1,
             "Convolution_g" : 1 ,
-#            "Eltwise" : 1
+            #"Eltwise" : 1
         }   
 
         gs = graph(app_fileName, explore_IP_types, hw_layers, rowStep)
@@ -177,6 +177,9 @@ class IPSel():
 
             for g in latency_solution_tmp:
                 latency_solution[g] = latency_solution_tmp[g]
+	if not mapping_solution:
+	    print "No feasible solutions"
+	    return
 
         print "Final latency_achieved", lat_achieved, "each round latency is as follows"
         for g in latency_solution:
