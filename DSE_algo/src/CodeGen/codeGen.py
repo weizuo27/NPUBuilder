@@ -477,7 +477,7 @@ def genIPPackCmd(fileName, fileNameIPNameList, IP_g, batchSize):
     for ip in IP_g:
         if "IP" not in ip.name:
             continue
-        if ip.type == "Convolution" or "Convolution_g"
+        if ip.type == "Convolution" or ip.type == "Convolution_g":
             IPNAME = ip.name
 
             XI_KER_PROC, XI_PIX_PROC, XI_ISTAGE_BUFF, \
