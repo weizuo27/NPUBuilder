@@ -62,7 +62,7 @@ class IP():
             self.paramList =map(int, paramList)
 
     def resetForCSVUnNece(self):
-        if type == "Convolution_g":
+        if self.type == "Convolution_g":
             self.CSVparameterListUnNece = [self.csvUneceNums * [0]]
             self.CSVparameterListUnNece.append(self.csvUneceNums * [0])
             self.CSVparameterListUnNece[0][0] = 1
