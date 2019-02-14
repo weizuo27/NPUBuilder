@@ -13,7 +13,7 @@ class scheduler:
         resourceSharingVariables = dict()
         resourceTable = dict()
 #        bigConstant = 10000000000
-        bigConstant = 1000000
+        bigConstant = 10000000
         #1 create variable and resource table
         #Sort it so that I only need to whether there is a path between from n1 to n2
         node_list = list(nx.topological_sort(g))
@@ -41,9 +41,9 @@ class scheduler:
                 var_n2 = self.model.getVarByName(n2.name)
                 resourceSharingV = self.model.addVar(name = n1.name + "_" + n2.name, vtype = GRB.BINARY)
                 resourceSharingVariables[(n1, n2)] = resourceSharingV
-                #s1 > s2, s2 - s1 > l1
+                # s2 - s1 > l1
                 self.model.addConstr(var_n2 - var_n1 + bigConstant * resourceSharingV >= n1.latency)
-                #s2 > s1, s1 - s2 > l2
+                # s1 - s2 > l2
                 self.model.addConstr(var_n1 - var_n2 + bigConstant * (1-resourceSharingV) >= n2.latency)
 
         #B: The dependence constraints:
