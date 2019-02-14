@@ -12,7 +12,8 @@ class scheduler:
         schedulingVariables = []
         resourceSharingVariables = dict()
         resourceTable = dict()
-        bigConstant = 10000000000
+#        bigConstant = 10000000000
+        bigConstant = 1000000
         #1 create variable and resource table
         #Sort it so that I only need to whether there is a path between from n1 to n2
         node_list = list(nx.topological_sort(g))
