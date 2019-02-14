@@ -70,6 +70,29 @@ class resourceILPBuilder():
         if(verbose):
             print "addViolationPaths"
             print "Status: ", self.status
+
+        if(self.status == "Failed"):
+            return
+
+        exp_list_org = []
+        violation_path_length = len(violation_path)
+        def comp(elem):
+            return str(elem)
+        for l, vio_ip in violation_path:
+            vio_idx = IP_table[vio_ip.type].index(vio_ip)
+            idx_tmp = layerIPLatencyTable[l][1].index((vio_idx, vio_ip))
+            j_idx = layerIPLatencyTable[l][1][idx_tmp][0]
+            exp_list_org.append(self.mappingVariables[vio_ip.type][layerQueue[vio_ip.type].index(l)][j_idx])
+
+        exp_list_org.sort(key = comp)
+        if str(exp_list_org) not in self.violation_constraints_table:
+            self.violation_constraints_table[str(exp_list_org)] = 1 
+            self.model.addConstr(sum(exp_list_org) <= violation_path_length -1) 
+
+    def addViolationPaths2(self, violation_path, layerQueue, IP_table, layerIPLatencyTable, verbose):
+        if(verbose):
+            print "addViolationPaths"
+            print "Status: ", self.status
         if(self.status == "Failed"):
             return
         

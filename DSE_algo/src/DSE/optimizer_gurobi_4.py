@@ -49,7 +49,8 @@ class optimizer:
                     for lat in self.latency_table:
                         if lat > self.new_latency_target:
                             for violation_path in self.latency_table[lat]:
-#                                printViolationPath(violation_path)
+                                if(verbose):
+                                    printViolationPath(violation_path)
                                 self.rb.addViolationPaths(violation_path, graphs.exploreLayerQueue[g], IP_table, layerIPLatencyTable, verbose)
                     #re create the problem
                     self.rb.createProblem(verbose) 
@@ -96,8 +97,9 @@ class optimizer:
                     print "scheduling", status
                     print "new_ub", self.latency_ub, "new_lb", self.latency_lb, "new target,", self.new_latency_target
             else: #Failed
-#                print "scheduling", status
-#                printViolationPath(ret[0])
+                if verbose:
+                    print "scheduling", status
+                    printViolationPath(ret[0])
                 self.rb.addViolationPaths(ret[0], graphs.exploreLayerQueue[g], IP_table, layerIPLatencyTable, verbose)
 
             graphs.retriveOriginalGraph(g)
@@ -261,7 +263,7 @@ class optimizer:
         return "Success", accLat
     
     def printSchedulingMappingSol(self, graphs, hw_layers):
-#        graphs.printNodesMapping(hw_layers, self.mapping_solution)
+        graphs.printNodesMapping(hw_layers, self.mapping_solution)
         print "achieved latency", self.latency_achieved
 
     def updateGraph(self, g, hw_layers ):

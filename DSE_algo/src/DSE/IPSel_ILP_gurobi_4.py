@@ -27,7 +27,7 @@ class IPSel():
         #Hard code the IP types we would like to explore
         explore_IP_types = { 
             "Convolution": 1,
-#            "Pooling" : 1,
+            "Pooling" : 1,
             "Convolution_g" : 1 ,
 #            "Eltwise" : 1
         }   
@@ -49,7 +49,6 @@ class IPSel():
                     break
         if not legalNumIPs:
             print "The number of IPs is "+str(numIPs) + "which is bigger than the biggest group size"
-            return
 
         IPs = generateIPs(IP_fileName, gs.containedHwType, numConvIPs)
 
@@ -103,6 +102,13 @@ class IPSel():
             for ip in IPs:
                 tmp += ip.name + " "
             print str(nums), "iteration", " selected IPs: ", tmp
+            
+            numConvs = 0
+            for ip in IPs:
+                numConvs += ip.type == ("Convolution" or ip.type == "Convolution_g")
+            if numConvs != numConvIPs:
+                print "The number of convolution IPs is not correct"
+                continue
 
             #if the selected set of IPs are subset of the abandoned set, continue
             if self.isInAbandonTable(IPs):
