@@ -255,10 +255,15 @@ def genWrapper(g, n):
             n.args.append(portName)
             topArg.append(memIns[i] + " " + portName)
     #MEM IN
+    if n.type == "Convolution_g":
+        times = 2
+    else:
+        times = 1
+
     if(n.memInFlag):
 #        ports = g.edges[inEdge]['portNames']
 #        for i in range(len(list(ports))):
-        for i in range(len(memIns)):
+        for i in range(len(memIns) * times):
             portName = n.name+ "i"+str(i)
             n.args.append(portName)
             topArg.append(memIns[i] + " " + portName)
@@ -267,7 +272,7 @@ def genWrapper(g, n):
 #        ports = g.edges[outEdge]['portNames']
 #        print "ports", ports
 #        for i in range(len(list(ports))):
-        for i in range(len(memOuts)):
+        for i in range(len(memOuts) * times ):
             portName = n.name + "o"+str(i)
             n.args.append(portName);
             topArg.append(memOuts[i] + " " + portName)
@@ -472,7 +477,7 @@ def genIPPackCmd(fileName, fileNameIPNameList, IP_g, batchSize):
     for ip in IP_g:
         if "IP" not in ip.name:
             continue
-        if ip.type == "Convolution":
+        if ip.type == "Convolution" or "Convolution_g"
             IPNAME = ip.name
 
             XI_KER_PROC, XI_PIX_PROC, XI_ISTAGE_BUFF, \
