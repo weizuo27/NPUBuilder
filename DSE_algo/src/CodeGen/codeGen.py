@@ -263,19 +263,21 @@ def genWrapper(g, n):
     if(n.memInFlag):
 #        ports = g.edges[inEdge]['portNames']
 #        for i in range(len(list(ports))):
-        for i in range(len(memIns) * times):
-            portName = n.name+ "i"+str(i)
-            n.args.append(portName)
-            topArg.append(memIns[i] + " " + portName)
+        for j in range(times):
+            for i in range(len(memIns)):
+                portName = n.name+ "i"+str(j*times + i)
+                n.args.append(portName)
+                topArg.append(memIns[i] + " " + portName)
     #MEM OUT
     if(n.memOutFlag):
 #        ports = g.edges[outEdge]['portNames']
 #        print "ports", ports
 #        for i in range(len(list(ports))):
-        for i in range(len(memOuts) * times ):
-            portName = n.name + "o"+str(i)
-            n.args.append(portName);
-            topArg.append(memOuts[i] + " " + portName)
+        for j in range(times):
+            for i in range(len(memOuts)):
+                portName = n.name + "o"+str(j*len(memOuts) + i)
+                n.args.append(portName);
+                topArg.append(memOuts[i] + " " + portName)
     #STREAM IN
     if(n.streamInFlag):
         for edge in g.in_edges(n):
@@ -298,10 +300,19 @@ def genWrapper(g, n):
                 streamArgs.append((streamOuts[i], portName))
     #NECESSARY:
     notFirstLayer = 1 -int(n.firstLayer)
-    for i in range(len(neces) - notFirstLayer):
+    if n.type == "Convolution_g":
+        group_extra = 4
+    else:
+        group_extra = 0
+    for i in range(group_extra):
         portName = "n" + n.name + str(i)
         n.args.append(portName)
         topArg.append(neces[i] + " " + portName)
+
+    for i in range(group_extra, len(neces) - notFirstLayer+group_extra):
+        portName = "n" + n.name + str(i)
+        n.args.append(portName)
+        topArg.append(neces[i-group_extra] + " " + portName)
     #Args:
 #    if "ip_l" in n.name:
 #        return topArg, streamArgs, dispatcherList
