@@ -45,11 +45,11 @@ for l in writeList:
     fw.write(", ".join(l) + "\n")
 
 #For pooling
-l = ["IP"+str(idx+1), "Pooling", "51", "21", "6004", "4872", "1", "7533",  "1", "1", "1"]
+l = ["IP"+str(idx+1), "Pooling", "106", "37", "6004", "4872", "1", "7533",  "1", "1", "1"]
 fw.write(", ".join(l) + "\n")
 
 #For Eltwise
-l = ["IP"+str(idx+2), "Eltwise", "51", "21", "6004", "4872", "1", "7533",  "1", "1", "1"]
+l = ["IP"+str(idx+2), "Eltwise", "48", "28", "6004", "4872", "1", "7533",  "1", "1", "1"]
 fw.write(", ".join(l) + "\n")
 fw.close()
 
