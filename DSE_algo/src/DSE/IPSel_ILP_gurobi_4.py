@@ -105,7 +105,7 @@ class IPSel():
             
             numConvs = 0
             for ip in IPs:
-                numConvs += ip.type == ("Convolution" or ip.type == "Convolution_g")
+                numConvs += (ip.type == "Convolution" or ip.type == "Convolution_g")
             if numConvs != numConvIPs:
                 print "The number of convolution IPs is not correct"
                 continue
@@ -131,6 +131,7 @@ class IPSel():
                     continue
                 for ip_type in gs.exploreLayerQueue[g]:
                     if ip_type not in IP_dict:
+			print ip_type, "not in IP dict"
                         valid = False
                         break
                 if not valid:
