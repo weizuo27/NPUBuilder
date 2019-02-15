@@ -208,6 +208,7 @@ def genCSVFile(IP_g, roundIdx, fileName):
 #            continue
         if(ip_inst.type == "DDR"):
             continue
+        csvParamList.append(ip_inst.type)
         if ip_inst.type == "Convolution_g":
             #gen Div
 
