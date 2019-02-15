@@ -59,7 +59,7 @@ def genGroupConv(
 
     ipCallGroup0+="\t"+ipName+"::Convolution(\n\t\t"
     ipCallGroup1+="\t"+ipName+"::Convolution(\n\t\t"
-    ipCallGroup0+=infoDict["IPArgs"][0]+",\n\t\t"
+    
     ipCallGroup1+=infoDict["IPArgs"][1]+",\n\t\t"  
     if( "HasMemIn" in infoDict):
         ipCallGroup0+=infoDict["HasMemIn"][0]+",\n\t\t"
@@ -88,19 +88,27 @@ def genGroupConv(
     if( "Weights" in infoDict):
         if(len( infoDict["Weights"]) == 4):
             ipCallGroup0+=infoDict["Weights"][0]+",\n\t\t"
-            ipCallGroup0+=infoDict["Weights"][1]+"\n#ifdef __SDSVHLS__ \n\t\t, ap_clk_div2\n#else\n\t\t, 0\n#endif\n\t\t"
+            ipCallGroup0+=infoDict["Weights"][1]+",\n\t\t"
+            ipCallGroup0+=infoDict["IPArgs"][0]+"\n\t\t"
+            ipCallGroup0+="\n#ifdef __SDSVHLS__ \n\t\t, ap_clk_div2\n#else\n\t\t, 0\n#endif\n\t\t"
+
             ipCallGroup1+=infoDict["Weights"][2]+",\n\t\t"
-            ipCallGroup1+=infoDict["Weights"][3]+"\n#ifdef __SDSVHLS__ \n\t\t, ap_clk_div2\n#else\n\t\t, 0\n#endif\n\t\t"
+            ipCallGroup1+=infoDict["Weights"][3]+",\n\t\t"
+            ipCallGroup1+="\n#ifdef __SDSVHLS__ \n\t\t, ap_clk_div2\n#else\n\t\t, 0\n#endif\n\t\t"   
         else:
             ipCallGroup0+=infoDict["Weights"][0]+",\n\t\t"
             ipCallGroup0+=infoDict["Weights"][1]+",\n\t\t"
             ipCallGroup0+=infoDict["Weights"][2]+",\n\t\t"
-            ipCallGroup0+=infoDict["Weights"][3]+"\n#ifdef __SDSVHLS__ \n\t\t, ap_clk_div2\n#else\n\t\t, 0\n#endif\n\t\t"
-
+            ipCallGroup0+=infoDict["Weights"][3]+",\n\t\t"
+            ipCallGroup0+=infoDict["IPArgs"][0]+"\n\t\t"
+            ipCallGroup0+="\n#ifdef __SDSVHLS__ \n\t\t, ap_clk_div2\n#else\n\t\t, 0\n#endif\n\t\t"
             ipCallGroup1+=infoDict["Weights"][4]+",\n\t\t"
             ipCallGroup1+=infoDict["Weights"][5]+",\n\t\t"
             ipCallGroup1+=infoDict["Weights"][6]+",\n\t\t"
-            ipCallGroup1+=infoDict["Weights"][7]+"\n#ifdef __SDSVHLS__ \n\t\t, ap_clk_div2\n#else\n\t\t, 0\n#endif\n\t\t"
+            ipCallGroup1+=infoDict["Weights"][7]+",\n\t\t"
+            ipCallGroup1+=infoDict["IPArgs"][1]+"\n\t\t"
+            ipCallGroup1+="\n#ifdef __SDSVHLS__ \n\t\t, ap_clk_div2\n#else\n\t\t, 0\n#endif\n\t\t"
+
     ipCallGroup0+="\t);\n"
     ipCallGroup1+="\t);\n"
     
