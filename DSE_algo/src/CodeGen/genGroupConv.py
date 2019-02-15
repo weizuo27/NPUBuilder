@@ -43,7 +43,7 @@ def genGroupConv(
 
     divCall=""
     if( 'HasDiv' in infoDict and 'HasStreamIn' in infoDict ):
-        divCall+=divToConvStreamdeclare;
+
         divCall+="\tdividor(\n\t\t"
         divCall+=infoDict["HasDiv"][0]+",\n\t\t"
         divCall+=infoDict["HasStreamIn"][0]+",\n\t\t"
