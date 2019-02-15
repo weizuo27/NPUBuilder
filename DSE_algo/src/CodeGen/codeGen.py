@@ -286,7 +286,7 @@ def genWrapper(g, n):
 
     ConvPortTable = dict()
     if n.type == "Convolution_g":
-        ConvPortTable["IPName"] = n.name
+        ConvPortTable["IPName"] = [n.name]
 
 
     if(n.memInFlag):
@@ -356,20 +356,22 @@ def genWrapper(g, n):
     else:
         group_extra = 0
 
+    #add weight
+    if n.type == "Convolution_g":
+        ConvPortTable["Weights"] = []
     for i in range(group_extra):
         portName = "n" + n.name + str(i)
         n.args.append(portName)
         topArg.append(neces[i] + " " + portName)
+        if(n.type == "Convolution_g"):
+            ConvPortTable["Weights"].append(portName)
 
-    #add weight
-    if n.type == "Convolution_g":
-        ConvPortTable["Weights"] = []
+
     for i in range(group_extra, group_extra+weightPortNumber):
         portName = "n"+n.name+str(i)
         n.args.append(portName)
         topArg.append(neces[i-group_extra] + " " + portName)
         if(n.type == "Convolution_g"):
-            print "abcd", weightPortNumber
             ConvPortTable["Weights"].append(portName)
 
     #add others

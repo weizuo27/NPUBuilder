@@ -27,7 +27,7 @@ def CSVconfigNece(n, ip_inst):
                 In = int(ip_inst.memInFlag)
                 In1st = int(n.firstLayer)
                 ipName  = ip_inst.name.split("_")[0]
-                ip_inst.CSVparameterListNecessary.append([weight, Out, In, In1st, ip_inst])
+                ip_inst.CSVparameterListNecessary.append([weight, Out, In, In1st, ipName])
 #                ip_inst.CSVparameterListNecessary.append([weight, Out, In, In1st,ipName])
     elif ip_inst.type == "Pooling":
         if(not ip_inst.necessaryHasSet):
