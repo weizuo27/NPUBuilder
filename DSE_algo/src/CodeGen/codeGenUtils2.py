@@ -208,10 +208,24 @@ def genCSVFile(IP_g, roundIdx, fileName):
 #            continue
         if(ip_inst.type == "DDR"):
             continue
-        csvParamList.append(ip_inst.type)
         if ip_inst.type == "Convolution_g":
+            #gen Div
+
+            idle = ip_inst.CSVparameterListUnNece[0][0]
+            GroupLayerIdx = ip_inst.CSVparameterListUnNece[0][3]
+            IPIdx = ip_inst.CSVparameterListNecessary[0][4]
+
+            if ip_inst.streamInFlag:
+                csvParamList.append("Divider")
+                csvParamList +=[idle, GroupLayerIdx, IPIdx]
+
+            csvParamList.append(ip_inst.type)
             for i in range(2):
                 csvParamList += (ip_inst.CSVparameterListNecessary[i] + ip_inst.CSVparameterListUnNece[i])
+            #gen Comb
+            if ip_inst.streamOutFlag:
+                csvParamList.append("Combiner")
+                csvParamList+=[idle, GroupLayerIdx, IPIdx]
         else:
             csvParamList += (ip_inst.CSVparameterListNecessary + ip_inst.CSVparameterListUnNece)
     csvParamList.append("END")

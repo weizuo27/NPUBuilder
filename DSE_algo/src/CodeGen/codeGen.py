@@ -7,6 +7,7 @@ from MUX import *
 from codeGenUtils import *
 from codeGenUtils2 import *
 from genDispatcher import *
+from genGroupConv import *
 
 class ip:
     def __init__(self, name, type_):
@@ -103,7 +104,7 @@ def genStreamPorts(streamArgs, fileName):
         f.write("\t\t static hls::stream< " + arg[0] + " > " + arg[1] + ";\n")
     f.close() 
 
-def genSubFunction(n, fileName):
+def genSubFunction(n, fileName, ConvPortTableTotal):
     if n.type == "DDR":
         return
 #    if "ip_l" in n.name:
@@ -116,6 +117,7 @@ def genSubFunction(n, fileName):
         f.write("#ifdef __CSIM___\n")
         f.write("LABEL_"+n.name+":\n")
         f.write("#endif\n")
+
 
         f.write("\t\t"+functionName + "(\n")
 #        if n.type == "Eltwise":
@@ -130,6 +132,24 @@ def genSubFunction(n, fileName):
             else:
                 f.write("\t\t\t"+arg+"\n")
         f.write("\t\t);\n");
+
+        #add csim labels
+        f.write("#ifdef __CSIM___\n")
+        f.write("goto LABEL_"+n.name+"_NEXT;\n")
+        f.write("#endif\n")
+
+        f.close()
+    elif n.type == "Convolution_g":
+        f = open(fileName, 'a')
+
+        #add csim labels
+        f.write("#ifdef __CSIM___\n")
+        f.write("LABEL_"+n.name+":\n")
+        f.write("#endif\n")
+
+        #add function body
+        ConvPortTable = ConvPortTableTotal[n]
+        f.write(genGroupConv(ConvPortTable))
 
         #add csim labels
         f.write("#ifdef __CSIM___\n")
@@ -191,13 +211,17 @@ def genTop(g, outDir, batchSize):
 
 
 
+    ConvPortTableTotal = dict()
     for n in g:
         if n.type == "DDR":
             continue
-        a, b, c = (genWrapper(g, n))
+        a, b, c, d = (genWrapper(g, n))
         topArgs.append(a)
         streamArgs += b
         ArgDispatchArgs += c
+        if n.type == "Convolution_g":
+            ConvPortTableTotal[n] = d
+
 
     #genCPP
     fileName = outDir + "/pipeSystem.cpp"
@@ -209,7 +233,7 @@ def genTop(g, outDir, batchSize):
     dispatcherCall(fileName, memNameOnly, ArgDispatchArgs)
 
     for n in g:
-        genSubFunction(n, fileName)
+        genSubFunction(n, fileName, ConvPortTableTotal)
     genTopFunctionRail(fileName)
 
     #genHeaderFile
@@ -260,26 +284,38 @@ def genWrapper(g, n):
     else:
         times = 1
 
+    ConvPortTable = dict()
+    if n.type == "Convolution_g":
+        ConvPortTable["IPName"] = n.name
+
+
     if(n.memInFlag):
 #        ports = g.edges[inEdge]['portNames']
 #        for i in range(len(list(ports))):
+        if n.type == "Convolution_g":
+            ConvPortTable["HasMemIn"] = []
         for j in range(times):
             for i in range(len(memIns)):
                 portName = n.name+ "i"+str(j*times + i)
                 n.args.append(portName)
                 topArg.append(memIns[i] + " " + portName)
+                if n.type == "Convolution_g":
+                    ConvPortTable["HasMemIn"].append(portName)
     #MEM OUT
     if(n.memOutFlag):
-#        ports = g.edges[outEdge]['portNames']
-#        print "ports", ports
-#        for i in range(len(list(ports))):
+        if n.type == "Convolution_g":
+            ConvPortTable["HasMemOut"] = []
         for j in range(times):
             for i in range(len(memOuts)):
                 portName = n.name + "o"+str(j*len(memOuts) + i)
                 n.args.append(portName);
                 topArg.append(memOuts[i] + " " + portName)
+                if n.type == "Convolution_g":
+                    ConvPortTable["HasMemOut"].append(portName)
     #STREAM IN
     if(n.streamInFlag):
+        if n.type == "Convolution_g":
+            ConvPortTable["HasStreamIn"] = []
         for edge in g.in_edges(n):
             if edge[0].type == "DDR":
                 continue
@@ -288,8 +324,12 @@ def genWrapper(g, n):
                 portName = "S"+str(ports[i])
                 n.args.append(portName)
                 streamArgs.append((streamIns[i], portName))
+                if n.type == "Convolution_g":
+                    ConvPortTable["HasStreamIn"].append(portName)
     #SRTEAM OUT
     if(n.streamOutFlag):
+        if n.type == "Convolution_g":
+            ConvPortTable["HasStreamOut"] = []
         for edge in g.out_edges(n):
             if edge[1].type == "DDR":
                 continue
@@ -298,42 +338,71 @@ def genWrapper(g, n):
                 portName = "S"+str(ports[i])
                 n.args.append(portName)
                 streamArgs.append((streamOuts[i], portName))
+                if n.type == "Convolution_g":
+                    ConvPortTable["HasStreamOut"].append(portName)
     #NECESSARY:
     notFirstLayer = 1 -int(n.firstLayer)
+    if n.type == "Convolution_g" or n.type == "Convolution":
+        XI_KER_PROC = n.paramList[0]
+        if XI_KER_PROC <= 8:
+            weightPortNumber = 2
+        else:
+            weightPortNumber = 4
+    else:
+        weightPortNumber = 0
+
     if n.type == "Convolution_g":
-        group_extra = 4
+        group_extra = weightPortNumber
     else:
         group_extra = 0
+
     for i in range(group_extra):
         portName = "n" + n.name + str(i)
         n.args.append(portName)
         topArg.append(neces[i] + " " + portName)
 
-    for i in range(group_extra, len(neces) - notFirstLayer+group_extra):
+    #add weight
+    if n.type == "Convolution_g":
+        ConvPortTable["Weights"] = []
+    for i in range(group_extra, group_extra+weightPortNumber):
+        portName = "n"+n.name+str(i)
+        n.args.append(portName)
+        topArg.append(neces[i-group_extra] + " " + portName)
+        if(n.type == "Convolution_g"):
+            print "abcd", weightPortNumber
+            ConvPortTable["Weights"].append(portName)
+
+    #add others
+    for i in range(group_extra+weightPortNumber, len(neces) - notFirstLayer+group_extra):
         portName = "n" + n.name + str(i)
         n.args.append(portName)
         topArg.append(neces[i-group_extra] + " " + portName)
     #Args:
 #    if "ip_l" in n.name:
 #        return topArg, streamArgs, dispatcherList
-        
     if n.type == "Convolution_g":
         if n.streamInFlag:
             portName = "sArg"+n.name + "Div"
             n.args.append(portName)
             streamArgs.append(("int", portName))
             dispatcherList.append((portName, 'Divider'))
+            ConvPortTable["HasDiv"]=[portName]
 
-        portName = "sArg"+n.name
-        n.args.append(portName)
-        streamArgs.append(("int", portName))
-        dispatcherList.append((portName, n.type))
+        ConvPortTable["IPArgs"] = []
+
+        for i in range(2):
+            portName = "sArg"+n.name+str(i)
+            n.args.append(portName)
+            streamArgs.append(("int", portName))
+            dispatcherList.append((portName, n.type))
+            ConvPortTable["IPArgs"].append(portName)
 
         if n.streamOutFlag:
             portName = "sArg"+n.name + "Comb"
             n.args.append(portName)
             streamArgs.append(("int", portName))
             dispatcherList.append((portName, 'Combiner'))
+            ConvPortTable["HasComb"] = [portName]
     else:
         portName = "sArg"+n.name
         n.args.append(portName)
@@ -343,7 +412,7 @@ def genWrapper(g, n):
     #dispatcherList:
         
 #    print "streamArgs", streamArgs
-    return topArg, streamArgs, dispatcherList
+    return topArg, streamArgs, dispatcherList,ConvPortTable
 
 def genTopFunctionPre(topArgs, fileName, headerFile = False):
     f = open(fileName, "a")
