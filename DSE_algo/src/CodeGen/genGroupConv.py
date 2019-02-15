@@ -44,7 +44,7 @@ def genGroupConv(
     divCall=""
     if( 'HasDiv' in infoDict and 'HasStreamIn' in infoDict ):
 
-        divCall+="\tdividor(\n\t\t"
+        divCall+="\tdivider(\n\t\t"
         divCall+=infoDict["HasDiv"][0]+",\n\t\t"
         divCall+=infoDict["HasStreamIn"][0]+",\n\t\t"
         divCall+=infoDict["HasStreamIn"][1]+",\n\t\t"
