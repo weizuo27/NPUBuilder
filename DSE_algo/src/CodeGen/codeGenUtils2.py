@@ -218,15 +218,18 @@ def genCSVFile(IP_g, roundIdx, fileName):
 
             if ip_inst.streamInFlag:
                 csvParamList.append("Divider")
-                csvParamList +=[idle, GroupLayerIdx, IPIdx]
+                idle_d = not(ip_inst.CSVparameterListUnNece[0][1])
+                csvParamList +=[idle_d, GroupLayerIdx, IPIdx]
 
             csvParamList.append(ip_inst.type)
             for i in range(2):
                 csvParamList += (ip_inst.CSVparameterListNecessary[i] + ip_inst.CSVparameterListUnNece[i])
             #gen Comb
             if ip_inst.streamOutFlag:
+                print ip_inst.CSVparameterListUnNece
+                idle_c = not(ip_inst.CSVparameterListUnNece[0][2])
                 csvParamList.append("Combiner")
-                csvParamList+=[idle, GroupLayerIdx, IPIdx]
+                csvParamList+=[idle_c, GroupLayerIdx, IPIdx]
         else:
             csvParamList += (ip_inst.CSVparameterListNecessary + ip_inst.CSVparameterListUnNece)
     csvParamList.append("END")

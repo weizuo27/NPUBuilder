@@ -346,6 +346,7 @@ def genWrapper(g, n):
         XI_KER_PROC = n.paramList[0]
         if XI_KER_PROC <= 8:
             weightPortNumber = 2
+            neces = neces[2:]
         else:
             weightPortNumber = 4
     else:
@@ -375,6 +376,7 @@ def genWrapper(g, n):
             ConvPortTable["Weights"].append(portName)
 
     #add others
+    print group_extra, weightPortNumber, len(neces), notFirstLayer, group_extra, "abc"
     for i in range(group_extra+weightPortNumber, len(neces) - notFirstLayer+group_extra):
         portName = "n" + n.name + str(i)
         n.args.append(portName)
