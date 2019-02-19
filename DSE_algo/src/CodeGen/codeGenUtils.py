@@ -164,6 +164,14 @@ def readTemplate(funcType):
     return memIns, memOuts, neces, streamIns, streamOuts
 
 
+def genRowStepFile(graph_list,outDir):
+    f = open(outDir+"/rowSteps", "w")
+    for g in graph_list:
+        for n in g.nodes:
+            f.write(str(n.ID) + ", " + str(n.rowStep)+"\n")
+    f.close()
+
+
 
 
 #mIn,mOut,neces, sIns, sOuts = readTemplate("Convolution")

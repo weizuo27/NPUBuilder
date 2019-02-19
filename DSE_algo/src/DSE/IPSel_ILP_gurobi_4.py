@@ -27,7 +27,7 @@ class IPSel():
         #Hard code the IP types we would like to explore
         explore_IP_types = { 
             "Convolution": 1,
-#            "Pooling" : 1,
+            "Pooling" : 1,
             "Convolution_g" : 1 ,
 #            "Eltwise" : 1
         }   
@@ -43,10 +43,9 @@ class IPSel():
 		length = 0
 		for layerType in gs.exploreLayerQueue[g]:
 		    length += len(gs.exploreLayerQueue[g][layerType])
-		print length
-                if length >= numIPs:
-                    legalNumIPs = True
-                    break
+            if length >= numIPs:
+                legalNumIPs = True
+            break
         if not legalNumIPs:
             print "The number of IPs is "+str(numIPs) + "which is bigger than the biggest group size"
 
@@ -207,6 +206,9 @@ class IPSel():
         os.system("mkdir -p " + outHwDir)
         os.system("mkdir -p " + outSwDir)
 
+        #rowStepGen
+        genRowStepFile(final_graph_list, outHwDir) 
+
         #Gen HW
         IP_g = createIPGraph(final_graph_list, hw_layers)
         expandGraph(IP_g)
@@ -300,6 +302,7 @@ def reorderMapping(mapping_solution, hw_layers):
     #Collect the set of IPs for each IP ID
     IPs = dict()
     pipelinedDict = dict()
+    rowStepDict = dict()
     IPsIdx =  dict()
     firstLayerName = ""
     for g in mapping_solution:
@@ -310,6 +313,7 @@ def reorderMapping(mapping_solution, hw_layers):
                         if m.firstLayer:
                             firstLayerName = m.name
                         pipelinedDict[m.name] = m.Pipelined
+                        rowStepDict[m.name] = m.rowStep
                         IPName = m.mappedIP.name.split("_")[0]
                         if IPName not in IPs:
                             IPs[IPName] = set([m.mappedIP]) 
@@ -320,6 +324,7 @@ def reorderMapping(mapping_solution, hw_layers):
                     if n.firstLayer:
                         firstLayerName = n.name
                     pipelinedDict[n.name] = n.Pipelined
+                    rowStepDict[n.name] = n.rowStep
                     IPName = n.mappedIP.name.split("_")[0]
                     if IPName not in IPs:
                         IPs[IPName] = set([n.mappedIP]) 
@@ -350,6 +355,7 @@ def reorderMapping(mapping_solution, hw_layers):
                 IPName = n.mappedIP.name.split("_")[0]
                 n.mappedIP = IPs[IPName][IPsIdx[IPName]]
                 n.Pipelined = pipelinedDict[n.name]
+                n.rowStep = rowStepDict[n.name]
                 if n.name == firstLayerName:
                     n.firstLayer = True
                     n.mappedIP.firstLayer = True
