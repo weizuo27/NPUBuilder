@@ -180,9 +180,9 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers, outDir):
                             else:
                                  muxSel == None
                         CSVconfigUnNece(n, ip_inst, s, t, False, layerIdxTable, poolingTypeTable,  muxSel)
+            callOrder.append(t.mappedIP.name)
         genCSVFile(IP_g, roundIdx, fileName)
 
-        callOrder.append(t.mappedIP.name)
         callOrderList = []
 #        nSplit(callOrder, callOrderList)
 #        for n in callOrderList:
