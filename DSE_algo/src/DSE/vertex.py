@@ -341,7 +341,7 @@ class layer(vertex):
             out_depth, out_height, out_width = map(int, self.output_params[1:4]) 
 
             XI_IBUFF_DEPTH = int(XI_IBUFF_DEPTH)
-            XI_OBUFF_DEPTH - int(XI_OBUFF_DEPTH)
+            XI_OBUFF_DEPTH = int(XI_OBUFF_DEPTH)
 
             if self.firstLayer:
                 maxRowStepIn = ((XI_IBUFF_DEPTH/64)-kh)/ S +1
@@ -349,4 +349,4 @@ class layer(vertex):
                 maxRowStepIn =((XI_IBUFF_DEPTH/(in_width * math.ceil(float(in_depth)/64))-kh)/S+1)/2
             maxRowStepOut = XI_OBUFF_DEPTH/(out_width * math.ceil(float(out_depth)/32))
 
-            self.rowStep = min(out_height, max(int(maxRowStepIn), int(maxRowStepOut)))
+            self.rowStep = min(out_height, min(int(maxRowStepIn), int(maxRowStepOut)))
