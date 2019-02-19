@@ -76,7 +76,7 @@ void setArgs(
             else{
                 int weightlen = params[i+7];
                 newArg = (int*)sds_alloc_non_cacheable(weightlen * sizeof(char));
-                load_file<char>(("weight/weight_"+tostring(layerId)+"_"+tostring(i+1)).c_str(), (void*)newArg, weightlen);
+                load_file<char>(("weights/weight_"+tostring(layerId)+"_"+tostring(i+1)).c_str(), (void*)newArg, weightlen);
             }
             newArgs.push_back((void*)newArg);
             argumentstoFunction.push_back(newArg);
