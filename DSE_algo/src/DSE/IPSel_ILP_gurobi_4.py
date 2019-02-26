@@ -201,7 +201,7 @@ class IPSel():
         for g in latency_list:
             print "round contain"
             for n in g.nodes:
-                print n.name
+                print n.name,
             print ", total latency is ", latency_solution[g], "\n"
 
         #After the is done, re-order the mapping
