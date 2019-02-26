@@ -188,10 +188,20 @@ class IPSel():
 	    return
 
         print "Final latency_achieved", lat_achieved, "each round latency is as follows"
+        def comp(item):
+            for n in item.nodes:
+                if n.type in hw_layers:
+                    return n.ID
+
+        latency_list = []
+
         for g in latency_solution:
+            latency_list.append(g)
+        latency_list.sort(key=comp)
+        for g in latency_list:
             print "round contain"
             for n in g.nodes:
-                print n.name,
+                print n.name
             print ", total latency is ", latency_solution[g], "\n"
 
         #After the is done, re-order the mapping
