@@ -164,7 +164,7 @@ class IP():
                         int(out_height), 
                         int(out_width),
 #                    int(cout/group),
-                        int(cout),
+                        int(cout/group),
                         int(cin), 
                         int(S), int(kh), int(kw), int(padding),
                         int(0),  #group
