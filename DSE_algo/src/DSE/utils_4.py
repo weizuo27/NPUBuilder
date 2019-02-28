@@ -69,7 +69,7 @@ def constructIPTable(IPs, BRAM_budget, DSP_budget, FF_budget, LUT_budget, layerQ
 
         IP_type = ip.type
         maxIPnum = max(maxIPnum, IP_num)
-        print ip.name, ip.type, "IP_num", IP_num
+#        print ip.name, ip.type, "IP_num", IP_num
         for i in range(IP_num):
             new_ip = deepcopy(ip)
             new_ip.name += ("_"+str(i))

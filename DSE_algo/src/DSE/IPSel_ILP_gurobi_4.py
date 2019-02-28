@@ -13,7 +13,9 @@ sys.path.append(dir_path + "/../SchedulerCodeGen");
 from genSwFiles import *
 
 class IPSel():
-    def __init__(self, BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, Lat_budget, numIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, fixedRowStep, numConvIPs):
+    def __init__(self):
+        None
+    def run(self, BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, Lat_budget, numOtherIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, fixedRowStep):
         status = "Undecided" 
 
         #Hard code the hardware supported layers
@@ -32,162 +34,187 @@ class IPSel():
             # "Eltwise" : 1
         }   
 
-        gs = graph(app_fileName, explore_IP_types, hw_layers, rowStep)
-#        for g in gs.graphs:
-#            gs.drawGraph(g)
-        
-        #if the numIPs is bigger than the group size, then should exit
-        legalNumIPs = False
-        for g in gs.graphs:
-            if g in gs.exploreLayerQueue:
-		length = 0
-		for layerType in gs.exploreLayerQueue[g]:
-		    length += len(gs.exploreLayerQueue[g][layerType])
-            if length >= numIPs:
-                legalNumIPs = True
-            break
-        if not legalNumIPs:
-            print "The number of IPs is "+str(numIPs) + "which is bigger than the biggest group size"
+        numConvIPs = 0
+        lat_achieved_total = Lat_budget
+        latency_solution_total = None
+        mapping_solution_total = None
+        numConvIPs_total = 0
+        numIPs_total = 0
 
-        IPs = generateIPs(IP_fileName, gs.containedHwType, numConvIPs)
-
-        IP_table = constructIPTable(IPs, BRAM_budget, DSP_budget, LUT_budget, \
-                FF_budget, gs.exploreLayerQueue, explore_IP_types, numIPs)
-
-        if IP_table is None:
-            print "Cannot fit in " + str(numIPs) +", exiting...\n"
-            return
-
-        IP_table_per_layer_org = genIPTablePerLayer(IP_table, gs.exploreLayerQueue, hw_layers)
-
-        layerIPLatencyTable_org = computeIPLatencyPerLayer(IP_table, gs.exploreLayerQueue, hw_layers, IP_table_per_layer_org)
-
-        #Flatten the IP_table
-        IP_list = []
-        for layer_type in IP_table:
-            if layer_type in explore_IP_types:
-                IP_list += IP_table[layer_type]
-
-        def comp(elem):
-            return -(elem.BRAM + elem.DSP)
-
-        IP_list.sort(key = comp)
-        lat_achieved = Lat_budget
-        mapping_solution = dict()
-        latency_solution = dict()
-        self.abandonTable = dict()
-
-
-        allIPs = [ip for ip in itertools.combinations(IP_list, numIPs) if (\
-        (sum(item.BRAM for item in ip) < BRAM_budget) and \
-        (sum(item.DSP for item in ip) < DSP_budget) and \
-        (sum(item.LUT for item in ip) < LUT_budget) and \
-        (sum(item.FF for item in ip) < FF_budget) and \
-        (sum(item.BRAM for item in ip) > 0.5 * BRAM_budget) and \
-        (sum(item.DSP for item in ip) > 0.5 * DSP_budget)) ]
-        
-        #pick N IPs out of the IP list
-        numIters = ncr(len(IP_list), numIPs)
-        print "There are", numIters, "iterations before optimization, Now there are " + \
-            str(len(allIPs)) + " iterations."
-	if len(allIPs) == 0:
-	    return
-
-        nums = 0
-
-        for IPs in allIPs:
-            nums += 1
-            tmp = ""
-            for ip in IPs:
-                tmp += ip.name + " "
-            print str(nums), "iteration", " selected IPs: ", tmp
+        while(1):
+            numConvIPs += 1
+            numIPs = numConvIPs + numOtherIPs
+#            print "\n\nNumber of Convolution IP is ", numConvIPs, numIPs,"\n\n"
+            gs = graph(app_fileName, explore_IP_types, hw_layers, rowStep)
             
-            numConvs = 0
-            for ip in IPs:
-                numConvs += (ip.type == "Convolution" or ip.type == "Convolution_g")
-            if numConvs != numConvIPs:
-                print "The number of convolution IPs is not correct"
-                continue
-
-            #if the selected set of IPs are subset of the abandoned set, continue
-            if self.isInAbandonTable(IPs):
-                print "IPs in abandonTable"
-                continue
-            self.updateAbandonTable(IPs)
-
-            IP_dict = dict()
-            valid = True
-            for ip in IPs:
-                if ip.type not in IP_dict:
-                    IP_dict[ip.type] = [ip]
-                else:
-                    IP_dict[ip.type].append(ip)
-
-            #If some of the layers'type is not in the current IP selection, then continue
-            layerQueue = []
+            #if the numIPs is bigger than the group size, then should exit
+            legalNumIPs = False
             for g in gs.graphs:
-                if g not in gs.exploreLayerQueue:
+                if g in gs.exploreLayerQueue:
+                    length = 0
+                    for layerType in gs.exploreLayerQueue[g]:
+                        length += len(gs.exploreLayerQueue[g][layerType])
+                    if length >= numIPs:
+                        legalNumIPs = True
+                    break
+            if not legalNumIPs:
+                print "The number of IPs is "+str(numIPs) + "which is bigger than the biggest group size"
+                break
+
+            IPs = generateIPs(IP_fileName, gs.containedHwType, numConvIPs)
+
+            IP_table = constructIPTable(IPs, BRAM_budget, DSP_budget, LUT_budget, \
+                    FF_budget, gs.exploreLayerQueue, explore_IP_types, numIPs)
+
+            if IP_table is None:
+                print "Cannot fit in " + str(numIPs) +", exiting...\n"
+                break
+
+            IP_table_per_layer_org = genIPTablePerLayer(IP_table, gs.exploreLayerQueue, hw_layers)
+
+            layerIPLatencyTable_org = computeIPLatencyPerLayer(IP_table, gs.exploreLayerQueue, hw_layers, IP_table_per_layer_org)
+
+            #Flatten the IP_table
+            IP_list = []
+            for layer_type in IP_table:
+                if layer_type in explore_IP_types:
+                    IP_list += IP_table[layer_type]
+
+            def comp(elem):
+                return -(elem.BRAM + elem.DSP)
+
+            IP_list.sort(key = comp)
+            lat_achieved = Lat_budget
+            mapping_solution = dict()
+            latency_solution = dict()
+            self.abandonTable = dict()
+
+
+            allIPs = [ip for ip in itertools.combinations(IP_list, numIPs) if (\
+            (sum(item.BRAM for item in ip) < BRAM_budget) and \
+            (sum(item.DSP for item in ip) < DSP_budget) and \
+            (sum(item.LUT for item in ip) < LUT_budget) and \
+            (sum(item.FF for item in ip) < FF_budget) and \
+            (sum(item.BRAM for item in ip) > 0.5 * BRAM_budget) and \
+            (sum(item.DSP for item in ip) > 0.5 * DSP_budget)) ]
+            
+            #pick N IPs out of the IP list
+            numIters = ncr(len(IP_list), numIPs)
+            print "There are", numIters, "iterations before optimization, Now there are " + \
+                str(len(allIPs)) + " iterations."
+
+            if len(allIPs) == 0:
+                print "Cannot fit in " + str(numIPs) +", exiting...\n"
+                break
+
+            nums = 0
+
+            for IPs in allIPs:
+                nums += 1
+                tmp = ""
+                for ip in IPs:
+                    tmp += ip.name + " "
+                print str(nums), "iteration", " selected IPs: ", tmp
+                
+                numConvs = 0
+                for ip in IPs:
+                    numConvs += (ip.type == "Convolution" or ip.type == "Convolution_g")
+                if numConvs != numConvIPs:
+                    print "The number of convolution IPs is not correct"
                     continue
-                for ip_type in gs.exploreLayerQueue[g]:
-                    if ip_type not in IP_dict:
-			print ip_type, "not in IP dict"
-                        valid = False
+
+                #if the selected set of IPs are subset of the abandoned set, continue
+                if self.isInAbandonTable(IPs):
+                    print "IPs in abandonTable"
+                    continue
+                self.updateAbandonTable(IPs)
+
+                IP_dict = dict()
+                valid = True
+                for ip in IPs:
+                    if ip.type not in IP_dict:
+                        IP_dict[ip.type] = [ip]
+                    else:
+                        IP_dict[ip.type].append(ip)
+
+                #If some of the layers'type is not in the current IP selection, then continue
+                layerQueue = []
+                for g in gs.graphs:
+                    if g not in gs.exploreLayerQueue:
+                        continue
+                    for ip_type in gs.exploreLayerQueue[g]:
+                        if ip_type not in IP_dict:
+                            print ip_type, "not in IP dict"
+                            valid = False
+                            break
+                    if not valid:
                         break
                 if not valid:
-                    break
-            if not valid:
-                print "some of the layers type not in the current IP selection, continue"
-                continue
-            acc_lat = 0
-            #Generate the IP_table_per_layer and layerIPLatencyTable 
-            IP_table_per_layer = genIPTablePerLayer(IP_dict, gs.exploreLayerQueue, hw_layers)
-            if IP_table_per_layer is None:
-                print "cannot find valid IP table per layer, continue"
-                continue
-
-            layerIPLatencyTable = computeIPLatencyPerLayer(IP_dict, gs.exploreLayerQueue, hw_layers, IP_table_per_layer)
-
-            valid = True
-            lat_left = lat_achieved
-            layerQueue = []
-            mapping_solution_tmp = dict()
-            latency_solution_tmp = dict()
-
-            for g in gs.graphs:
-                if g not in gs.exploreLayerQueue:
+                    print "some of the layers type not in the current IP selection, continue"
                     continue
-                self.updateLayerQueue(gs.exploreLayerQueue[g], layerQueue)
-                opt = optimizer(lat_left, rowStep)
-                #If some of the graph, there is no feasible solution, then the current selection of IPs cannot work
-                lat, sol = opt.run(IP_dict, gs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table, fixedRowStep)
-                if lat == None:
-                    valid = False
-                    break
-                acc_lat += lat
+                acc_lat = 0
+                #Generate the IP_table_per_layer and layerIPLatencyTable 
+                IP_table_per_layer = genIPTablePerLayer(IP_dict, gs.exploreLayerQueue, hw_layers)
+                if IP_table_per_layer is None:
+                    print "cannot find valid IP table per layer, continue"
+                    continue
+
+                layerIPLatencyTable = computeIPLatencyPerLayer(IP_dict, gs.exploreLayerQueue, hw_layers, IP_table_per_layer)
+
+                valid = True
+                lat_left = lat_achieved
+                layerQueue = []
+                mapping_solution_tmp = dict()
+                latency_solution_tmp = dict()
+
+                for g in gs.graphs:
+                    if g not in gs.exploreLayerQueue:
+                        continue
+                    self.updateLayerQueue(gs.exploreLayerQueue[g], layerQueue)
+                    opt = optimizer(lat_left, rowStep)
+                    #If some of the graph, there is no feasible solution, then the current selection of IPs cannot work
+                    lat, sol = opt.run(IP_dict, gs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table, fixedRowStep)
+                    if lat == None:
+                        valid = False
+                        break
+                    acc_lat += lat
 #                print gs.printNodesMapping(hw_layers, sol)
-                #If the current latency is worse than the achieved latency, then the current selection of IPs won't work
-                if acc_lat > lat_achieved:
-                    valid = False
-                    break
-                lat_left = lat_achieved - acc_lat
-                mapping_solution_tmp[g] = sol
-                latency_solution_tmp[g] = lat
+                    #If the current latency is worse than the achieved latency, then the current selection of IPs won't work
+                    if acc_lat > lat_achieved:
+                        valid = False
+                        break
+                    lat_left = lat_achieved - acc_lat
+                    mapping_solution_tmp[g] = sol
+                    latency_solution_tmp[g] = lat
 #            print "update!", "lat_achieved_old = ", lat_achieved, "acc_lat = ", acc_lat, "lat = ", lat
 #            self.updateAbandonSet(IPs, layerQueue, IP_table, IP_table_per_layer_org, layerIPLatencyTable_org, numIPs)
-            if not valid:
-                print "cannot find valid latency, continue"
+                if not valid:
+                    print "cannot find valid latency, continue"
+                    continue
+                lat_achieved = acc_lat
+                for g in mapping_solution_tmp:
+                    mapping_solution[g] = mapping_solution_tmp[g]
+
+                for g in latency_solution_tmp:
+                    latency_solution[g] = latency_solution_tmp[g]
+            if not mapping_solution:
                 continue
-            lat_achieved = acc_lat
-            for g in mapping_solution_tmp:
-                mapping_solution[g] = mapping_solution_tmp[g]
+            if lat_achieved < lat_achieved_total:
+                lat_achieved_total = lat_achieved
+                latency_solution_total = latency_solution
+                mapping_solution_total = mapping_solution
+                numConvIPs_total = numConvIPs
+                numIPs_total = numIPs
+        #post processing
+        if not mapping_solution_total:
+            print "No feasible solutions"
+            return
+        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
 
-            for g in latency_solution_tmp:
-                latency_solution[g] = latency_solution_tmp[g]
-	if not mapping_solution:
-	    print "No feasible solutions"
-	    return
-
-        print "Final latency_achieved", lat_achieved, "each round latency is as follows"
+    def codeGen(self, lat_achieved, latency_solution, mapping_solution, hw_layers, gs, batchSize, numConvIPs, numIPs):
+        print "\n\n #####################################################################"
+        print "Final latency_achieved", lat_achieved, "number of IPs are ", numIPs, "number of convIPs are ", numConvIPs
+        print "each round latency is as follows",
         def comp(item):
             for n in item.nodes:
                 if n.type in hw_layers:
