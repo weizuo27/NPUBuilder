@@ -10,7 +10,7 @@ def readLayerId(fileName):
     return layerIdxTable
 
 def CSVconfigNece(n, ip_inst):
-    if ip_inst.type == "Convolution":
+    if ip_inst.type == "Convolution" or ip_inst.type == "Convolution_g":
         if(not ip_inst.necessaryHasSet):
             weight = int(2 + 2 * (ip_inst.paramList[0] > 8)  == 4)
             Out = int(ip_inst.memOutFlag)
@@ -18,16 +18,16 @@ def CSVconfigNece(n, ip_inst):
             In1st = int(n.firstLayer)
             ipName  = ip_inst.name.split("_")[0]
             ip_inst.CSVparameterListNecessary += [weight, Out, In, In1st, ipName]
-    elif ip_inst.type == "Convolution_g":
-        groupNums = 2 #FIXME: Hard coded group num
-        for i in range(groupNums):
-            if(not ip_inst.necessaryHasSet):
-                weight = int(2 + 2 * (ip_inst.paramList[0] > 8)  == 4)
-                Out = int(ip_inst.memOutFlag)
-                In = int(ip_inst.memInFlag)
-                In1st = int(n.firstLayer)
-                ipName  = ip_inst.name.split("_")[0]
-                ip_inst.CSVparameterListNecessary.append([weight, Out, In, In1st, ipName])
+#    elif ip_inst.type == "Convolution_g":
+#        groupNums = 2 #FIXME: Hard coded group num
+#        for i in range(groupNums):
+#            if(not ip_inst.necessaryHasSet):
+#                weight = int(2 + 2 * (ip_inst.paramList[0] > 8)  == 4)
+#                Out = int(ip_inst.memOutFlag)
+#                In = int(ip_inst.memInFlag)
+#                In1st = int(n.firstLayer)
+#                ipName  = ip_inst.name.split("_")[0]
+#                ip_inst.CSVparameterListNecessary.append([weight, Out, In, In1st, ipName])
 #                ip_inst.CSVparameterListNecessary.append([weight, Out, In, In1st,ipName])
     elif ip_inst.type == "Pooling":
         if(not ip_inst.necessaryHasSet):
@@ -53,7 +53,7 @@ def CSVconfigNece(n, ip_inst):
     ip_inst.necessaryHasSet = True
 
 def CSVconfigUnNece(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxSel):
-    if ip_inst.type == "Convolution":
+    if ip_inst.type == "Convolution" or ip_inst.type == "Convolution_g":
         ip_inst.CSVparameterListUnNece[0] = int(idle)
         if n == t:
             ip_inst.CSVparameterListUnNece[1] = 1 #in
@@ -62,16 +62,16 @@ def CSVconfigUnNece(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxS
         layerIdx = layerIdxTable[n.name]
         ip_inst.CSVparameterListUnNece[3] = layerIdx
 
-    elif ip_inst.type == "Convolution_g":
-        groupNums = 2 #FIXME: Hard coded group num
-        for i in range(groupNums):
-            ip_inst.CSVparameterListUnNece[i][0] = int(idle)
-            if n == t:
-                ip_inst.CSVparameterListUnNece[i][1] = 1 #in
-            if n == s:
-                ip_inst.CSVparameterListUnNece[i][2] = 1 #out
-            layerIdx = layerIdxTable[n.name]
-            ip_inst.CSVparameterListUnNece[i][3] = layerIdx
+#    elif ip_inst.type == "Convolution_g":
+#        groupNums = 2 #FIXME: Hard coded group num
+#        for i in range(groupNums):
+#            ip_inst.CSVparameterListUnNece[i][0] = int(idle)
+#            if n == t:
+#                ip_inst.CSVparameterListUnNece[i][1] = 1 #in
+#            if n == s:
+#                ip_inst.CSVparameterListUnNece[i][2] = 1 #out
+#            layerIdx = layerIdxTable[n.name]
+#            ip_inst.CSVparameterListUnNece[i][3] = layerIdx
 
     elif ip_inst.type == "Pooling":
         ip_inst.CSVparameterListUnNece[0] = int(idle)
@@ -209,29 +209,29 @@ def genCSVFile(IP_g, roundIdx, fileName):
         if(ip_inst.type == "DDR"):
             continue
         csvParamList.append(ip_inst.type)
-        if ip_inst.type == "Convolution_g":
+#        if ip_inst.type == "Convolution_g":
             #gen Div
 
-            idle = ip_inst.CSVparameterListUnNece[0][0]
-            GroupLayerIdx = ip_inst.CSVparameterListUnNece[0][3]
-            IPIdx = ip_inst.CSVparameterListNecessary[0][4]
-
-            if ip_inst.streamInFlag:
-                csvParamList.append("Divider")
-                idle_d = not(ip_inst.CSVparameterListUnNece[0][1])
-                csvParamList +=[idle_d, GroupLayerIdx, IPIdx]
-
-            csvParamList.append(ip_inst.type)
-            for i in range(2):
-                csvParamList += (ip_inst.CSVparameterListNecessary[i] + ip_inst.CSVparameterListUnNece[i])
-            #gen Comb
-            if ip_inst.streamOutFlag:
-                print ip_inst.CSVparameterListUnNece
-                idle_c = not(ip_inst.CSVparameterListUnNece[0][2])
-                csvParamList.append("Combiner")
-                csvParamList+=[idle_c, GroupLayerIdx, IPIdx]
-        else:
-            csvParamList += (ip_inst.CSVparameterListNecessary + ip_inst.CSVparameterListUnNece)
+#            idle = ip_inst.CSVparameterListUnNece[0][0]
+#            GroupLayerIdx = ip_inst.CSVparameterListUnNece[0][3]
+#            IPIdx = ip_inst.CSVparameterListNecessary[0][4]
+#
+#            if ip_inst.streamInFlag:
+#                csvParamList.append("Divider")
+#                idle_d = not(ip_inst.CSVparameterListUnNece[0][1])
+#                csvParamList +=[idle_d, GroupLayerIdx, IPIdx]
+#
+#            csvParamList.append(ip_inst.type)
+#            for i in range(2):
+#                csvParamList += (ip_inst.CSVparameterListNecessary[i] + ip_inst.CSVparameterListUnNece[i])
+#            #gen Comb
+#            if ip_inst.streamOutFlag:
+#                print ip_inst.CSVparameterListUnNece
+#                idle_c = not(ip_inst.CSVparameterListUnNece[0][2])
+#                csvParamList.append("Combiner")
+#                csvParamList+=[idle_c, GroupLayerIdx, IPIdx]
+#        else:
+        csvParamList += (ip_inst.CSVparameterListNecessary + ip_inst.CSVparameterListUnNece)
     csvParamList.append("END")
     line = ",".join(map(str, csvParamList))
     line += "\n"

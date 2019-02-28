@@ -139,24 +139,24 @@ def genSubFunction(n, fileName, ConvPortTableTotal):
         f.write("#endif\n")
 
         f.close()
-    elif n.type == "Convolution_g":
-        f = open(fileName, 'a')
-
-        #add csim labels
-        f.write("#ifdef __CSIM___\n")
-        f.write("LABEL_"+n.name+":\n")
-        f.write("#endif\n")
-
-        #add function body
-        ConvPortTable = ConvPortTableTotal[n]
-        f.write(genGroupConv(ConvPortTable))
-
-        #add csim labels
-        f.write("#ifdef __CSIM___\n")
-        f.write("goto LABEL_"+n.name+"_NEXT;\n")
-        f.write("#endif\n")
-
-        f.close()
+#    elif n.type == "Convolution_g":
+#        f = open(fileName, 'a')
+#
+#        #add csim labels
+#        f.write("#ifdef __CSIM___\n")
+#        f.write("LABEL_"+n.name+":\n")
+#        f.write("#endif\n")
+#
+#        #add function body
+#        ConvPortTable = ConvPortTableTotal[n]
+#        f.write(genGroupConv(ConvPortTable))
+#
+#        #add csim labels
+#        f.write("#ifdef __CSIM___\n")
+#        f.write("goto LABEL_"+n.name+"_NEXT;\n")
+#        f.write("#endif\n")
+#
+#        f.close()
 
     else:
         functionName = n.name+"::"+n.type
@@ -219,14 +219,14 @@ def genTop(g, outDir, batchSize):
         topArgs.append(a)
         streamArgs += b
         ArgDispatchArgs += c
-        if n.type == "Convolution_g":
-            ConvPortTableTotal[n] = d
+#        if n.type == "Convolution_g":
+#            ConvPortTableTotal[n] = d
 
 
     #genCPP
     fileName = outDir + "/pipeSystem.cpp"
     genIncludeHeaders(fileName, IPNames)
-    dispatcherDeclare(fileName, ArgDispatchArgs)
+#    dispatcherDeclare(fileName, ArgDispatchArgs)
     genTopFunctionPre(topArgs, fileName)
     genHLSPragmas(fileName)
     genStreamPorts(list(set(streamArgs)), fileName)
@@ -279,43 +279,44 @@ def genWrapper(g, n):
             n.args.append(portName)
             topArg.append(memIns[i] + " " + portName)
     #MEM IN
-    if n.type == "Convolution_g":
-        times = 2
-    else:
-        times = 1
+#    if n.type == "Convolution_g":
+#        times = 2
+#    else:
+#        times = 1
+    times = 1
 
     ConvPortTable = dict()
-    if n.type == "Convolution_g":
-        ConvPortTable["IPName"] = [n.name]
+#    if n.type == "Convolution_g":
+#        ConvPortTable["IPName"] = [n.name]
 
 
     if(n.memInFlag):
 #        ports = g.edges[inEdge]['portNames']
 #        for i in range(len(list(ports))):
-        if n.type == "Convolution_g":
-            ConvPortTable["HasMemIn"] = []
+#        if n.type == "Convolution_g":
+#            ConvPortTable["HasMemIn"] = []
         for j in range(times):
             for i in range(len(memIns)):
                 portName = n.name+ "i"+str(j*times + i)
                 n.args.append(portName)
                 topArg.append(memIns[i] + " " + portName)
-                if n.type == "Convolution_g":
-                    ConvPortTable["HasMemIn"].append(portName)
+#                if n.type == "Convolution_g":
+#                    ConvPortTable["HasMemIn"].append(portName)
     #MEM OUT
     if(n.memOutFlag):
-        if n.type == "Convolution_g":
-            ConvPortTable["HasMemOut"] = []
+#        if n.type == "Convolution_g":
+#            ConvPortTable["HasMemOut"] = []
         for j in range(times):
             for i in range(len(memOuts)):
                 portName = n.name + "o"+str(j*len(memOuts) + i)
                 n.args.append(portName);
                 topArg.append(memOuts[i] + " " + portName)
-                if n.type == "Convolution_g":
-                    ConvPortTable["HasMemOut"].append(portName)
+#                if n.type == "Convolution_g":
+#                    ConvPortTable["HasMemOut"].append(portName)
     #STREAM IN
     if(n.streamInFlag):
-        if n.type == "Convolution_g":
-            ConvPortTable["HasStreamIn"] = []
+#        if n.type == "Convolution_g":
+#            ConvPortTable["HasStreamIn"] = []
         for edge in g.in_edges(n):
             if edge[0].type == "DDR":
                 continue
@@ -324,12 +325,12 @@ def genWrapper(g, n):
                 portName = "S"+str(ports[i])
                 n.args.append(portName)
                 streamArgs.append((streamIns[i], portName))
-                if n.type == "Convolution_g":
-                    ConvPortTable["HasStreamIn"].append(portName)
+#                if n.type == "Convolution_g":
+#                    ConvPortTable["HasStreamIn"].append(portName)
     #SRTEAM OUT
     if(n.streamOutFlag):
-        if n.type == "Convolution_g":
-            ConvPortTable["HasStreamOut"] = []
+#        if n.type == "Convolution_g":
+#            ConvPortTable["HasStreamOut"] = []
         for edge in g.out_edges(n):
             if edge[1].type == "DDR":
                 continue
@@ -338,8 +339,8 @@ def genWrapper(g, n):
                 portName = "S"+str(ports[i])
                 n.args.append(portName)
                 streamArgs.append((streamOuts[i], portName))
-                if n.type == "Convolution_g":
-                    ConvPortTable["HasStreamOut"].append(portName)
+#                if n.type == "Convolution_g":
+#                    ConvPortTable["HasStreamOut"].append(portName)
     #NECESSARY:
     notFirstLayer = 1 -int(n.firstLayer)
     if n.type == "Convolution_g" or n.type == "Convolution":
@@ -352,28 +353,28 @@ def genWrapper(g, n):
     else:
         weightPortNumber = 0
 
-    if n.type == "Convolution_g":
-        group_extra = weightPortNumber
-    else:
-        group_extra = 0
+#    if n.type == "Convolution_g":
+#        group_extra = weightPortNumber
+#    else:
+    group_extra = 0
 
     #add weight
-    if n.type == "Convolution_g":
-        ConvPortTable["Weights"] = []
+#    if n.type == "Convolution_g":
+#        ConvPortTable["Weights"] = []
     for i in range(group_extra):
         portName = "n" + n.name + str(i)
         n.args.append(portName)
         topArg.append(neces[i] + " " + portName)
-        if(n.type == "Convolution_g"):
-            ConvPortTable["Weights"].append(portName)
+#        if(n.type == "Convolution_g"):
+#            ConvPortTable["Weights"].append(portName)
 
 
     for i in range(group_extra, group_extra+weightPortNumber):
         portName = "n"+n.name+str(i)
         n.args.append(portName)
         topArg.append(neces[i-group_extra] + " " + portName)
-        if(n.type == "Convolution_g"):
-            ConvPortTable["Weights"].append(portName)
+#        if(n.type == "Convolution_g"):
+#            ConvPortTable["Weights"].append(portName)
 
     #add others
     print group_extra, weightPortNumber, len(neces), notFirstLayer, group_extra, "abc"
@@ -384,30 +385,31 @@ def genWrapper(g, n):
     #Args:
 #    if "ip_l" in n.name:
 #        return topArg, streamArgs, dispatcherList
-    if n.type == "Convolution_g":
-        if n.streamInFlag:
-            portName = "sArg"+n.name + "Div"
-            n.args.append(portName)
-            streamArgs.append(("int", portName))
-            dispatcherList.append((portName, 'Divider'))
-            ConvPortTable["HasDiv"]=[portName]
-
-        ConvPortTable["IPArgs"] = []
-
-        for i in range(2):
-            portName = "sArg"+n.name+str(i)
-            n.args.append(portName)
-            streamArgs.append(("int", portName))
-            dispatcherList.append((portName, n.type))
-            ConvPortTable["IPArgs"].append(portName)
-
-        if n.streamOutFlag:
-            portName = "sArg"+n.name + "Comb"
-            n.args.append(portName)
-            streamArgs.append(("int", portName))
-            dispatcherList.append((portName, 'Combiner'))
-            ConvPortTable["HasComb"] = [portName]
-    else:
+#    if n.type == "Convolution_g":
+#        if n.streamInFlag:
+#            portName = "sArg"+n.name + "Div"
+#            n.args.append(portName)
+#            streamArgs.append(("int", portName))
+#            dispatcherList.append((portName, 'Divider'))
+#            ConvPortTable["HasDiv"]=[portName]
+#
+#        ConvPortTable["IPArgs"] = []
+#
+#        for i in range(2):
+#            portName = "sArg"+n.name+str(i)
+#            n.args.append(portName)
+#            streamArgs.append(("int", portName))
+#            dispatcherList.append((portName, n.type))
+#            ConvPortTable["IPArgs"].append(portName)
+#
+#        if n.streamOutFlag:
+#            portName = "sArg"+n.name + "Comb"
+#            n.args.append(portName)
+#            streamArgs.append(("int", portName))
+#            dispatcherList.append((portName, 'Combiner'))
+#            ConvPortTable["HasComb"] = [portName]
+#    else:
+    if 1:
         portName = "sArg"+n.name
         n.args.append(portName)
         streamArgs.append(("int", portName))

@@ -42,12 +42,13 @@ class IP():
             self.csvUneceNums = 6
         elif self.type == "Eltwise":
             self.csvUneceNums = 5
-        if self.type == "Convolution_g":
-            self.CSVparameterListUnNece = [self.csvUneceNums * [0]]
-            self.CSVparameterListUnNece.append(self.csvUneceNums * [0])
-            self.CSVparameterListUnNece[0][0] = 1
-            self.CSVparameterListUnNece[0][1] = 1
-        else:
+#        if self.type == "Convolution_g":
+#            self.CSVparameterListUnNece = [self.csvUneceNums * [0]]
+#            self.CSVparameterListUnNece.append(self.csvUneceNums * [0])
+#            self.CSVparameterListUnNece[0][0] = 1
+#            self.CSVparameterListUnNece[0][1] = 1
+#        else:
+        if 1:
             self.CSVparameterListUnNece = self.csvUneceNums * [0]
             if(self.csvUneceNums > 0):
                 self.CSVparameterListUnNece[0] = 1
@@ -62,12 +63,13 @@ class IP():
             self.paramList =map(int, paramList)
 
     def resetForCSVUnNece(self):
-        if self.type == "Convolution_g":
-            self.CSVparameterListUnNece = [self.csvUneceNums * [0]]
-            self.CSVparameterListUnNece.append(self.csvUneceNums * [0])
-            self.CSVparameterListUnNece[0][0] = 1
-            self.CSVparameterListUnNece[0][1] = 1
-        else:
+#        if self.type == "Convolution_g":
+#            self.CSVparameterListUnNece = [self.csvUneceNums * [0]]
+#            self.CSVparameterListUnNece.append(self.csvUneceNums * [0])
+#            self.CSVparameterListUnNece[0][0] = 1
+#            self.CSVparameterListUnNece[0][1] = 1
+#        else:
+        if 1:
             self.CSVparameterListUnNece = self.csvUneceNums * [0]
             if(self.csvUneceNums > 0):
                 self.CSVparameterListUnNece[0] = 1
