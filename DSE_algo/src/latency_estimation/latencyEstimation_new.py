@@ -362,12 +362,7 @@ XI_WEIGHTBUFF_DEPTH = 1024
 #
 #
 def computeLatency_pooling(ow, fw, fh, odepth, pipelined):
-    
-    pipelined = False
-    if pipelined:
-        return ow*fw*fh *odepth/16
-    else:
-        return ow*fw*fh *odepth/32
+    return ow*fw*fh *odepth/16+300
 
 def computeLatency_eltwise(ow, odepth):
     return ow*odepth/16
