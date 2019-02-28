@@ -9,6 +9,7 @@ sys.path.append(dir_path + "/../latency_estimation");
 #from lat_estimate import computeLatency_eltwise
 
 from latencyEstimation_new import computeLatency
+from latencyEstimation_new import computeLatency_conv_g
 from latencyEstimation_new import computeLatency_pooling
 from latencyEstimation_new import computeLatency_eltwise
 
@@ -132,25 +133,46 @@ class IP():
 #            print AXILatency, 
 #            print oneTime
 
-            lat = computeLatency(
-                    int(in_height),
-                    int(in_width), 
-                    int(out_height), 
-                    int(out_width),
+            if self.type == "Convolution":
+                lat = computeLatency(
+                        int(in_height),
+                        int(in_width), 
+                        int(out_height), 
+                        int(out_width),
 #                    int(cout/group),
-                    int(cout),
-                    int(cin), 
-                    int(S), int(kh), int(kw), int(padding),
-                    int(int(group) > 1),  #group
-                    rowStep,
-                    int(XI_KER_PROC),
-                    int(XI_PIX_PROC),
-                    int(XI_WEIGHTBUFF_DEPTH),
-                    True,
-                    layerID, 
-                    AXILatency, 
-                    oneTime
-                    )
+                        int(cout),
+                        int(cin), 
+                        int(S), int(kh), int(kw), int(padding),
+                        int(0),  #group
+                        rowStep,
+                        int(XI_KER_PROC),
+                        int(XI_PIX_PROC),
+                        int(XI_WEIGHTBUFF_DEPTH),
+                        True,
+                        layerID, 
+                        AXILatency, 
+                        oneTime
+                        )
+            elif self.type == "Convolution_g":
+                lat = computeLatency_conv_g(
+                        int(in_height),
+                        int(in_width), 
+                        int(out_height), 
+                        int(out_width),
+#                    int(cout/group),
+                        int(cout),
+                        int(cin), 
+                        int(S), int(kh), int(kw), int(padding),
+                        int(0),  #group
+                        rowStep,
+                        int(XI_KER_PROC),
+                        int(XI_PIX_PROC),
+                        int(XI_WEIGHTBUFF_DEPTH),
+                        True,
+                        layerID, 
+                        AXILatency, 
+                        oneTime
+                        )
             return lat
         elif self.type == "Pooling":
             

@@ -44,7 +44,7 @@ class IPSel():
         while(1):
             numConvIPs += 1
             numIPs = numConvIPs + numOtherIPs
-#            print "\n\nNumber of Convolution IP is ", numConvIPs, numIPs,"\n\n"
+            print "\n\nNumber of Convolution IP is ", numConvIPs, numIPs,"\n\n"
             gs = graph(app_fileName, explore_IP_types, hw_layers, rowStep)
             
             #if the numIPs is bigger than the group size, then should exit
