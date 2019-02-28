@@ -28,7 +28,7 @@ class IPSel():
         explore_IP_types = { 
             "Convolution": 1,
             "Pooling" : 1,
-            # "Convolution_g" : 1 ,
+            "Convolution_g" : 1 ,
             # "Eltwise" : 1
         }   
 

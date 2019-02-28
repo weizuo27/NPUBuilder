@@ -29,7 +29,7 @@ void setArgs(
     }
     
     //Convolution
-    if(ipType == "Convolution"){
+    if(ipType == "Convolution" or ipType == "Convolution_g"){
         int layerId = params[11];
         bool idle = (params[0] == 1);
         bool stream_in = (params[1] == 1);
@@ -141,74 +141,74 @@ void setArgs(
         }
     }
 
-    else if(ipType == "Convolution_g"){
-        int layerId = params[15];
-        bool idle = (params[0] == 1);
-        bool stream_in = (params[1] == 1);
-        bool stream_out = (params[2] == 1);
-        int groupNums = params[16];
+    //else if(ipType == "Convolution_g"){
+    //    int layerId = params[15];
+    //    bool idle = (params[0] == 1);
+    //    bool stream_in = (params[1] == 1);
+    //    bool stream_out = (params[2] == 1);
+    //    int groupNums = params[16];
 
-        if(not idle){
-            layerIds.push_back(layerId);
-        }
+    //    if(not idle){
+    //        layerIds.push_back(layerId);
+    //    }
 
-        int weightIdx = 2 + 2*(params[3] == 1); //FIXME: Verify with XH
-        for (int j = 0; j < groupNums; ++j){
-            //The inputs
-            int inMemIdx = 2 * (params[5] == 1);
-            for(int i = 0; i < inMemIdx; ++i){
-                if(idle){
-                    int *newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
-                    newArgs.push_back((void*)newArg);
-                    argumentstoFunction.push_back(newArg);
-                }
-                else{
-                    argumentstoFunction.push_back(hwQueue[imageId][layerId].in_ptrs[i]);
-                }
-            }
+    //    int weightIdx = 2 + 2*(params[3] == 1); //FIXME: Verify with XH
+    //    for (int j = 0; j < groupNums; ++j){
+    //        //The inputs
+    //        int inMemIdx = 2 * (params[5] == 1);
+    //        for(int i = 0; i < inMemIdx; ++i){
+    //            if(idle){
+    //                int *newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
+    //                newArgs.push_back((void*)newArg);
+    //                argumentstoFunction.push_back(newArg);
+    //            }
+    //            else{
+    //                argumentstoFunction.push_back(hwQueue[imageId][layerId].in_ptrs[i]);
+    //            }
+    //        }
 
-            //The outputs
-            int outMemIdx = 2*(params[4] == 1);
-            for(int i = 0; i < outMemIdx; ++i){
-                if(idle){
-                    int *newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
-                    newArgs.push_back((void*)newArg);
-                    argumentstoFunction.push_back(newArg);
-                }
-                else{
-                    argumentstoFunction.push_back(hwQueue[imageId][layerId].out_ptrs[i]);
-                }
-            }
+    //        //The outputs
+    //        int outMemIdx = 2*(params[4] == 1);
+    //        for(int i = 0; i < outMemIdx; ++i){
+    //            if(idle){
+    //                int *newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
+    //                newArgs.push_back((void*)newArg);
+    //                argumentstoFunction.push_back(newArg);
+    //            }
+    //            else{
+    //                argumentstoFunction.push_back(hwQueue[imageId][layerId].out_ptrs[i]);
+    //            }
+    //        }
 
-            //The weights
-            for(int i = 0; i < weightIdx; ++i){
-                int *newArg;
-                if(idle){
-                    newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
-                }
-                else{
-                    int weightlen = params[i+7+j*4];
-                    newArg = (int*)sds_alloc_non_cacheable(weightlen * sizeof(char));
-                    load_file<char>(("weight/weight_"+tostring(layerId)+"_"\
-                                +tostring(j) + "_" +tostring(i+1)).c_str(), (void*)newArg, weightlen);
-                }
-                newArgs.push_back((void*)newArg);
-                argumentstoFunction.push_back(newArg);
-            }
+    //        //The weights
+    //        for(int i = 0; i < weightIdx; ++i){
+    //            int *newArg;
+    //            if(idle){
+    //                newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
+    //            }
+    //            else{
+    //                int weightlen = params[i+7+j*4];
+    //                newArg = (int*)sds_alloc_non_cacheable(weightlen * sizeof(char));
+    //                load_file<char>(("weight/weight_"+tostring(layerId)+"_"\
+    //                            +tostring(j) + "_" +tostring(i+1)).c_str(), (void*)newArg, weightlen);
+    //            }
+    //            newArgs.push_back((void*)newArg);
+    //            argumentstoFunction.push_back(newArg);
+    //        }
 
 
-            //1st inputs
-            if(params[6] == 1){
-                if(idle){
-                    int *newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
-                    newArgs.push_back((void*)newArg);
-                    argumentstoFunction.push_back(newArg);
-                }
-                else
-                    argumentstoFunction.push_back(hwQueue[imageId][layerId].in_ptrs[2]);
-            }
-        }
-    }
+    //        //1st inputs
+    //        if(params[6] == 1){
+    //            if(idle){
+    //                int *newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
+    //                newArgs.push_back((void*)newArg);
+    //                argumentstoFunction.push_back(newArg);
+    //            }
+    //            else
+    //                argumentstoFunction.push_back(hwQueue[imageId][layerId].in_ptrs[2]);
+    //        }
+    //    }
+    //}
     cout << "number of args " << argumentstoFunction.size() << "\n";
     return;
 }

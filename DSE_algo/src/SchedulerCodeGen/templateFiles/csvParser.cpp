@@ -28,7 +28,8 @@ int ParsePipeCSV(
 
     IPs["Convolution"] = 12;
     IPs["Pooling"] = 8;
-    IPs["Convolution_g"] = 9+8;
+//    IPs["Convolution_g"] = 9+8;
+    IPs["Convolution_g"] = 12;
     IPs["Args"] = 2;
 
     fstream fs;
