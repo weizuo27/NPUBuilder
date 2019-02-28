@@ -232,7 +232,11 @@ def genTop(g, outDir, batchSize):
     genStreamPorts(list(set(streamArgs)), fileName)
     dispatcherCall(fileName, memNameOnly, ArgDispatchArgs)
 
-    for n in g:
+    node_list = list(g.nodes())
+    def comp(elem):
+        return 0-elem.BRAM
+    node_list.sort(key = comp)
+    for n in node_list:
         genSubFunction(n, fileName, ConvPortTableTotal)
     genTopFunctionRail(fileName)
 

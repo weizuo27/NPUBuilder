@@ -15,7 +15,8 @@ from genSwFiles import *
 class IPSel():
     def __init__(self):
         None
-    def run(self, BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, Lat_budget, numOtherIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, fixedRowStep):
+    def run(self, BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, Lat_budget, numOtherIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, fixedRowStep, \
+           manualSetingConvIPbound, convIPlb, convIPUb) :
         status = "Undecided" 
 
         #Hard code the hardware supported layers
@@ -34,17 +35,20 @@ class IPSel():
             # "Eltwise" : 1
         }   
 
-        numConvIPs = 0
+        numConvIPs = convIPlb-1 if manualSetingConvIPbound else 0
         lat_achieved_total = Lat_budget
         latency_solution_total = None
         mapping_solution_total = None
-        numConvIPs_total = 0
+        numConvIPs_total =0
         numIPs_total = 0
 
         while(1):
             numConvIPs += 1
+            if(manualSetingConvIPbound):
+                if numConvIPs > convIPUb:
+                    break
             numIPs = numConvIPs + numOtherIPs
-            print "\n\nNumber of Convolution IP is ", numConvIPs, numIPs,"\n\n"
+            print "\n\nNumber of Convolution IP is ", numConvIPs, "\n\n"
             gs = graph(app_fileName, explore_IP_types, hw_layers, rowStep)
             
             #if the numIPs is bigger than the group size, then should exit

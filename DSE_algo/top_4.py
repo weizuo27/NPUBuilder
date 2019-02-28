@@ -20,6 +20,10 @@ parser.add_argument("numOtherIPs", type=int, help= "The total number of IPs othe
 parser.add_argument("batchSize", type=int, help= "number of batch, integer")
 parser.add_argument("fixedRowStep", type=int, help = "0: No (then the algorithm picks the biggest rowstep). 1: Yes, then user specify rowStep")
 parser.add_argument("RowStep", type=int, help="If fixedRowStep is 1, then user specify rowstep here. Otherwise, this option will be ignored")
+parser.add_argument("manualSetingConvIPbound", type=int, help="0: let the DSE tool explore all possbile number of conv IPs, 1: use the \"convIPUb\" and \"convIPlb\" arguments to set the lower\
+         and upper bounds, this is to reduce the runtime")
+parser.add_argument("convIPlb", type=int, help="The min number of convIP that is exploring")
+parser.add_argument("convIPUb", type=int, help="The max number of convIP that is exploring")
 
 #parser.add_argument("DSE", type=int, help= "Whether run DSE or just heuristic for unconstraint case")
 
@@ -38,6 +42,9 @@ numOtherIPs= args.numOtherIPs
 #numConvIPs = args.numConvIPs
 batchSize = args.batchSize
 fixedRowStep = args.fixedRowStep
+manualSetingConvIPbound = args.manualSetingConvIPbound
+convIPUb = args.convIPUb
+convIPlb = args.convIPlb
 
 if(not fixedRowStep):
     RowStep = 2
@@ -54,6 +61,6 @@ assert args.fixedRowStep < 2, "fixedRowStep can only be 0 (False) or 1 (True)"
 #opt = optimizer(BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, latency_budget, app_fileName, IP_fileName, pipelineLength, 5000, DSE, assumptionLevel)
 ipsel = IPSel()
 opt = ipsel.run(BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, latency_budget, numOtherIPs,\
-    app_fileName, IP_fileName, 2000, RowStep, batchSize, fixedRowStep)
+    app_fileName, IP_fileName, 2000, RowStep, batchSize, fixedRowStep, manualSetingConvIPbound, convIPlb, convIPUb)
 
 

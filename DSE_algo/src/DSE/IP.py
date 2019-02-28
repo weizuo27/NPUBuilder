@@ -31,6 +31,10 @@ class IP():
         self.csvUneceNums = 0
         self.firstLayer = firstLayer
         self.numIPs = numIPs
+        self.BRAM = 0
+        self.DSP = 0
+        self.FF = 0
+        self.LUT = 0
         #The followings are used to generate csv
         self.ip_l = None
         if self.type == "Convolution":
