@@ -25,6 +25,14 @@ for ibuffersize in ibufferArray:
                     FF = LUT = str(1000)
                     writeList.append([ID, "Convolution", BRAM, str(int(DSP)), FF, LUT, str(ker), str(proc), str(ibuffersize), str(obuffersize), str(wbuffersize)])
 
+
+
+############# NOTE BY XINHENG ##################
+'''
+    The input depth selection range should be updated to ibufferArray=[512, 1024, 2048, 4096]
+    The output depth selection range should be updated to obufferArray=[512, 1024]
+'''
+
 #For Conolution_g
 for ibuffersize in ibufferArray:
     for obuffersize in obufferArray:
