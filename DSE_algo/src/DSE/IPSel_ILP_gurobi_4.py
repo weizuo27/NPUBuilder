@@ -32,7 +32,7 @@ class IPSel():
             "Convolution": 1,
             "Pooling" : 1,
             "Convolution_g" : 1 ,
-            # "Eltwise" : 1
+             "Eltwise" : 1
         }   
 
         numConvIPs = convIPlb-1 if manualSetingConvIPbound else 0
@@ -60,7 +60,7 @@ class IPSel():
                         length += len(gs.exploreLayerQueue[g][layerType])
                     if length >= numIPs:
                         legalNumIPs = True
-                    break
+                        break
             if not legalNumIPs:
                 print "The number of IPs is "+str(numIPs) + "which is bigger than the biggest group size"
                 break

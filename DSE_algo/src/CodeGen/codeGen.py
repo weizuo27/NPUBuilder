@@ -176,7 +176,7 @@ def genSubFunction(n, fileName, ConvPortTableTotal):
             else:
                 f.write("\t\t\t"+arg+"\n")
         #FIXME This is specific to chaidnn
-        if(n.type == "Convolution"):
+        if(n.type == "Convolution" or n.type == "Convolution_g"):
             f.write("#ifdef __SDSVHLS__\n")
             f.write("\t, ap_clk_div2\n")
             f.write("#else\n")
@@ -226,7 +226,7 @@ def genTop(g, outDir, batchSize):
     #genCPP
     fileName = outDir + "/pipeSystem.cpp"
     genIncludeHeaders(fileName, IPNames)
-#    dispatcherDeclare(fileName, ArgDispatchArgs)
+    dispatcherDeclare(fileName, ArgDispatchArgs)
     genTopFunctionPre(topArgs, fileName)
     genHLSPragmas(fileName)
     genStreamPorts(list(set(streamArgs)), fileName)
