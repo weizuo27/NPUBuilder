@@ -64,7 +64,7 @@ class resourceILPBuilder():
                 for i in range(len(queue)):
                     exp.append(self.mappingVariables[layer_type][i][j])
         #would like to force them use all the resource possible
-                self.constraints.append(sum(exp) <= -(-num_layers//numIPs[layer_type]))
+                #self.constraints.append(sum(exp) <= -(-num_layers//numIPs[layer_type]))
 
     def addViolationPaths(self, violation_path, layerQueue, IP_table, layerIPLatencyTable, verbose):
         if(verbose):
