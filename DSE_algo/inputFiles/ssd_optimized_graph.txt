@@ -1,0 +1,159 @@
+
+Network : VGG_VOC0712_SSD_300x300_train
+Input Blob : data
+Output Blob : detection_out
+Start Layer : data
+End Layer : detection_out
+
+# -------------------- LayerGroups ------------------------ #
+conv1_1,conv1_2,pool1,conv2_1,conv2_2,pool2,conv3_1,conv3_2,conv3_3,pool3,conv4_1,conv4_2,conv4_3
+pool4,conv5_1,conv5_2,conv5_3,pool5,fc6,fc7
+fc7_mbox_conf,fc7_mbox_loc,conv6_1,conv6_2
+conv6_2_mbox_conf,conv6_2_mbox_loc,conv7_1,conv7_2
+conv7_2_mbox_conf,conv7_2_mbox_loc,conv8_1,conv8_2
+conv8_2_mbox_conf,conv8_2_mbox_loc,conv9_1,conv9_2
+conv9_2_mbox_conf,conv9_2_mbox_loc
+conv4_3_norm_mbox_conf,conv4_3_norm_mbox_loc
+
+conv1/7x7_s2,pool1/3x3_s2,conv2/3x3_reduce,conv2/3x3,pool2/3x3_s2
+inception_3a/1x1,inception_3a/3x3_reduce,inception_3a/5x5_reduce,inception_3a/pool,inception_3a/3x3,inception_3a/5x5,inception_3a/pool_proj
+inception_3b/1x1,inception_3b/3x3_reduce,inception_3b/5x5_reduce,inception_3b/pool,inception_3b/3x3,inception_3b/5x5,inception_3b/pool_proj
+pool3/3x3_s2
+inception_4a/1x1,inception_4a/3x3_reduce,inception_4a/5x5_reduce,inception_4a/pool,inception_4a/3x3,inception_4a/5x5,inception_4a/pool_proj
+inception_4b/1x1,inception_4b/3x3_reduce,inception_4b/5x5_reduce,inception_4b/pool,inception_4b/3x3,inception_4b/5x5,inception_4b/pool_proj
+inception_4c/1x1,inception_4c/3x3_reduce,inception_4c/5x5_reduce,inception_4c/pool,inception_4c/3x3,inception_4c/5x5,inception_4c/pool_proj
+inception_4d/1x1,inception_4d/3x3_reduce,inception_4d/5x5_reduce,inception_4d/pool,inception_4d/3x3,inception_4d/5x5,inception_4d/pool_proj
+inception_4e/1x1,inception_4e/3x3_reduce,inception_4e/5x5_reduce,inception_4e/pool,inception_4e/3x3,inception_4e/5x5,inception_4e/pool_proj
+pool4/3x3_s2
+inception_5a/1x1,inception_5a/3x3_reduce,inception_5a/5x5_reduce,inception_5a/pool,inception_5a/3x3,inception_5a/5x5,inception_5a/pool_proj
+inception_5b/1x1,inception_5b/3x3_reduce,inception_5b/5x5_reduce,inception_5b/pool,inception_5b/3x3,inception_5b/5x5,inception_5b/pool_proj
+conv_pool0
+
+
+# -------------------- Layers ------------------------ #
+[data:0] --> { conv1_1 - Convolution: F = 64x3x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x3x3x3; BDim = 64;  } --> [conv1_1:0]
+Xilinx
+[conv1_1:0] --> { conv1_2 - Convolution: F = 64x64x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x64x3x3; BDim = 64;  } --> [conv1_2:0]
+Xilinx
+[pool1:0] --> { conv2_1 - Convolution: F = 128x64x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x64x3x3; BDim = 128;  } --> [conv2_1:0]
+Xilinx
+[conv2_1:0] --> { conv2_2 - Convolution: F = 128x128x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x128x3x3; BDim = 128;  } --> [conv2_2:0]
+Xilinx
+[pool2:0] --> { conv3_1 - Convolution: F = 256x128x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x128x3x3; BDim = 256;  } --> [conv3_1:0]
+Xilinx
+[conv3_1:0] --> { conv3_2 - Convolution: F = 256x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x256x3x3; BDim = 256;  } --> [conv3_2:0]
+Xilinx
+[conv3_2:0] --> { conv3_3 - Convolution: F = 256x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x256x3x3; BDim = 256;  } --> [conv3_3:0]
+Xilinx
+[pool3:0] --> { conv4_1 - Convolution: F = 512x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x256x3x3; BDim = 512;  } --> [conv4_1:0]
+Xilinx
+[conv4_1:0] --> { conv4_2 - Convolution: F = 512x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x512x3x3; BDim = 512;  } --> [conv4_2:0]
+Xilinx
+[conv4_2:0] --> { conv4_3 - Convolution: F = 512x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x512x3x3; BDim = 512;  } --> [conv4_3:0]
+Xilinx
+[conv4_3_norm:0] --> { conv4_3_norm_mbox_conf - Convolution: F = 84x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 84x512x3x3; BDim = 84;  } --> [conv4_3_norm_mbox_conf:0]
+Xilinx
+[conv4_3_norm:0] --> { conv4_3_norm_mbox_loc - Convolution: F = 16x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 16x512x3x3; BDim = 16;  } --> [conv4_3_norm_mbox_loc:0]
+Xilinx
+[pool4:0] --> { conv5_1 - Convolution: F = 512x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x512x3x3; BDim = 512;  } --> [conv5_1:0]
+Xilinx
+[conv5_1:0] --> { conv5_2 - Convolution: F = 512x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x512x3x3; BDim = 512;  } --> [conv5_2:0]
+Xilinx
+[conv5_2:0] --> { conv5_3 - Convolution: F = 512x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x512x3x3; BDim = 512;  } --> [conv5_3:0]
+Xilinx
+[fc7:0] --> { conv6_1 - Convolution: F = 256x1024x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x1024x1x1; BDim = 256;  } --> [conv6_1:0]
+Xilinx
+[conv6_1:0] --> { conv6_2 - Convolution: F = 512x256x3x3; S = 2; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 512x256x3x3; BDim = 512;  } --> [conv6_2:0]
+Xilinx
+[conv6_2:0] --> { conv6_2_mbox_conf - Convolution: F = 126x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 126x512x3x3; BDim = 126;  } --> [conv6_2_mbox_conf:0]
+Xilinx
+[conv6_2:0] --> { conv6_2_mbox_loc - Convolution: F = 24x512x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 24x512x3x3; BDim = 24;  } --> [conv6_2_mbox_loc:0]
+Xilinx
+[conv6_2:0] --> { conv7_1 - Convolution: F = 128x512x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x512x1x1; BDim = 128;  } --> [conv7_1:0]
+Xilinx
+[conv7_1:0] --> { conv7_2 - Convolution: F = 256x128x3x3; S = 2; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x128x3x3; BDim = 256;  } --> [conv7_2:0]
+Xilinx
+[conv7_2:0] --> { conv7_2_mbox_conf - Convolution: F = 126x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 126x256x3x3; BDim = 126;  } --> [conv7_2_mbox_conf:0]
+Xilinx
+[conv7_2:0] --> { conv7_2_mbox_loc - Convolution: F = 24x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 24x256x3x3; BDim = 24;  } --> [conv7_2_mbox_loc:0]
+Xilinx
+[conv7_2:0] --> { conv8_1 - Convolution: F = 128x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x256x1x1; BDim = 128;  } --> [conv8_1:0]
+Xilinx
+[conv8_1:0] --> { conv8_2 - Convolution: F = 256x128x3x3; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x128x3x3; BDim = 256;  } --> [conv8_2:0]
+Xilinx
+[conv8_2:0] --> { conv8_2_mbox_conf - Convolution: F = 84x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 84x256x3x3; BDim = 84;  } --> [conv8_2_mbox_conf:0]
+Xilinx
+[conv8_2:0] --> { conv8_2_mbox_loc - Convolution: F = 16x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 16x256x3x3; BDim = 16;  } --> [conv8_2_mbox_loc:0]
+Xilinx
+[conv8_2:0] --> { conv9_1 - Convolution: F = 128x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 128x256x1x1; BDim = 128;  } --> [conv9_1:0]
+Xilinx
+[conv9_1:0] --> { conv9_2 - Convolution: F = 256x128x3x3; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x128x3x3; BDim = 256;  } --> [conv9_2:0]
+Xilinx
+[conv9_2:0] --> { conv9_2_mbox_conf - Convolution: F = 84x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 84x256x3x3; BDim = 84;  } --> [conv9_2_mbox_conf:0]
+Xilinx
+[conv9_2:0] --> { conv9_2_mbox_loc - Convolution: F = 16x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 16x256x3x3; BDim = 16;  } --> [conv9_2_mbox_loc:0]
+Xilinx
+[pool5:0] --> { fc6 - Convolution: F = 1024x512x3x3; S = 1; P = 6; D = 6; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 1024x512x3x3; BDim = 1024;  } --> [fc6:0]
+Xilinx
+[fc6:0] --> { fc7 - Convolution: F = 1024x1024x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 1024x1024x1x1; BDim = 1024;  } --> [fc7:0]
+Xilinx
+[fc7:0] --> { fc7_mbox_conf - Convolution: F = 126x1024x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 126x1024x3x3; BDim = 126;  } --> [fc7_mbox_conf:0]
+Xilinx
+[fc7:0] --> { fc7_mbox_loc - Convolution: F = 24x1024x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 0; HasBias = 1; Weights = ; Bias = ; WDim = 24x1024x3x3; BDim = 24;  } --> [fc7_mbox_loc:0]
+Xilinx
+[conv1_2:0] --> { pool1 - Pooling : PoolType = MAXPOOL; N = 64; K = 2; S = 2; P = 0 } --> [pool1:0]
+Xilinx
+[conv2_2:0] --> { pool2 - Pooling : PoolType = MAXPOOL; N = 128; K = 2; S = 2; P = 0 } --> [pool2:0]
+Xilinx
+[conv3_3:0] --> { pool3 - Pooling : PoolType = MAXPOOL; N = 256; K = 2; S = 2; P = 0 } --> [pool3:0]
+Xilinx
+[conv4_3:0] --> { pool4 - Pooling : PoolType = MAXPOOL; N = 512; K = 2; S = 2; P = 0 } --> [pool4:0]
+Xilinx
+[conv5_3:0] --> { pool5 - Pooling : PoolType = MAXPOOL; N = 512; K = 3; S = 1; P = 1 } --> [pool5:0]
+Xilinx
+
+# -------------------- Blobs ------------------------ #
+conv1_1 : 1x64x300x300
+conv1_2 : 1x64x300x300
+conv2_1 : 1x128x150x150
+conv2_2 : 1x128x150x150
+conv3_1 : 1x256x75x75
+conv3_2 : 1x256x75x75
+conv3_3 : 1x256x75x75
+conv4_1 : 1x512x38x38
+conv4_2 : 1x512x38x38
+conv4_3 : 1x512x38x38
+conv4_3_norm : 1x512x38x38
+conv4_3_norm_mbox_conf : 1x84x38x38
+conv4_3_norm_mbox_loc : 1x16x38x38
+conv5_1 : 1x512x19x19
+conv5_2 : 1x512x19x19
+conv5_3 : 1x512x19x19
+conv6_1 : 1x256x19x19
+conv6_2 : 1x512x10x10
+conv6_2_mbox_conf : 1x126x10x10
+conv6_2_mbox_loc : 1x24x10x10
+conv7_1 : 1x128x10x10
+conv7_2 : 1x256x5x5
+conv7_2_mbox_conf : 1x126x5x5
+conv7_2_mbox_loc : 1x24x5x5
+conv8_1 : 1x128x5x5
+conv8_2 : 1x256x3x3
+conv8_2_mbox_conf : 1x84x3x3
+conv8_2_mbox_loc : 1x16x3x3
+conv9_1 : 1x128x3x3
+conv9_2 : 1x256x1x1
+conv9_2_mbox_conf : 1x84x1x1
+conv9_2_mbox_loc : 1x16x1x1
+data : 1x3x300x300
+detection_out : 1x1x200x7
+fc6 : 1x1024x19x19
+fc7 : 1x1024x19x19
+fc7_mbox_conf : 1x126x19x19
+fc7_mbox_loc : 1x24x19x19
+pool1 : 1x64x150x150
+pool2 : 1x128x75x75
+pool3 : 1x256x38x38
+pool4 : 1x512x19x19
+pool5 : 1x512x19x19
+
