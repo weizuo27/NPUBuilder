@@ -204,7 +204,8 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 			cropCnt[1]    = {0},
 			xcustomCnt[1] = {0},
 			xpackCnt[1]   = {0},
-			eltwaddCnt[1] = {0};
+			eltwaddCnt[1] = {0},
+            pipeCnt[1] = {0};
 
 	//# In-use flags
     bool pipeInUse      = false;
@@ -222,7 +223,8 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 	bool ImreadInUse	= false;
 
 	//# Image IDs for different layers
-	int deconvImgId, fcImgId,
+    int pipeImgId,
+	deconvImgId, fcImgId,
 	softmaxImgId, normImgId, permuteImgId, nmsImgId,
 	cropImgId,xcustomImgId,xpackImgId,eltwaddImgId;
 
@@ -255,7 +257,8 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 	uint8_t	eltwaddThreadDone	= 0;
 
 	//# Check flags for all individual layers done
-	bool allFCDone, allSoftMaxDone,
+    bool allPipeDone,
+	allFCDone, allSoftMaxDone,
 	allPermuteDone, allNmsDone, allNormDone,
 	allCropDone,allxCustomDone,allxPackDone,allEltwaddDone;
 
@@ -274,15 +277,15 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
     //Args array
     std::vector<void* > newArgs;
 
-    int pipeRounds = 0;
+    int tPipeLayers= 0;
     std::vector<std::vector<void*> > argsToFunction;
-    std::vector<int> pipeLayerIds;
+    std::vector< std::vector<int> > pipeLayerIds;
 
     if(convSeq.size() + poolSeq.size() + deconvSeq.size() != 0){
     //ParsePipeConvCSV
-        pipeRounds = ParsePipeCSV(newArgs, argsToFunction, hwQueue, pipeLayerIds);
+        tPipeLayers = ParsePipeCSV(newArgs, argsToFunction, hwQueue, pipeLayerIds);
     }
-    cout<< "pipeRounds " << pipeRounds << endl;
+    cout<< "tPipeLayers " << tPipeLayers << endl;
 
 #if ENABLE_SCHEDULER
 	//# Scheduler Entry Point ################################################
@@ -292,19 +295,35 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 #if ENABLE_CONSOLE_TEXT
 		std::cout << "[DEBUG] while(1)" << std::endl;
 #endif
-        if((pipeInUse == false) and i < pipeRounds){
-            for (; i < pipeRounds; ++i){
-//INSERT PIPE FUNCTION
-            pipeInUse = true; 
+        if((pipeInUse == false) && tPipeLayers){
+            allPipeDone = (pipeCnt[0] == tPipeLayers) ? true : false;
+            bool depsDone = true;
+            int whichPipe = pipeCnt[0];
+            if(!allPipeDone){
+            std::vector<int> layers = pipeLayerIds[whichPipe];
+            std::vector<int>::iterator itrr = layers.begin();
+            for(; itrr != layers.end(); ++itrr){
+                std::vector<layerID> ::iterator prevIter = hwQueue[0][*itrr].previous.begin();
+                std::vector<layerID> previousOutCurRound = {};
+                for(; prevIter != hwQueue[0][*itrr].previous.end(); ++prevIter){
+                    if(std::find(layers.begin(), layers.end(), (int)(prevIter->seqidx)) == layers.end()){
+                        previousOutCurRound.push_back(*prevIter);
+                    }
+                }
+                if(previousOutCurRound.size() > 0) 
+                    depsDone &= chkDeps(layerDone[0],previousOutCurRound);
+            }
             }
 
-            //layerDone update
-            for(std::vector<int>::iterator itr = pipeLayerIds.begin();
-                    itr != pipeLayerIds.end(); ++itr){
-                layerDone[0][*itr] = true;
+
+            if(!allPipeDone && (depsDone)){
+                int i = whichPipe;
+//INSERT PIPE FUNCTION
+                        pipeImgId = 0;
+                        pipeInUse = true; 
             }
-        }
-		
+        } //NEEDED_PIPE
+
 #if NEEDED_FC
         if((fcInUse == false) && tFCLayers)
         {
@@ -499,11 +518,18 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 		if(pipeInUse == true)
 		{
 			//# wait for pipe to be completed
-#ifdef __SDSOC
-			sds_wait(1);
-#endif
+//#ifdef __SDSOC
+//			sds_wait(1);
+//#endif
 			pipeInUse = false;
-		}
+            int whichPipe = pipeCnt[0];
+            std::vector<int> layers = pipeLayerIds[whichPipe];
+            std::vector<int>::iterator itrr = layers.begin();
+            for(; itrr != layers.end(); ++itrr){
+                layerDone[pipeImgId][*itrr] = true;
+            }
+            pipeCnt[pipeImgId]++;
+		}  //NEEDED_PIPE
 
 #if NEEDED_FC
 		if(fcInUse == true)

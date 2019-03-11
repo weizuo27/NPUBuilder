@@ -18,7 +18,7 @@ int ParsePipeCSV(
         std::vector<void* > &newArgs, 
         std::vector< std::vector<void*> > & argsToFunction, 
         const std::vector<xChangeLayer> *hwQueue, 
-        std::vector< int > & layerIds
+        std::vector< std::vector< int > > & layerIdsTotal
         ){
     //Following should be configed
     //Key: The IP type. Value: The number of columns
@@ -28,7 +28,6 @@ int ParsePipeCSV(
 
     IPs["Convolution"] = 12;
     IPs["Pooling"] = 8;
-//    IPs["Convolution_g"] = 9+8;
     IPs["Convolution_g"] = 12;
     IPs["Args"] = 2;
 
@@ -47,6 +46,7 @@ int ParsePipeCSV(
         }
 
         std::vector<void*> args;
+        std::vector<int > layerIds;
 
         vector<string>::iterator itr = rowList.begin();
         for(; itr!=rowList.end(); ++itr){
@@ -65,7 +65,13 @@ int ParsePipeCSV(
             setArgs(ipType, params, hwQueue, args, newArgs, layerIds);
         }
         cout << "length " << args.size() << endl;
+
         argsToFunction.push_back(args);
+        for(size_t i = 0; i < layerIds.size(); ++i){
+            cout << "layers Ids " << layerIds[i] << "\n";
+
+        }
+        layerIdsTotal.push_back(layerIds);
     }
     fs.close();
     return rounds;

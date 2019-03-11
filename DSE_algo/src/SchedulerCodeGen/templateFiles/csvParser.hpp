@@ -8,6 +8,6 @@ int ParsePipeCSV(
         std::vector<void* > &newArgs, 
         std::vector< std::vector<void*> > & argsToFunction, 
         const std::vector<xChangeLayer> *hwQueue, 
-        std::vector< int > & layerIds
+        std::vector< std::vector< int > > & layerIdsTotal
         );
 #endif
