@@ -20,10 +20,18 @@ void setArgs(
 
     //genArguments
     if(ipType == "Args"){
+        int tempArgs[1024];
+
         int length = params[1];
         int roundIdx = params[0];
         int* newArg =  (int*)sds_alloc_non_cacheable(length * sizeof(char));
-        load_file<char>(("args/args_"+tostring(roundIdx)).c_str(), (void*)newArg, length);
+        if(newArg == NULL) puts(" allocation not successfull");
+        load_file<char>(("args/args_"+tostring(roundIdx)).c_str(), (void*)tempArgs, length);
+
+        for(int idx=0;idx<length/4;idx++)
+        {
+            newArg[idx]=tempArgs[idx];
+        }
         newArgs.push_back((void*)newArg);
         argumentstoFunction.push_back(newArg);
     }
@@ -140,7 +148,71 @@ void setArgs(
             }
         }
     }
+ else if(ipType == "ElementWise"){
 
+        int leftmem= params[0];
+        int rightmem= params[1];
+        int outmem= params[2];
+        int layerId = params[3];
+        int idle = params[4];
+
+
+        if(not idle){
+            layerIds.push_back(layerId);
+        }
+
+        if(leftmem)
+        {
+            if(idle){
+                int *newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
+                newArgs.push_back((void*)newArg);
+                argumentstoFunction.push_back(newArg);
+
+                newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
+                newArgs.push_back((void*)newArg);
+                argumentstoFunction.push_back(newArg);
+            }
+            else{
+                argumentstoFunction.push_back(hwQueue[imageId][layerId].bias_ptr);
+                argumentstoFunction.push_back(hwQueue[imageId][layerId].in_ptrs[4]);
+            }
+        }
+
+        if(rightmem)
+        {
+                if(idle){
+                int *newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
+                newArgs.push_back((void*)newArg);
+                argumentstoFunction.push_back(newArg);
+
+                newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
+                newArgs.push_back((void*)newArg);
+                argumentstoFunction.push_back(newArg);
+            }
+            else{
+                argumentstoFunction.push_back(hwQueue[imageId][layerId].in_ptrs[2]);
+                argumentstoFunction.push_back(hwQueue[imageId][layerId].in_ptrs[3]);
+            }
+
+        }
+
+        if(outmem)
+        {
+            if(idle){
+                int *newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
+                newArgs.push_back((void*)newArg);
+                argumentstoFunction.push_back(newArg);
+
+                newArg = (int*)sds_alloc_non_cacheable(1 * sizeof(char));
+                newArgs.push_back((void*)newArg);
+                argumentstoFunction.push_back(newArg);
+            }
+            else{
+                argumentstoFunction.push_back(hwQueue[imageId][layerId].out_ptrs[2]);
+                argumentstoFunction.push_back(hwQueue[imageId][layerId].out_ptrs[3]);
+            }
+        }
+    }
     //else if(ipType == "Convolution_g"){
     //    int layerId = params[15];
     //    bool idle = (params[0] == 1);

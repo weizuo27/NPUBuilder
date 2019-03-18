@@ -30,7 +30,8 @@ int ParsePipeCSV(
     IPs["Pooling"] = 8;
     IPs["Convolution_g"] = 12;
     IPs["Args"] = 2;
-
+    IPs["ElementWise"] = 5;
+    
     fstream fs;
     fs.open("round2.csv");
     string line;

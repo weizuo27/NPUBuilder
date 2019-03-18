@@ -77,7 +77,7 @@ def straddleFactorCount(scalar_conv_args, inDepth, filter_size, group_flag, XI_W
     FEEDING_BUFF_DEPTH = 1024
     strad_fact=1
     n_inbuff_depth = FEEDING_BUFF_DEPTH
-
+    print "inp_planes",inp_planes
     while(not exp1):
         comp_planes = inp_planes/ strad_fact
         exp1 =  (((comp_planes/4)*fsz2) <=  (n_inbuff_depth/2))
@@ -165,7 +165,7 @@ def computeLatency (
 
     LatCompute16Ker_fy=(compute_loop_count+1)+XI_PIX_PROC/2+20;
 
-    #print "LatCompute16Ker_fy:"+str(LatCompute16Ker_fy);
+    print "LatCompute16Ker_fy:"+str(LatCompute16Ker_fy);
 
 
     nkpfCount(scalar_conv_args,XI_KER_PROC,XI_WEIGHTBUFF_DEPTH) 
@@ -179,7 +179,7 @@ def computeLatency (
 
 
     latProcResult_fe=latOsggBuff_fx+LatCompute16Ker_fy+(nkpf-1)*max(latOsggBuff_fx,LatCompute16Ker_fy)+10
-    #print "latProcResult_fe:"+str(latProcResult_fe);
+    print "latProcResult_fe:"+str(latProcResult_fe);
 
     scalar_conv_args[92] =  scalar_conv_args[13] * conv_filter_height * conv_filter_width * (scalar_conv_args[61]/4)
     scalar_conv_args[62] = AlignSize(scalar_conv_args[4], 16) /(1+conv_group)
@@ -192,7 +192,7 @@ def computeLatency (
         latLoadKernelsEn_fz = 0
     else:
         latLoadKernelsEn_fz=scalar_conv_args[92]*AXILATENCY+10
-#    print "latLoadKernelsEn_fz:"+str(latLoadKernelsEn_fz), AXILATENCY, "oneTime?", oneTime
+    print "latLoadKernelsEn_fz:"+str(latLoadKernelsEn_fz), AXILATENCY, "oneTime?", oneTime
 
     compute_planes=scalar_conv_args[61]
     latLoadFeedingBuff_fl = 0
@@ -201,7 +201,7 @@ def computeLatency (
         latLoadFeedingBuff_fl=compute_planes/64*conv_filter_height*conv_filter_width*16*tmp+20;
     else:
         latLoadFeedingBuff_fl=LatLoadInputBuff32Pix_fn+10
-    #print "latLoadFeedingBuff_fl:"+str(latLoadFeedingBuff_fl)
+    print "latLoadFeedingBuff_fl:"+str(latLoadFeedingBuff_fl)
 
     # *computes number of XI_PIX_PROC in the output rows
     pix_per_ker= XI_PIX_PROC if (int6bit) else XI_PIX_PROC/2
@@ -216,7 +216,7 @@ def computeLatency (
     #print "straddle:"+str(scalar_conv_args[17]);
 #    print "latLoop", latLoop, "latLoadFeedingBuff_fl", latLoadFeedingBuff_fl, "latLoadKernelsEn_fz", latLoadKernelsEn_fz
     latProcInputBuff=ProcInputLoopCount*(max(latLoop,latLoadKernelsEn_fz)+4)+max(latLoadFeedingBuff_fl,latLoadKernelsEn_fz);
-    #print "latProcInputBuff:"+str(latProcInputBuff);
+    print "latProcInputBuff:"+str(latProcInputBuff);
 
     layerx_loop_cnt_fg0=conv_inp_width*conv_filter_height;
 
@@ -237,7 +237,7 @@ def computeLatency (
     procistg_tripcount=conv_out_height-1;
     # whole image latency
     latProcIstagingBuff=latStoreOStagingBuff_fj+latReadLineBuffer+latProcInputBuff+procistg_tripcount*(max(latReadLineBuffer,max(latOutputWrite_fk,latReadLineBuffer)))
-    #print "latProcIstagingBuff:"+str(latProcIstagingBuff)
+    print "latProcIstagingBuff:"+str(latProcIstagingBuff)
 
 
     #* latency of loading input for computation of one row: latReadLineBuffer
@@ -246,7 +246,7 @@ def computeLatency (
     #* return the maximum of above three as the one row latency. usually it is latProcInputBuff_fd
 
 
-#    print "return value", max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
+    print "return value", max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
    
 
 
@@ -460,7 +460,7 @@ def computeLatency_conv_g(
 
     LatCompute16Ker_fy=(compute_loop_count+1)+XI_PIX_PROC/2+20;
 
-    #print "LatCompute16Ker_fy:"+str(LatCompute16Ker_fy);
+    print "LatCompute16Ker_fy:"+str(LatCompute16Ker_fy);
 
 
     nkpfCount(scalar_conv_args,XI_KER_PROC,XI_WEIGHTBUFF_DEPTH) 
@@ -474,7 +474,7 @@ def computeLatency_conv_g(
 
 
     latProcResult_fe=latOsggBuff_fx+LatCompute16Ker_fy+(nkpf-1)*max(latOsggBuff_fx,LatCompute16Ker_fy)+10
-    #print "latProcResult_fe:"+str(latProcResult_fe);
+    print "latProcResult_fe:"+str(latProcResult_fe);
 
     scalar_conv_args[92] =  scalar_conv_args[13] * conv_filter_height * conv_filter_width * (scalar_conv_args[61]/4)
     scalar_conv_args[62] = AlignSize(scalar_conv_args[4], 16) /(1+conv_group)
@@ -487,7 +487,7 @@ def computeLatency_conv_g(
         latLoadKernelsEn_fz = 0
     else:
         latLoadKernelsEn_fz=scalar_conv_args[92]*AXILATENCY+10
-#    print "latLoadKernelsEn_fz:"+str(latLoadKernelsEn_fz), AXILATENCY, "oneTime?", oneTime
+    print "latLoadKernelsEn_fz:"+str(latLoadKernelsEn_fz), AXILATENCY, "oneTime?", oneTime
 
     compute_planes=scalar_conv_args[61]
     latLoadFeedingBuff_fl = 0
@@ -496,7 +496,7 @@ def computeLatency_conv_g(
         latLoadFeedingBuff_fl=compute_planes/64*conv_filter_height*conv_filter_width*16*tmp+20;
     else:
         latLoadFeedingBuff_fl=LatLoadInputBuff32Pix_fn+10
-    #print "latLoadFeedingBuff_fl:"+str(latLoadFeedingBuff_fl)
+    print "latLoadFeedingBuff_fl:"+str(latLoadFeedingBuff_fl)
 
     # *computes number of XI_PIX_PROC in the output rows
     pix_per_ker= XI_PIX_PROC if (int6bit) else XI_PIX_PROC/2
@@ -511,7 +511,7 @@ def computeLatency_conv_g(
     #print "straddle:"+str(scalar_conv_args[17]);
 #    print "latLoop", latLoop, "latLoadFeedingBuff_fl", latLoadFeedingBuff_fl, "latLoadKernelsEn_fz", latLoadKernelsEn_fz
     latProcInputBuff=ProcInputLoopCount*(max(latLoop,latLoadKernelsEn_fz)+4)+max(latLoadFeedingBuff_fl,latLoadKernelsEn_fz);
-    #print "latProcInputBuff:"+str(latProcInputBuff);
+    # print "latProcInputBuff:"+str(latProcInputBuff);
 
     layerx_loop_cnt_fg0=conv_inp_width*conv_filter_height;
 
@@ -526,13 +526,13 @@ def computeLatency_conv_g(
     #print "latOutputWrite_fk:"+str(latOutputWrite_fk)
     # latency of writing back one row
     latStoreOStagingBuff_fj = (latOutputWrite_fk+10)*(scalar_conv_args[62]/16)+10;
-    #print "latStoreOStagingBuff_fj:"+str(latStoreOStagingBuff_fj)
+    print "latStoreOStagingBuff_fj:"+str(latStoreOStagingBuff_fj)
 
 
     procistg_tripcount=conv_out_height-1;
     # whole image latency
     latProcIstagingBuff=latStoreOStagingBuff_fj+latReadLineBuffer+latProcInputBuff+procistg_tripcount*(max(latReadLineBuffer,max(latOutputWrite_fk,latReadLineBuffer)))
-    #print "latProcIstagingBuff:"+str(latProcIstagingBuff)
+    print "latProcIstagingBuff:"+str(latProcIstagingBuff)
 
 
     #* latency of loading input for computation of one row: latReadLineBuffer
@@ -541,7 +541,7 @@ def computeLatency_conv_g(
     #* return the maximum of above three as the one row latency. usually it is latProcInputBuff_fd
 
 
-#    print "return value", max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
+    print "return value", max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
    
     latReadLineBuffer=latReadLineBuffer*2;
     latStoreOStagingBuff_fj=latStoreOStagingBuff_fj*2;
@@ -549,4 +549,27 @@ def computeLatency_conv_g(
 
     return max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
 
-print computeLatency(14,14,14,14,512,512,1,3,3,1,0,2,16,32,1024,True,1, None, 0)
+computeLatency(14,14,14,14,64,480,1,1,1,1,0,4,16,32,2048,True,14, None, 0)
+
+
+# def computeLatency (
+#     conv_inp_height  , 
+#     conv_inp_width   , 
+#     conv_out_height  , 
+#     conv_out_width   , 
+#     conv_out_planes  , 
+#     conv_inp_planes  , 
+#     conv_stride      , 
+#     conv_filter_height,
+#     conv_filter_width, 
+#     conv_pad         , 
+#     conv_group       , 
+#     rowStep,
+#     XI_KER_PROC,
+#     XI_PIX_PROC,
+#     XI_WEIGHTBUFF_DEPTH,
+#     int6bit,
+#     layerID, 
+#     AXILATENCY, 
+#     oneTime,
+# ):
