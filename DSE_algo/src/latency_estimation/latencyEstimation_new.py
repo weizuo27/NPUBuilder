@@ -13,7 +13,7 @@ def nkpfCount(scalar_conv_args,KER_PROC,XI_WEIGHTBUFF_DEPTH):
     group_flag   = scalar_conv_args[11]
     inputplanes  = scalar_conv_args[16]   
     fsz          = scalar_conv_args[7]
-    outDepth     = scalar_conv_args[4]
+    outDepth     = scalar_conv_args[16]
     inDepth      = scalar_conv_args[5]
 
     outputplanes = AlignSize(outDepth, KER_PROC)
@@ -24,7 +24,7 @@ def nkpfCount(scalar_conv_args,KER_PROC,XI_WEIGHTBUFF_DEPTH):
     if((group_flag) and (outDepth > KER_PROC)):
         op = outputplanes/2
         
-    n_kbuff_depth = XI_WEIGHTBUFF_DEPTH
+    n_kbuff_depth = XI_WEIGHTBUFF_DEPTH-1
     
     max_nkpf = 0
     if KER_PROC==1:
@@ -76,7 +76,7 @@ def straddleFactorCount(scalar_conv_args, inDepth, filter_size, group_flag, XI_W
     exp2 = False
     FEEDING_BUFF_DEPTH = 1024
     strad_fact=1
-    n_inbuff_depth = FEEDING_BUFF_DEPTH
+    n_inbuff_depth = FEEDING_BUFF_DEPTH-1
     print "inp_planes",inp_planes
     while(not exp1):
         comp_planes = inp_planes/ strad_fact
@@ -88,6 +88,7 @@ def straddleFactorCount(scalar_conv_args, inDepth, filter_size, group_flag, XI_W
     compute_planes =  numInpPlanes / (straddle_factor*split)
 
     scalar_conv_args[16] = compute_planes
+    print "compute_planes",compute_planes
     scalar_conv_args[17] = straddle_factor
 
 
@@ -157,7 +158,7 @@ def computeLatency (
     feeding_buff_plane_loop_bound=scalar_conv_args[61]/4;
     feeding_buff_row_loop_bound=conv_filter_height;
 
-    LatLoadInputBuff32Pix_fn=feeding_buff_plane_loop_bound*feeding_buff_row_loop_bound*(conv_filter_height+conv_stride*(XI_PIX_PROC/2-1) )+6;
+    LatLoadInputBuff32Pix_fn=feeding_buff_plane_loop_bound*feeding_buff_row_loop_bound*( conv_filter_height+conv_stride*(XI_PIX_PROC/2-1) )+6;
 
     if(int6bit): LatLoadInputBuff32Pix_fn=LatLoadInputBuff32Pix_fn*2;
     #print "LatLoadInputBuff32Pix_fn:"+str(LatLoadInputBuff32Pix_fn);
@@ -198,7 +199,7 @@ def computeLatency (
     latLoadFeedingBuff_fl = 0
     tmp = (XI_PIX_PROC/16+1) if (XI_PIX_PROC%16) else  (XI_PIX_PROC/16)
     if(layerID!=0):
-        latLoadFeedingBuff_fl=compute_planes/64*conv_filter_height*conv_filter_width*16*tmp+20;
+        latLoadFeedingBuff_fl=compute_planes/64*( conv_filter_height*conv_filter_width*16*tmp+13)+20;
     else:
         latLoadFeedingBuff_fl=LatLoadInputBuff32Pix_fn+10
     print "latLoadFeedingBuff_fl:"+str(latLoadFeedingBuff_fl)
@@ -212,7 +213,7 @@ def computeLatency (
 
 
     ProcInputLoopCount=scalar_conv_args[62]/XI_KER_PROC/nkpf*scalar_conv_args[17]
-    #print "ProcInputLoopCount"+str(ProcInputLoopCount)
+    print "ProcInputLoopCount"+str(ProcInputLoopCount)
     #print "straddle:"+str(scalar_conv_args[17]);
 #    print "latLoop", latLoop, "latLoadFeedingBuff_fl", latLoadFeedingBuff_fl, "latLoadKernelsEn_fz", latLoadKernelsEn_fz
     latProcInputBuff=ProcInputLoopCount*(max(latLoop,latLoadKernelsEn_fz)+4)+max(latLoadFeedingBuff_fl,latLoadKernelsEn_fz);
@@ -234,7 +235,7 @@ def computeLatency (
     #print "latStoreOStagingBuff_fj:"+str(latStoreOStagingBuff_fj)
 
 
-    procistg_tripcount=conv_out_height-1;
+    procistg_tripcount=conv_out_height/rowStep;
     # whole image latency
     latProcIstagingBuff=latStoreOStagingBuff_fj+latReadLineBuffer+latProcInputBuff+procistg_tripcount*(max(latReadLineBuffer,max(latOutputWrite_fk,latReadLineBuffer)))
     print "latProcIstagingBuff:"+str(latProcIstagingBuff)
@@ -549,27 +550,43 @@ def computeLatency_conv_g(
 
     return max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
 
-computeLatency(14,14,14,14,64,480,1,1,1,1,0,4,16,32,2048,True,14, None, 0)
+# computeLatency(7,7,7,7,2048,512,1,1,1,1,0,4,16,32,2048,True,14, None, 0)
 
 
-# def computeLatency (
-#     conv_inp_height  , 
-#     conv_inp_width   , 
-#     conv_out_height  , 
-#     conv_out_width   , 
-#     conv_out_planes  , 
-#     conv_inp_planes  , 
-#     conv_stride      , 
-#     conv_filter_height,
-#     conv_filter_width, 
-#     conv_pad         , 
-#     conv_group       , 
-#     rowStep,
-#     XI_KER_PROC,
-#     XI_PIX_PROC,
-#     XI_WEIGHTBUFF_DEPTH,
-#     int6bit,
-#     layerID, 
-#     AXILATENCY, 
-#     oneTime,
-# ):
+
+conv_inp_height = 7
+conv_inp_width = 7
+conv_out_height = 7
+conv_out_width = 7
+conv_out_planes =  512
+conv_inp_planes = 2048
+conv_stride = 1 
+conv_filter_height = 1
+conv_filter_width = 1
+conv_pad = 1
+conv_group = 0
+rowStep = 2
+XI_KER_PROC = 16
+XI_PIX_PROC = 32
+XI_WEIGHTBUFF_DEPTH = 1024
+
+computeLatency (
+    conv_inp_height  , 
+    conv_inp_width   , 
+    conv_out_height  , 
+    conv_out_width   , 
+    conv_out_planes  , 
+    conv_inp_planes  , 
+    conv_stride      , 
+    conv_filter_height,
+    conv_filter_width, 
+    conv_pad         , 
+    conv_group       , 
+    rowStep,
+    16,
+    32,
+    1024,
+    1,
+    6, 
+    1, 
+    0)
