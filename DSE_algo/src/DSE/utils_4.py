@@ -119,7 +119,7 @@ def isPipelined(s_node, t_node):
         bool: True if they are pipelined, False otherwise
     """
 #FIXME: This only works for NNs that is a chain
-    return t_node.Pipelined
+    return (s_node in t_node.Pipelined) or (t_node in s_node.Pipelined)
 
 def resourceConstr(layer, ip):
     """

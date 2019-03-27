@@ -78,7 +78,7 @@ class optimizer:
             self.assignMappingResult(graphs.exploreLayerQueue[g], explore_IP_types, hw_layers, IP_table, g, IP_table_org)
 #            self.updateGraph(g, hw_layers)
 #            graphs.drawGraph(g)
-            self.setPipelineFlag(hw_layers, g)
+            self.setPipelineFlag(hw_layers, g, graphs)
             if not fixedRowStep:
                 self.setRowStep(graphs.exploreLayerQueue[g])
             graphs.computeLatency(g)
@@ -129,38 +129,28 @@ class optimizer:
                 n.mappedIP.name = n.mappedIP.name+"_" + str(idx)
                 idx += 1
 
-    def setPipelineFlag(self, hw_layers, g):
+    def setPipelineFlag(self, hw_layers, g, graphs):
         visited = dict()
         nodes = list(nx.topological_sort(g))
-        for path in nx.all_simple_paths(g, source=nodes[0], target = nodes[-1]):
+        for path_l in nx.all_simple_paths(g, source=nodes[0], target = nodes[-1]):
             pipelineTable = dict()
-            for m in path:
+            path = list(path_l)
+            for idx, m in enumerate(path):
                 if m not in visited:
-                    visited[m] = 1
-                    preds = list(g.predecessors(m))
-                    numPreds = len(preds)
-                    numSuccs = len(list(g.successors(m)))
+#                    visited[m] = 1
                     if m.type not in hw_layers:
-#                            print m.name, m.type, "not in hw_layers"
-                        m.Pipelined = False
                         pipelineTable.clear()
-                    elif numPreds > 1 or numSuccs > 1:
-#                            print m.name, m.type, numPreds, numSuccs, "Preds or Succs > 1"
-                        m.Pipelined = False
+                    elif idx == 0:
                         pipelineTable.clear()
                         pipelineTable[m.mappedIP] = 1
-                    elif preds[0].type not in hw_layers:
-#                            print m.name, m.type, preds[0].name, "pred not in hw_layers"
-                        m.Pipelined = False
+                    elif path[idx-1].type not in hw_layers:
                         pipelineTable.clear()
                         pipelineTable[m.mappedIP] = 1
                     elif m.mappedIP not in pipelineTable:
-#                            print m.name, m.type, "Pipelined "
-                        m.Pipelined = True
+                        m.Pipelined.add(path[idx-1])
                         pipelineTable[m.mappedIP] = 1
                     else:
 #                            print m.name, m.type, "in the pipelineTable"
-                        m.Pipelined = False
                         pipelineTable.clear()
                         pipelineTable[m.mappedIP] = 1
 

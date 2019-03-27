@@ -190,11 +190,11 @@ class graph:
 #            self.maxPipelineLayer[g] = []
         #Node level clear
         for n in g.nodes:
+            n.Pipelined.clear()
             n.mappedIP = None
             n.IP_latency_rowStep = None
             n.latency = None
             n.lat_rowStep = None
-            n.Pipelined = False
             n.start_time = None
             n.isMaxPipeLayer = False
             n.bandWidth = 0
@@ -221,7 +221,10 @@ class graph:
                 nodes_list.append(n)
         nodes_list.sort(key = comp)
         for n in nodes_list:
-            print "IP", n.name, "type", n.type, "mappedIP", n.mappedIP, "is pipeined ?", n.Pipelined, n.lat_rowStep, n.latency
+            pipelineSet = ""
+            for s in n.Pipelined:
+                pipelineSet += (", " + s.name)
+            print "IP", n.name, "type", n.type, "mappedIP", n.mappedIP, "is pipeined ?", pipelineSet, n.lat_rowStep, n.latency
 
     def add_node(self, node):
         self.G.add_node(node)

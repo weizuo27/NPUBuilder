@@ -20,7 +20,7 @@ class vertex:
         self.type = None
         self.latency = None
         self.lat_rowStep = None 
-        self.Pipelined = False
+        self.Pipelined =set() 
         self.bandWidth = 0
 
     def computeLatency(self):
@@ -93,7 +93,7 @@ class layer(vertex):
         self.name, self.type = n_t.split("-")
         self.mappedIP = None
         self.firstLayer = False
-        self.Pipelined = False
+        self.Pipelined = set() 
         self.IP_latency_rowStep = None
         self.lat_rowStep = None
         self.start_time = None
@@ -279,7 +279,7 @@ class layer(vertex):
 
         else:
             for prevLayer in prevLayers:
-                if not isPipelined(prevLayers, self):
+                if not isPipelined(prevLayer, self):
                     self.lat_rowStep = self.IP_latency_rowStep
 #                    self.isMaxPipeLayer = True
 #                    maxPipelineLayer.append(self)
