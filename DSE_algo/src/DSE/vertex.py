@@ -279,7 +279,7 @@ class layer(vertex):
 
         else:
             for prevLayer in prevLayers:
-                if not isPipelined(prevLayers, self):
+                if not isPipelined(prevLayer, self):
                     self.lat_rowStep = self.IP_latency_rowStep
 #                    self.isMaxPipeLayer = True
 #                    maxPipelineLayer.append(self)
