@@ -54,6 +54,7 @@ def CSVconfigNece(n, ip_inst):
 
 def CSVconfigUnNece(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxSel):
     if ip_inst.type == "Convolution" or ip_inst.type == "Convolution_g":
+        ip_inst.idle = int(idle)
         ip_inst.CSVparameterListUnNece[0] = int(idle)
         if n == t:
             ip_inst.CSVparameterListUnNece[1] = 1 #in
@@ -61,6 +62,7 @@ def CSVconfigUnNece(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxS
             ip_inst.CSVparameterListUnNece[2] = 1 #out
         layerIdx = layerIdxTable[n.name]
         ip_inst.CSVparameterListUnNece[3] = layerIdx
+        ip_inst.layerID = int(layerIdx)
 
 #    elif ip_inst.type == "Convolution_g":
 #        groupNums = 2 #FIXME: Hard coded group num
@@ -74,18 +76,21 @@ def CSVconfigUnNece(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxS
 #            ip_inst.CSVparameterListUnNece[i][3] = layerIdx
 
     elif ip_inst.type == "Pooling":
+        ip_inst.idle = int(idle)
         ip_inst.CSVparameterListUnNece[0] = int(idle)
         if n == t:
             ip_inst.CSVparameterListUnNece[1] = 1 #in
         if n == s:
             ip_inst.CSVparameterListUnNece[2] = 1 #out
         layerIdx = layerIdxTable[n.name]
+        ip_inst.layerID = int(layerIdx)
         byPass = int(False)
         Avg = int((poolingTypeTable[n.name] == "avg"))
         ip_inst.CSVparameterListUnNece[3:5] = [byPass, Avg]
         ip_inst.CSVparameterListUnNece[5] = layerIdx
 
     elif "MUX" in ip_inst.type:
+        ip_inst.idle = int(idle)
         if(not idle):
             preIdx = layerIdxTable[s.name]
             preLayerType = s.type
@@ -94,6 +99,7 @@ def CSVconfigUnNece(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxS
         else:
            ip_inst.CSVparameterListUnNece = [1, 0, -1,"X", "X"]
     elif ip_inst.type == "Eltwise":
+        ip_inst.idle = int(idle)
         ip_inst.CSVparameterListUnNece[0] = int(idle)
         #FIXME: We currently do not allow ELE to have stream in.
 #        if n == t:
@@ -102,11 +108,12 @@ def CSVconfigUnNece(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxS
             ip_inst.CSVparameterListUnNece[3] = 1 #out
         layerIdx = layerIdxTable[n.name]
         ip_inst.CSVparameterListUnNece[4] = layerIdx
+        ip_inst.layerID = int(layerIdx)
     else:
         assert 0, "Unsupported IP type" #Should not come here
 
 
-def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers, outDir):
+def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers, outDir, pipeInfoTable):
         
     layerIdxTable = readLayerId( "./inputFiles/layerIDMapping")
     poolingTypeTable = readLayerId("./inputFiles/PoolingTyping")
@@ -134,6 +141,9 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers, outDir):
     roundIdx = 0
     fileName = outDir + "/round.csv"
     f = open(fileName, "w")
+    f.close()
+    pipeInfoFileName = outDir + "/pipeInfo.csv"
+    f = open(pipeInfoFileName, "w")
     f.close()
     fileNameCallOrder = outDir + "/callOrder.csv"
     f = open(fileNameCallOrder, "w")
@@ -182,6 +192,7 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers, outDir):
                         CSVconfigUnNece(n, ip_inst, s, t, False, layerIdxTable, poolingTypeTable,  muxSel)
             callOrder.append(t.mappedIP.name)
         genCSVFile(IP_g, roundIdx, fileName)
+        genPipeInfoFile(IP_g, roundIdx, pipeInfoFileName, pipeInfoTable, hw_layers)
 
         callOrderList = []
 #        nSplit(callOrder, callOrderList)
@@ -238,6 +249,38 @@ def genCSVFile(IP_g, roundIdx, fileName):
     f.write(line)
     f.close()
 
+def genPipeInfoFile(IP_g, roundIdx, fileName, pipeInfoTable, hw_layers):
+    f = open(fileName, "a")
+    csvParamList = [roundIdx]
+    numOfFalse = 0
+    for ip_inst in IP_g.nodes():
+        if ip_inst.type not in hw_layers:
+            continue
+        if ip_inst.idle:
+            continue
+        layerParamList = pipeInfoTable[ip_inst.layerID]
+        isPipelinedTmp = layerParamList[0]
+        if(not isPipelinedTmp):
+            numOfFalse += 1
+    isPipelined = True if numOfFalse < 2 else False
+
+    csvParamList.append(isPipelined)
+    for ip_inst in IP_g.nodes():
+        if(ip_inst.type == "DDR"):
+            continue
+        if ip_inst.idle:
+            continue
+        csvParamList.append(ip_inst.type)
+        layerParamList = pipeInfoTable[ip_inst.layerID]
+        csvParamList.append(ip_inst.memInFlag)
+        csvParamList.append(ip_inst.memOutFlag)
+        csvParamList += layerParamList[1:]
+    line = ",".join(map(str, csvParamList))
+    line = line.replace("True", "1")
+    line = line.replace("False", "0")
+    line += "\n"
+    f.write(line)
+    f.close()
 
 def nSplit(inList, outLists):
     hasElem = dict()

@@ -25,6 +25,7 @@ class IP():
     def __init__(self, name, type, resource_list, 
             #The following are chaiDNN conv specific configs
             paramList, numIPs, firstLayer = False):
+        self.idle = 1
         self.name = str(name)
         self.type = str(type)
         self.orig_name = str(name)
@@ -35,6 +36,7 @@ class IP():
         self.DSP = 0
         self.FF = 0
         self.LUT = 0
+        self.layerID = 0
         #The followings are used to generate csv
         self.ip_l = None
         if self.type == "Convolution":
@@ -76,6 +78,7 @@ class IP():
 #        else:
         if 1:
             self.CSVparameterListUnNece = self.csvUneceNums * [0]
+            self.idle = 1
             if(self.csvUneceNums > 0):
                 self.CSVparameterListUnNece[0] = 1
 

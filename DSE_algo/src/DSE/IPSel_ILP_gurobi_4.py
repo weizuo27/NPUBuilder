@@ -1,4 +1,5 @@
 import os
+from math import ceil
 import networkx as nx
 import sys
 from optimizer_gurobi_4 import optimizer
@@ -235,6 +236,8 @@ class IPSel():
                 print n.name,
             print ", total latency is ", latency_solution[g], "\n"
 
+        #layerPipeInfo
+        pipeInfoTable = genPipeInfo(mapping_solution, hw_layers)
         #After the is done, re-order the mapping
         final_graph_list = reorderMapping(mapping_solution, hw_layers) 
 
@@ -257,7 +260,7 @@ class IPSel():
         assignStreamPorts(IP_g, 2)
         genTop(IP_g, outHwDir, batchSize)
         #Gen CSV
-        genCSVConfigs(final_graph_list, IP_g, muxSelTable, hw_layers, outHwDir)
+        genCSVConfigs(final_graph_list, IP_g, muxSelTable, hw_layers, outHwDir, pipeInfoTable)
 
         #Gen Scheduler
 
@@ -409,9 +412,23 @@ def reorderMapping(mapping_solution, hw_layers):
 
     for g in mapping_solution:
         for n in g.nodes():
+            if n.type is "Eltwise":
+                assert(len(list(g.predecessors(n))) == 2)
+                m0 = list(g.predecessors(n))[0]
+                m1 = list(g.predecessors(n))[1]
+                m = m1 if m0.ID > m1.ID else m0
+                g.remove_edge(m, n)
+
+                assert(len(list(g.successors(n))) == 2)
+                m0 = list(g.successors(n))[0]
+                m1 = list(g.successors(n))[1]
+                m = m1 if m0.ID > m1.ID else m0
+                g.remove_edge(n, m)
             if n.type in hw_layers:
-                if not n.Pipelined:
-                    g.remove_edges_from(list(g.in_edges(n)))
+                for t in g.in_edges(n):
+                    m = t[0]
+                    if not isPipelined(m, n):
+                        g.remove_edge(m, n)
 
     for g in mapping_solution:
         nodes_list= [x for x in list(g.nodes()) if x.type in hw_layers]
@@ -441,3 +458,44 @@ def nSplit(inList, outLists):
             return
     outLists.append(subList)
 
+def genPipeInfo(mapping_solution, hw_layers):
+    layerInfoTable = dict()
+    for g in mapping_solution:
+        for n in list(mapping_solution[g].nodes):
+            if n.type not in hw_layers:
+                continue
+            lineList = [n.Pipelined]
+            in_height, in_width = map(int, n.input_params[2:4])
+            out_height, out_width = map(int, n.output_params[2:4])
+            if(n.type == "Convolution" or n.type == "Convolution_g"):
+                group = 0 if n.type == "Convolution" else 1
+                cout, cin, kw, kh = map(int, (n.params[0].split("=")[1]).split("x")) 
+                out_height, out_width = map(int, n.output_params[2:4])
+                S = int(n.params[1].split("=")[1])
+                padding = int(n.params[2].split("=")[1])
+                group = int(n.params[4].split("=")[1])
+                n.setRowStep()
+                maxRowStep = n.rowStep
+                XI_KER_PROC, XI_PIX_PROC, XI_IBUFF_DEPTH, \
+                XI_OBUFF_DEPTH, XI_WEIGHTBUFF_DEPTH = n.mappedIP.paramList
+                if(ceil(float(cin)/4) * ceil(float(cout)/XI_KER_PROC) * kh * kw <= XI_WEIGHTBUFF_DEPTH * 2):
+                    oneTime = True
+                else:
+                    oneTime = False
+                lineList += [in_height, in_width, out_height, out_width, cout, cin, S, kh, kw, padding, group, maxRowStep, oneTime, n.ID]
+            elif(n.type == "Pooling"):
+                PoolType = n.params[0].split("=")[1]
+                N = int(n.params[1].split("=")[1])
+                kw = kh = int(n.params[2].split("=")[1])
+                S = int(n.params[3].split("=")[1])
+                padding = int(n.params[4].split("=")[1])
+                cout=cin = int(n.params[1].split("=")[1])
+                oneTime = False
+                maxRowStep = 1000
+                group = 0
+                lineList += [in_height, in_width, out_height, out_width, cout, cin, S, kh, kw, padding, group, maxRowStep, oneTime, n.ID]
+            elif(n.type == "Eltwise"):
+                cout, cin, kw, kh = map(int, (n.params[0].split("=")[1]).split("x"))
+                lineList += [out_height, out_width, cout, 1000, n.ID]
+            layerInfoTable[n.ID] = lineList
+    return layerInfoTable

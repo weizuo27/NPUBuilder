@@ -77,7 +77,7 @@ def straddleFactorCount(scalar_conv_args, inDepth, filter_size, group_flag, XI_W
     FEEDING_BUFF_DEPTH = 1024
     strad_fact=1
     n_inbuff_depth = FEEDING_BUFF_DEPTH-1
-    print "inp_planes",inp_planes
+    #print "inp_planes",inp_planes
     while(not exp1):
         comp_planes = inp_planes/ strad_fact
         exp1 =  (((comp_planes/4)*fsz2) <=  (n_inbuff_depth/2))
@@ -88,7 +88,7 @@ def straddleFactorCount(scalar_conv_args, inDepth, filter_size, group_flag, XI_W
     compute_planes =  numInpPlanes / (straddle_factor*split)
 
     scalar_conv_args[16] = compute_planes
-    print "compute_planes",compute_planes
+    #print "compute_planes",compute_planes
     scalar_conv_args[17] = straddle_factor
 
 
@@ -161,26 +161,26 @@ def computeLatency (
     LatLoadInputBuff32Pix_fn=feeding_buff_plane_loop_bound*feeding_buff_row_loop_bound*( conv_filter_height+conv_stride*(XI_PIX_PROC/2-1) )+6;
 
     if(int6bit): LatLoadInputBuff32Pix_fn=LatLoadInputBuff32Pix_fn*2;
-    #print "LatLoadInputBuff32Pix_fn:"+str(LatLoadInputBuff32Pix_fn);
+    ##print "LatLoadInputBuff32Pix_fn:"+str(LatLoadInputBuff32Pix_fn);
 
 
     LatCompute16Ker_fy=(compute_loop_count+1)+XI_PIX_PROC/2+20;
 
-    print "LatCompute16Ker_fy:"+str(LatCompute16Ker_fy);
+    #print "LatCompute16Ker_fy:"+str(LatCompute16Ker_fy);
 
 
     nkpfCount(scalar_conv_args,XI_KER_PROC,XI_WEIGHTBUFF_DEPTH) 
 
     nkpf= scalar_conv_args[13]
-    #print "nkpf:"+str(nkpf);
+    ##print "nkpf:"+str(nkpf);
 
 
     latOsggBuff_fx=XI_PIX_PROC+8
-    #print "latOsggBuff_fx:"+str(latOsggBuff_fx);
+    ##print "latOsggBuff_fx:"+str(latOsggBuff_fx);
 
 
     latProcResult_fe=latOsggBuff_fx+LatCompute16Ker_fy+(nkpf-1)*max(latOsggBuff_fx,LatCompute16Ker_fy)+10
-    print "latProcResult_fe:"+str(latProcResult_fe);
+    #print "latProcResult_fe:"+str(latProcResult_fe);
 
     scalar_conv_args[92] =  scalar_conv_args[13] * conv_filter_height * conv_filter_width * (scalar_conv_args[61]/4)
     scalar_conv_args[62] = AlignSize(scalar_conv_args[4], 16) /(1+conv_group)
@@ -193,7 +193,7 @@ def computeLatency (
         latLoadKernelsEn_fz = 0
     else:
         latLoadKernelsEn_fz=scalar_conv_args[92]*AXILATENCY+10
-    print "latLoadKernelsEn_fz:"+str(latLoadKernelsEn_fz), AXILATENCY, "oneTime?", oneTime
+    #print "latLoadKernelsEn_fz:"+str(latLoadKernelsEn_fz), AXILATENCY, "oneTime?", oneTime
 
     compute_planes=scalar_conv_args[61]
     latLoadFeedingBuff_fl = 0
@@ -202,7 +202,7 @@ def computeLatency (
         latLoadFeedingBuff_fl=compute_planes/64*( conv_filter_height*conv_filter_width*16*tmp+13)+20;
     else:
         latLoadFeedingBuff_fl=LatLoadInputBuff32Pix_fn+10
-    print "latLoadFeedingBuff_fl:"+str(latLoadFeedingBuff_fl)
+    #print "latLoadFeedingBuff_fl:"+str(latLoadFeedingBuff_fl)
 
     # *computes number of XI_PIX_PROC in the output rows
     pix_per_ker= XI_PIX_PROC if (int6bit) else XI_PIX_PROC/2
@@ -213,11 +213,11 @@ def computeLatency (
 
 
     ProcInputLoopCount=scalar_conv_args[62]/XI_KER_PROC/nkpf*scalar_conv_args[17]
-    print "ProcInputLoopCount"+str(ProcInputLoopCount)
-    #print "straddle:"+str(scalar_conv_args[17]);
-#    print "latLoop", latLoop, "latLoadFeedingBuff_fl", latLoadFeedingBuff_fl, "latLoadKernelsEn_fz", latLoadKernelsEn_fz
+    #print "ProcInputLoopCount"+str(ProcInputLoopCount)
+    ##print "straddle:"+str(scalar_conv_args[17]);
+#    #print "latLoop", latLoop, "latLoadFeedingBuff_fl", latLoadFeedingBuff_fl, "latLoadKernelsEn_fz", latLoadKernelsEn_fz
     latProcInputBuff=ProcInputLoopCount*(max(latLoop,latLoadKernelsEn_fz)+4)+max(latLoadFeedingBuff_fl,latLoadKernelsEn_fz);
-    print "latProcInputBuff:"+str(latProcInputBuff);
+    #print "latProcInputBuff:"+str(latProcInputBuff);
 
     layerx_loop_cnt_fg0=conv_inp_width*conv_filter_height;
 
@@ -225,20 +225,20 @@ def computeLatency (
         latReadLineBuffer=layerx_loop_cnt_fg0*2+20;
     else:
         latReadLineBuffer=rowStep*conv_stride*(scalar_conv_args[61]/16)*(9+conv_inp_width*2)+5
-    #print "latReadLineBuffer:"+str(latReadLineBuffer)
+    ##print "latReadLineBuffer:"+str(latReadLineBuffer)
 
     latOutputWrite_fk = rowStep*conv_out_width+10;
 
-    #print "latOutputWrite_fk:"+str(latOutputWrite_fk)
+    ##print "latOutputWrite_fk:"+str(latOutputWrite_fk)
     # latency of writing back one row
     latStoreOStagingBuff_fj = (latOutputWrite_fk+10)*(scalar_conv_args[62]/16)+10;
-    #print "latStoreOStagingBuff_fj:"+str(latStoreOStagingBuff_fj)
+    ##print "latStoreOStagingBuff_fj:"+str(latStoreOStagingBuff_fj)
 
 
     procistg_tripcount=conv_out_height/rowStep;
     # whole image latency
     latProcIstagingBuff=latStoreOStagingBuff_fj+latReadLineBuffer+latProcInputBuff+procistg_tripcount*(max(latReadLineBuffer,max(latOutputWrite_fk,latReadLineBuffer)))
-    print "latProcIstagingBuff:"+str(latProcIstagingBuff)
+    #print "latProcIstagingBuff:"+str(latProcIstagingBuff)
 
 
     #* latency of loading input for computation of one row: latReadLineBuffer
@@ -247,7 +247,7 @@ def computeLatency (
     #* return the maximum of above three as the one row latency. usually it is latProcInputBuff_fd
 
 
-    print "return value", max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
+    #print "return value", max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
    
 
 
@@ -356,7 +356,7 @@ XI_WEIGHTBUFF_DEPTH = 1024
 #    False
 #    )
 
-#print aa, aa*conv_out_height/rowStep
+##print aa, aa*conv_out_height/rowStep
 #
 #
 def computeLatency_pooling(ow, fw, fh, odepth, pipelined):
@@ -456,26 +456,26 @@ def computeLatency_conv_g(
     LatLoadInputBuff32Pix_fn=feeding_buff_plane_loop_bound*feeding_buff_row_loop_bound*(conv_filter_height+conv_stride*(XI_PIX_PROC/2-1) )+6;
 
     if(int6bit): LatLoadInputBuff32Pix_fn=LatLoadInputBuff32Pix_fn*2;
-    #print "LatLoadInputBuff32Pix_fn:"+str(LatLoadInputBuff32Pix_fn);
+    ##print "LatLoadInputBuff32Pix_fn:"+str(LatLoadInputBuff32Pix_fn);
 
 
     LatCompute16Ker_fy=(compute_loop_count+1)+XI_PIX_PROC/2+20;
 
-    print "LatCompute16Ker_fy:"+str(LatCompute16Ker_fy);
+    #print "LatCompute16Ker_fy:"+str(LatCompute16Ker_fy);
 
 
     nkpfCount(scalar_conv_args,XI_KER_PROC,XI_WEIGHTBUFF_DEPTH) 
 
     nkpf= scalar_conv_args[13]
-    #print "nkpf:"+str(nkpf);
+    ##print "nkpf:"+str(nkpf);
 
 
     latOsggBuff_fx=XI_PIX_PROC+8
-    #print "latOsggBuff_fx:"+str(latOsggBuff_fx);
+    ##print "latOsggBuff_fx:"+str(latOsggBuff_fx);
 
 
     latProcResult_fe=latOsggBuff_fx+LatCompute16Ker_fy+(nkpf-1)*max(latOsggBuff_fx,LatCompute16Ker_fy)+10
-    print "latProcResult_fe:"+str(latProcResult_fe);
+    #print "latProcResult_fe:"+str(latProcResult_fe);
 
     scalar_conv_args[92] =  scalar_conv_args[13] * conv_filter_height * conv_filter_width * (scalar_conv_args[61]/4)
     scalar_conv_args[62] = AlignSize(scalar_conv_args[4], 16) /(1+conv_group)
@@ -488,7 +488,7 @@ def computeLatency_conv_g(
         latLoadKernelsEn_fz = 0
     else:
         latLoadKernelsEn_fz=scalar_conv_args[92]*AXILATENCY+10
-    print "latLoadKernelsEn_fz:"+str(latLoadKernelsEn_fz), AXILATENCY, "oneTime?", oneTime
+    #print "latLoadKernelsEn_fz:"+str(latLoadKernelsEn_fz), AXILATENCY, "oneTime?", oneTime
 
     compute_planes=scalar_conv_args[61]
     latLoadFeedingBuff_fl = 0
@@ -497,7 +497,7 @@ def computeLatency_conv_g(
         latLoadFeedingBuff_fl=compute_planes/64*conv_filter_height*conv_filter_width*16*tmp+20;
     else:
         latLoadFeedingBuff_fl=LatLoadInputBuff32Pix_fn+10
-    print "latLoadFeedingBuff_fl:"+str(latLoadFeedingBuff_fl)
+    #print "latLoadFeedingBuff_fl:"+str(latLoadFeedingBuff_fl)
 
     # *computes number of XI_PIX_PROC in the output rows
     pix_per_ker= XI_PIX_PROC if (int6bit) else XI_PIX_PROC/2
@@ -508,11 +508,11 @@ def computeLatency_conv_g(
 
 
     ProcInputLoopCount=scalar_conv_args[62]/XI_KER_PROC/nkpf*scalar_conv_args[17]
-    #print "ProcInputLoopCount"+str(ProcInputLoopCount)
-    #print "straddle:"+str(scalar_conv_args[17]);
-#    print "latLoop", latLoop, "latLoadFeedingBuff_fl", latLoadFeedingBuff_fl, "latLoadKernelsEn_fz", latLoadKernelsEn_fz
+    ##print "ProcInputLoopCount"+str(ProcInputLoopCount)
+    ##print "straddle:"+str(scalar_conv_args[17]);
+#    #print "latLoop", latLoop, "latLoadFeedingBuff_fl", latLoadFeedingBuff_fl, "latLoadKernelsEn_fz", latLoadKernelsEn_fz
     latProcInputBuff=ProcInputLoopCount*(max(latLoop,latLoadKernelsEn_fz)+4)+max(latLoadFeedingBuff_fl,latLoadKernelsEn_fz);
-    # print "latProcInputBuff:"+str(latProcInputBuff);
+    # #print "latProcInputBuff:"+str(latProcInputBuff);
 
     layerx_loop_cnt_fg0=conv_inp_width*conv_filter_height;
 
@@ -520,20 +520,20 @@ def computeLatency_conv_g(
         latReadLineBuffer=layerx_loop_cnt_fg0*2+20;
     else:
         latReadLineBuffer=rowStep*conv_stride*(scalar_conv_args[61]/16)*(9+conv_inp_width*2)+5
-    #print "latReadLineBuffer:"+str(latReadLineBuffer)
+    ##print "latReadLineBuffer:"+str(latReadLineBuffer)
 
     latOutputWrite_fk = rowStep*conv_out_width+10;
 
-    #print "latOutputWrite_fk:"+str(latOutputWrite_fk)
+    ##print "latOutputWrite_fk:"+str(latOutputWrite_fk)
     # latency of writing back one row
     latStoreOStagingBuff_fj = (latOutputWrite_fk+10)*(scalar_conv_args[62]/16)+10;
-    print "latStoreOStagingBuff_fj:"+str(latStoreOStagingBuff_fj)
+    #print "latStoreOStagingBuff_fj:"+str(latStoreOStagingBuff_fj)
 
 
     procistg_tripcount=conv_out_height-1;
     # whole image latency
     latProcIstagingBuff=latStoreOStagingBuff_fj+latReadLineBuffer+latProcInputBuff+procistg_tripcount*(max(latReadLineBuffer,max(latOutputWrite_fk,latReadLineBuffer)))
-    print "latProcIstagingBuff:"+str(latProcIstagingBuff)
+    #print "latProcIstagingBuff:"+str(latProcIstagingBuff)
 
 
     #* latency of loading input for computation of one row: latReadLineBuffer
@@ -542,7 +542,7 @@ def computeLatency_conv_g(
     #* return the maximum of above three as the one row latency. usually it is latProcInputBuff_fd
 
 
-    print "return value", max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
+    #print "return value", max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
    
     latReadLineBuffer=latReadLineBuffer*2;
     latStoreOStagingBuff_fj=latStoreOStagingBuff_fj*2;
