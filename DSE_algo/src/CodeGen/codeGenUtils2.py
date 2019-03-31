@@ -272,9 +272,8 @@ def genPipeInfoFile(IP_g, roundIdx, fileName, pipeInfoTable, hw_layers):
             continue
         csvParamList.append(ip_inst.type)
         layerParamList = pipeInfoTable[ip_inst.layerID]
-        csvParamList.append(ip_inst.memInFlag)
-        csvParamList.append(ip_inst.memOutFlag)
         csvParamList += layerParamList[1:]
+        csvParamList.append("END")
     line = ",".join(map(str, csvParamList))
     line = line.replace("True", "1")
     line = line.replace("False", "0")

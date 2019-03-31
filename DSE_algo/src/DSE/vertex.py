@@ -63,6 +63,7 @@ class pipeNode(vertex):
         self.type = "pipeNode"
         pipeNode.idx+=1
         self.latency = neg_latency
+        self.Pipelined = True
 
 class blob(vertex):
     """

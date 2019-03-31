@@ -464,7 +464,21 @@ def genPipeInfo(mapping_solution, hw_layers):
         for n in list(mapping_solution[g].nodes):
             if n.type not in hw_layers:
                 continue
+
             lineList = [n.Pipelined]
+            if n.Pipelined:
+                n.memIn = False
+            else:
+                n.memIn = True
+            succList = list(mapping_solution[g].successors(n))
+            assert (len(succList) <= 1)
+            if(len(succList) == 0):
+                n.memOut = True
+            else:
+                n.memOut = False if(succList[0].Pipelined) else True
+
+            lineList.append(int(n.memIn))
+            lineList.append(int(n.memOut))
             in_height, in_width = map(int, n.input_params[2:4])
             out_height, out_width = map(int, n.output_params[2:4])
             if(n.type == "Convolution" or n.type == "Convolution_g"):
@@ -497,5 +511,8 @@ def genPipeInfo(mapping_solution, hw_layers):
             elif(n.type == "Eltwise"):
                 cout, cin, kw, kh = map(int, (n.params[0].split("=")[1]).split("x"))
                 lineList += [out_height, out_width, cout, 1000, n.ID]
+            if(n.type == "Convolution" or n.type == "Convolution_g"):
+                int6 = 1
+                lineList += [XI_KER_PROC, XI_PIX_PROC, XI_WEIGHTBUFF_DEPTH, int6]
             layerInfoTable[n.ID] = lineList
     return layerInfoTable
