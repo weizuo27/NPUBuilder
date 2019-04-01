@@ -270,7 +270,7 @@ def genPipeInfoFile(IP_g, roundIdx, fileName, pipeInfoTable, hw_layers):
 
     csvParamList.append(isPipelined)
     for ip_inst in nodes:
-        if(ip_inst.type == "DDR"):
+        if ip_inst.type not in hw_layers:
             continue
         if ip_inst.idle:
             continue

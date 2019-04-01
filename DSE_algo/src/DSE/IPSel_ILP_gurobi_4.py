@@ -20,7 +20,7 @@ class IPSel():
     def __init__(self):
         None
     def run(self, BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, Lat_budget, numOtherIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, fixedRowStep, updateRowStep,\
-           manualSetingConvIPbound, convIPlb, convIPUb) :
+           manualSetingConvIPbound, convIPlb, convIPUb, lat_achieved_total_old) :
         status = "Undecided" 
 
         #Hard code the hardware supported layers
@@ -218,8 +218,11 @@ class IPSel():
             print "No feasible solutions"
             return
 
-        converged = self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
-        return converged
+        if(lat_achieved_total > lat_achieved_total_old + ESP):
+            print "no better solution, return"
+            return lat_achieved_total
+        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
+        return lat_achieved_total
 
     def codeGen(self, lat_achieved, latency_solution, mapping_solution, hw_layers, gs, batchSize, numConvIPs, numIPs):
         print "\n\n #####################################################################"
@@ -276,12 +279,12 @@ class IPSel():
         #compare the old and new rowstep file
         cmd = "sort -o " + oldRowStepFile + " " + oldRowStepFile
         os.system(cmd)
-        print "oldRowStepFile abcd"
-        os.system("cat " + oldRowStepFile)
+#        print "oldRowStepFile abcd"
+#        os.system("cat " + oldRowStepFile)
         cmd = "sort -o " + newRowStepFile + " " + newRowStepFile
         os.system(cmd)
-        print "newRowStepFile abcd"
-        os.system("cat " + newRowStepFile)
+#        print "newRowStepFile abcd"
+#        os.system("cat " + newRowStepFile)
         if(filecmp.cmp(oldRowStepFile, newRowStepFile)):
             print "They are the same"
             converged = True
@@ -502,8 +505,9 @@ def genPipeInfo(mapping_solution, hw_layers):
             else:
                 n.memIn = True
             succList = list(mapping_solution[g].successors(n))
-            assert (len(succList) <= 1)
-            if(len(succList) == 0):
+            if(len(succList) >= 1):
+                n.memOut = True
+            elif(len(succList) == 0):
                 n.memOut = True
             else:
                 n.memOut = False if(succList[0].Pipelined) else True
@@ -519,8 +523,7 @@ def genPipeInfo(mapping_solution, hw_layers):
                 S = int(n.params[1].split("=")[1])
                 padding = int(n.params[2].split("=")[1])
                 group = int(n.params[4].split("=")[1])
-                n.setRowStep()
-                maxRowStep = n.rowStep
+                maxRowStep = n.computeMaxRowStep()
                 XI_KER_PROC, XI_PIX_PROC, XI_IBUFF_DEPTH, \
                 XI_OBUFF_DEPTH, XI_WEIGHTBUFF_DEPTH = n.mappedIP.paramList
                 if(ceil(float(cin)/4) * ceil(float(cout)/XI_KER_PROC) * kh * kw <= XI_WEIGHTBUFF_DEPTH * 2):

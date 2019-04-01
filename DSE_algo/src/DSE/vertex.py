@@ -22,6 +22,8 @@ class vertex:
         self.lat_rowStep = None 
         self.Pipelined = False
         self.bandWidth = 0
+        self.rowStep = None
+        self.ID = None
 
     def computeLatency(self):
         None
@@ -59,6 +61,7 @@ class pipeNode(vertex):
     """
     idx = 0
     def __init__(self, neg_latency):
+        vertex.__init__(self)
         self.name = "pipeNode" + str(pipeNode.idx)
         self.type = "pipeNode"
         pipeNode.idx+=1
@@ -329,9 +332,32 @@ class layer(vertex):
         """
         self.start_time = timeStamp
 
+    def computeMaxRowStep(self):
+        assert self.mappedIP != None, "Cannot set row step if the mapped IP is not decided."
+        if self.type == "Convolution_g" or self.type == "Convolution":
+            XI_KER_PROC, XI_PIX_PROC, XI_IBUFF_DEPTH, \
+            XI_OBUFF_DEPTH, XI_WEIGHTBUFF_DEPTH = self.mappedIP.paramList
+            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x"))
+            S = int(self.params[1].split("=")[1])
+            padding = int(self.params[2].split("=")[1])
+
+            in_depth, in_height, in_width = map(int, self.input_params[1:4])
+            out_depth, out_height, out_width = map(int, self.output_params[1:4]) 
+
+            XI_IBUFF_DEPTH = int(XI_IBUFF_DEPTH)
+            XI_OBUFF_DEPTH = int(XI_OBUFF_DEPTH)
+
+            if self.firstLayer:
+                maxRowStepIn = ((XI_IBUFF_DEPTH/64)-kh)/ S +1
+            else:
+                maxRowStepIn =((XI_IBUFF_DEPTH/(in_width * math.ceil(float(in_depth)/64))-kh)/S+1)/2
+            maxRowStepOut = XI_OBUFF_DEPTH/(out_width * math.ceil(float(out_depth)/32))
+
+            return min(out_height, min(int(maxRowStepIn), int(maxRowStepOut)))
     def setRowStep(self, rowStepTable=None):
         assert self.mappedIP != None, "Cannot set row step if the mapped IP is not decided."
         if(rowStepTable):
+            print rowStepTable
             self.rowStep = rowStepTable[self.ID]
             return
         if self.type == "Convolution_g" or self.type == "Convolution":
