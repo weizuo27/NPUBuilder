@@ -253,7 +253,11 @@ def genPipeInfoFile(IP_g, roundIdx, fileName, pipeInfoTable, hw_layers):
     f = open(fileName, "a")
     csvParamList = [roundIdx]
     numOfFalse = 0
-    for ip_inst in IP_g.nodes():
+    nodes = list(IP_g.nodes())
+    def comp(elem):
+        return elem.layerID
+    nodes.sort(key = comp)
+    for ip_inst in nodes:
         if ip_inst.type not in hw_layers:
             continue
         if ip_inst.idle:
@@ -265,7 +269,7 @@ def genPipeInfoFile(IP_g, roundIdx, fileName, pipeInfoTable, hw_layers):
     isPipelined = True if numOfFalse < 2 else False
 
     csvParamList.append(isPipelined)
-    for ip_inst in IP_g.nodes():
+    for ip_inst in nodes:
         if(ip_inst.type == "DDR"):
             continue
         if ip_inst.idle:
@@ -273,7 +277,7 @@ def genPipeInfoFile(IP_g, roundIdx, fileName, pipeInfoTable, hw_layers):
         csvParamList.append(ip_inst.type)
         layerParamList = pipeInfoTable[ip_inst.layerID]
         csvParamList += layerParamList[1:]
-        csvParamList.append("END")
+    csvParamList.append("END")
     line = ",".join(map(str, csvParamList))
     line = line.replace("True", "1")
     line = line.replace("False", "0")

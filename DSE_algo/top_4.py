@@ -60,7 +60,12 @@ assert args.fixedRowStep < 2, "fixedRowStep can only be 0 (False) or 1 (True)"
 
 #opt = optimizer(BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, latency_budget, app_fileName, IP_fileName, pipelineLength, 5000, DSE, assumptionLevel)
 ipsel = IPSel()
-opt = ipsel.run(BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, latency_budget, numOtherIPs,\
-    app_fileName, IP_fileName, 2000, RowStep, batchSize, fixedRowStep, manualSetingConvIPbound, convIPlb, convIPUb)
 
+opt = False
+updateRowStep = False
+while(not opt):
+    opt = ipsel.run(BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, latency_budget, numOtherIPs,\
+    app_fileName, IP_fileName, 2000, RowStep, batchSize, fixedRowStep, updateRowStep, manualSetingConvIPbound, convIPlb, convIPUb)
+    updateRowStep = True
+    print "converged ", opt
 

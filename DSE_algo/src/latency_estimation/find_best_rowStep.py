@@ -504,10 +504,9 @@ def computeLatencyPipe(
             layersCopy[i].currentStartRows+=layersCopy[i].NrowStep;
     return timeStamp
 
-if __name__ == "__main__" : 
-
-    f = open("pipelinedInfo.csv", 'r');
-    f2 = open("rowStep.csv","w")
+def findBestRowStep(finName, foutName):
+    f = open(finName, 'r');
+    f2 = open(foutName,"w")
     for line in f:
         line = line.replace("\ ", "")
         line = line.replace("\n", "")
@@ -611,13 +610,13 @@ if __name__ == "__main__" :
                     break
                 cycles=computeLatencyPipe(layerLatencyInfoList)
 
-                print "Test result", rowStep, cycles*4/1000000
+                #print "Test result", rowStep, cycles*4/1000000
                 if(cycles<cyclesMin):
                     cyclesMin=cycles;
                     rowStepArgMin=rowStep;
                 rowStep=rowStep+1;
             for i in layerInfoList:
-                f2.write(str(i.layerID)+","+str(rowStepArgMin)+"\n" );
+                f2.write(str(i.layerID)+", "+str(rowStepArgMin)+"\n" );
 
     f.close()
     f2.close()

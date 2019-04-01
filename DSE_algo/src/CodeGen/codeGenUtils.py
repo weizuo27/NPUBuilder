@@ -166,9 +166,14 @@ def readTemplate(funcType):
 
 def genRowStepFile(graph_list,outDir):
     f = open(outDir+"/rowSteps", "w")
+    nodes = []
     for g in graph_list:
-        for n in g.nodes:
-            f.write(str(n.ID) + ", " + str(n.rowStep)+"\n")
+        nodes += list(g.nodes())
+    def comp(elem):
+        return elem.ID
+    nodes.sort(key = comp)
+    for n in nodes:
+        f.write(str(n.ID) + ", " + str(n.rowStep)+"\n")
     f.close()
 
 

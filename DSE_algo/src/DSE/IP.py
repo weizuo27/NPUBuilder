@@ -36,7 +36,7 @@ class IP():
         self.DSP = 0
         self.FF = 0
         self.LUT = 0
-        self.layerID = 0
+        self.layerID = None
         #The followings are used to generate csv
         self.ip_l = None
         if self.type == "Convolution":
@@ -79,6 +79,7 @@ class IP():
         if 1:
             self.CSVparameterListUnNece = self.csvUneceNums * [0]
             self.idle = 1
+            self.layerID = None
             if(self.csvUneceNums > 0):
                 self.CSVparameterListUnNece[0] = 1
 

@@ -329,8 +329,11 @@ class layer(vertex):
         """
         self.start_time = timeStamp
 
-    def setRowStep(self):
+    def setRowStep(self, rowStepTable=None):
         assert self.mappedIP != None, "Cannot set row step if the mapped IP is not decided."
+        if(rowStepTable):
+            self.rowStep = rowStepTable[self.ID]
+            return
         if self.type == "Convolution_g" or self.type == "Convolution":
             XI_KER_PROC, XI_PIX_PROC, XI_IBUFF_DEPTH, \
             XI_OBUFF_DEPTH, XI_WEIGHTBUFF_DEPTH = self.mappedIP.paramList

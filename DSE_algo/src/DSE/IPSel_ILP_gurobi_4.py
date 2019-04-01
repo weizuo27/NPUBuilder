@@ -1,4 +1,5 @@
 import os
+import filecmp
 from math import ceil
 import networkx as nx
 import sys
@@ -12,11 +13,13 @@ from codeGenUtils import *
 from codeGen import *
 sys.path.append(dir_path + "/../SchedulerCodeGen");
 from genSwFiles import *
+sys.path.append(dir_path + "/../latency_estimation");
+from find_best_rowStep import findBestRowStep
 
 class IPSel():
     def __init__(self):
         None
-    def run(self, BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, Lat_budget, numOtherIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, fixedRowStep, \
+    def run(self, BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, Lat_budget, numOtherIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, fixedRowStep, updateRowStep,\
            manualSetingConvIPbound, convIPlb, convIPUb) :
         status = "Undecided" 
 
@@ -178,7 +181,7 @@ class IPSel():
                     self.updateLayerQueue(gs.exploreLayerQueue[g], layerQueue)
                     opt = optimizer(lat_left, rowStep)
                     #If some of the graph, there is no feasible solution, then the current selection of IPs cannot work
-                    lat, sol = opt.run(IP_dict, gs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table, fixedRowStep)
+                    lat, sol = opt.run(IP_dict, gs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table, fixedRowStep, updateRowStep)
                     if lat == None:
                         valid = False
                         break
@@ -214,7 +217,9 @@ class IPSel():
         if not mapping_solution_total:
             print "No feasible solutions"
             return
-        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
+
+        converged = self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
+        return converged
 
     def codeGen(self, lat_achieved, latency_solution, mapping_solution, hw_layers, gs, batchSize, numConvIPs, numIPs):
         print "\n\n #####################################################################"
@@ -250,8 +255,6 @@ class IPSel():
         os.system("mkdir -p " + outHwDir)
         os.system("mkdir -p " + outSwDir)
 
-        #rowStepGen
-        genRowStepFile(final_graph_list, outHwDir) 
 
         #Gen HW
         IP_g = createIPGraph(final_graph_list, hw_layers)
@@ -262,14 +265,42 @@ class IPSel():
         #Gen CSV
         genCSVConfigs(final_graph_list, IP_g, muxSelTable, hw_layers, outHwDir, pipeInfoTable)
 
+        #GenFindBestRowStep
+        newPipeInfoFile = outHwDir+"/pipeInfo.csv"
+        newRowStepFile = outHwDir + "/rowStep.csv"
+
+        findBestRowStep(newPipeInfoFile, newRowStepFile)
+        
+        oldRowStepFile = outHwDir + "/rowSteps"
+
+        #compare the old and new rowstep file
+        cmd = "sort -o " + oldRowStepFile + " " + oldRowStepFile
+        os.system(cmd)
+        print "oldRowStepFile abcd"
+        os.system("cat " + oldRowStepFile)
+        cmd = "sort -o " + newRowStepFile + " " + newRowStepFile
+        os.system(cmd)
+        print "newRowStepFile abcd"
+        os.system("cat " + newRowStepFile)
+        if(filecmp.cmp(oldRowStepFile, newRowStepFile)):
+            print "They are the same"
+            converged = True
+            return converged
+        else:
+            converged = False
+
+        #rowStepGen
+        genRowStepFile(final_graph_list, outHwDir) 
+
         #Gen Scheduler
-
-
         functionArgs = readFunctionArgs(outHwDir)
         genSchedulerFile(functionArgs, outSwDir)
         genXkernelH(functionArgs, outSwDir)
         genXkernelCPP(functionArgs, outSwDir)
         copyUtilsCSV(outSwDir)
+        
+        return converged
+
 
     def updateAbandonTable(self, IPs):
         ipNames = []
