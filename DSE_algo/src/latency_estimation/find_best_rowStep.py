@@ -571,7 +571,7 @@ def findBestRowStep(finName, foutName):
                 y.int6bit=int(paramIter.next())
                 layerInfoList.append(x)
                 IPinfoList.append(y)
-            elif(paramItem=="ElementWise"):
+            elif(paramItem=="Eltwise"):
                 x=convInfo_t()
                 memin=int(paramIter.next())
                 memout=int(paramIter.next())
@@ -623,7 +623,7 @@ def findBestRowStep(finName, foutName):
                     
                 
 
-
+findBestRowStep("pipelinedInfo.csv","rowStep.csv")
         
             
 
