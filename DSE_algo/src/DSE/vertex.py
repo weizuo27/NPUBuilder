@@ -357,7 +357,6 @@ class layer(vertex):
     def setRowStep(self, rowStepTable=None):
         assert self.mappedIP != None, "Cannot set row step if the mapped IP is not decided."
         if(rowStepTable):
-            print rowStepTable
             self.rowStep = rowStepTable[self.ID]
             return
         if self.type == "Convolution_g" or self.type == "Convolution":

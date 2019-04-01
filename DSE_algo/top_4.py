@@ -70,8 +70,9 @@ while(not opt):
     lat_achieved_total = ipsel.run(BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, latency_budget, numOtherIPs,\
     app_fileName, IP_fileName, 2000, RowStep, batchSize, fixedRowStep, updateRowStep, manualSetingConvIPbound, convIPlb, convIPUb, lat_achieved_total_old)
     updateRowStep = True
-    if lat_achieved_total > lat_achieved_total_old + 2000:
-        print "new one is slower. Old is ", lat_achieved_total_old, "new is ", lat_achieved_total
+    print "Old is ", lat_achieved_total_old, "new is ", lat_achieved_total
+    if lat_achieved_total > lat_achieved_total_old - 2000:
+        print "new one is slower. "
         break
     lat_achieved_total_old = lat_achieved_total
 

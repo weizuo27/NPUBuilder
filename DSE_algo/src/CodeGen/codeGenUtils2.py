@@ -257,16 +257,18 @@ def genPipeInfoFile(IP_g, roundIdx, fileName, pipeInfoTable, hw_layers):
     def comp(elem):
         return elem.layerID
     nodes.sort(key = comp)
+    busyNodes = 0
     for ip_inst in nodes:
         if ip_inst.type not in hw_layers:
             continue
         if ip_inst.idle:
             continue
+        busyNodes += 1
         layerParamList = pipeInfoTable[ip_inst.layerID]
         isPipelinedTmp = layerParamList[0]
         if(not isPipelinedTmp):
             numOfFalse += 1
-    isPipelined = True if numOfFalse < 2 else False
+    isPipelined = True if (numOfFalse < 2 and busyNodes > 1) else False
 
     csvParamList.append(isPipelined)
     for ip_inst in nodes:

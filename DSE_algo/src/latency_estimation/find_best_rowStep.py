@@ -623,7 +623,7 @@ def findBestRowStep(finName, foutName):
                     
                 
 
-findBestRowStep("pipelinedInfo.csv","rowStep.csv")
+#findBestRowStep("pipelinedInfo.csv","rowStep.csv")
         
             
 
