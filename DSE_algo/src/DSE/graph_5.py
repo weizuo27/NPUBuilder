@@ -1,5 +1,8 @@
+import matplotlib
+matplotlib.use('agg')
 from utils_4 import *
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
+import pylab as plt
 import networkx as nx
 from math import ceil
 from IP import softwareIP
@@ -22,6 +25,9 @@ class graph:
         self.groups = []
         self.layerIdxTable = dict()
         self.readLayerId("./inputFiles/layerIDMapping")
+        self.removeEdgeGroup= dict()
+        self.shouldAddBackEdge = []
+
         self.construct(fileName, explore_IP_types, hw_layers)
 
 
@@ -47,6 +53,12 @@ class graph:
                     if l== "\n":
                         break
                     self.groups.append(l.strip().split(','))
+
+            if l.find("--RemoveEdge--") >= 0:
+                for l in f:
+                    if l== "\n":
+                        break
+                    self.removeEdgeGroup[l.strip()] = 1
 
             if l.find("--Layers--") >= 0:
                 for l in f:
@@ -91,17 +103,25 @@ class graph:
                             ll.set_output_params(dims)
             
         f.close()
+        
+        print self.removeEdgeGroup
 
         #build Edges
         for bb in bottom_table:
             if bb in top_table:
                 for bbb in bottom_table[bb]:
                     for ttt in top_table[bb]:
+                        if bbb.name in self.removeEdgeGroup or ttt.name in self.removeEdgeGroup:
+                            self.shouldAddBackEdge.append((ttt, bbb))
+                            continue
                         self.G.add_edge(ttt, bbb)
 
         for bb in top_table:
             if bb not in bottom_table:
                 for n in top_table[bb]:
+                    if n.name in self.removeEdgeGroup:
+                        self.shouldAddBackEdge.append((n, bb))
+                        continue
                     self.G.add_edge(n, bb)
 
         for groupNames in self.groups:
@@ -114,11 +134,15 @@ class graph:
                 inD = outD = 0
 #                if n.type == "Eltwise":
 #                    inD = outD = 1
+                if n.name in self.removeEdgeGroup:
+                    continue
                 if subGraph.in_degree(n) == inD:
                     subGraph.add_edge(blob_begin,  n)
                 if subGraph.out_degree(n) == outD:
                     subGraph.add_edge(n, blob_end)
             self.graphs.append(subGraph)
+
+    print "shouldAddBackEdge", shouldAddBackEdge
 
         for g in self.graphs:
             #Add the exploreLayerQueue

@@ -77,7 +77,7 @@ class optimizer:
             #assign the mapping result
             self.assignMappingResult(graphs.exploreLayerQueue[g], explore_IP_types, hw_layers, IP_table, g, IP_table_org)
 #            self.updateGraph(g, hw_layers)
-#            graphs.drawGraph(g)
+            graphs.drawGraph(g)
             self.setPipelineFlag(hw_layers, g)
             if updateRowStep:
                 rowStepTable = dict()
@@ -94,6 +94,7 @@ class optimizer:
             self.addPipelineNodes(g)
 #            self.simplifyGraph(g)
 
+#            self.addBackRemovedEdges(graphs.shouldAddBackEdge, g)
             status, ret = self.scheduling(g, explore_IP_types)
 
             if status == "Success":
@@ -304,3 +305,8 @@ class optimizer:
         for ntype in exploreLayerQueue:
             for n in exploreLayerQueue[ntype]:
                 n.setRowStep(rowStepTable)
+
+    def addBackRemovedEdges(self, edges, g):
+        for u,v in edges:
+            if(g.has_node(u) and g.has_node(v)):
+                g.add_edge(u,v)

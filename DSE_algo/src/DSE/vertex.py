@@ -1,5 +1,4 @@
 from utils_4 import *
-import matplotlib.pyplot as plt
 from copy import deepcopy
 import networkx as nx
 #import cvxpy as cvx
@@ -357,7 +356,10 @@ class layer(vertex):
     def setRowStep(self, rowStepTable=None):
         assert self.mappedIP != None, "Cannot set row step if the mapped IP is not decided."
         if(rowStepTable):
-            self.rowStep = rowStepTable[self.ID]
+            if(self.type != "Convolution_g" and self.type != "Convolution"):
+                self.rowStep = 1
+            else:
+                self.rowStep = rowStepTable[self.ID]
             return
         if self.type == "Convolution_g" or self.type == "Convolution":
             XI_KER_PROC, XI_PIX_PROC, XI_IBUFF_DEPTH, \

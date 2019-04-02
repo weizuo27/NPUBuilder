@@ -6,23 +6,19 @@ Start Layer : data
 End Layer : pool5
 # -------------------- LayerGroups ------------------------ #
 conv1,pool1
-res2a_branch1,res2a_branch2a,res2a_branch2b,res2a_branch2c,conv_eltwise0
-res2b_branch2a,res2b_branch2b,res2b_branch2c,conv_eltwise1
-res2c_branch2a,res2c_branch2b,res2c_branch2c,conv_eltwise2
-res3a_branch1,res3a_branch2a,res3a_branch2b,res3a_branch2c,conv_eltwise3
-res3b_branch2a,res3b_branch2b,res3b_branch2c,conv_eltwise4
-res3c_branch2a,res3c_branch2b,res3c_branch2c,conv_eltwise5
-res3d_branch2a,res3d_branch2b,res3d_branch2c,conv_eltwise6
-res4a_branch1,res4a_branch2a,res4a_branch2b,res4a_branch2c,conv_eltwise7
-res4b_branch2a,res4b_branch2b,res4b_branch2c,conv_eltwise8
-res4c_branch2a,res4c_branch2b,res4c_branch2c,conv_eltwise9
-res4d_branch2a,res4d_branch2b,res4d_branch2c,conv_eltwise10
-res4e_branch2a,res4e_branch2b,res4e_branch2c,conv_eltwise11
-res4f_branch2a,res4f_branch2b,res4f_branch2c,conv_eltwise12
-res5a_branch1,res5a_branch2a,res5a_branch2b,res5a_branch2c,conv_eltwise13
-res5b_branch2a,res5b_branch2b,res5b_branch2c,conv_eltwise14
-res5c_branch2a,res5c_branch2b,res5c_branch2c,conv_eltwise15
+res2a_branch1,res2a_branch2a,res2a_branch2b,res2a_branch2c,conv_eltwise0,res2b_branch2a,res2b_branch2b,res2b_branch2c,conv_eltwise1,res2c_branch2a,res2c_branch2b,res2c_branch2c,conv_eltwise2
+res3a_branch1,res3a_branch2a,res3a_branch2b,res3a_branch2c,conv_eltwise3,res3b_branch2a,res3b_branch2b,res3b_branch2c,conv_eltwise4,res3c_branch2a,res3c_branch2b,res3c_branch2c,conv_eltwise5
+res3d_branch2a,res3d_branch2b,res3d_branch2c,conv_eltwise6,res4a_branch1,res4a_branch2a,res4a_branch2b,res4a_branch2c,conv_eltwise7,res4b_branch2a,res4b_branch2b,res4b_branch2c,conv_eltwise8
+res4c_branch2a,res4c_branch2b,res4c_branch2c,conv_eltwise9,res4d_branch2a,res4d_branch2b,res4d_branch2c,conv_eltwise10
+res4e_branch2a,res4e_branch2b,res4e_branch2c,conv_eltwise11,res4f_branch2a,res4f_branch2b,res4f_branch2c,conv_eltwise12
+res5a_branch1,res5a_branch2a,res5a_branch2b,res5a_branch2c,conv_eltwise13,res5b_branch2a,res5b_branch2b,res5b_branch2c,conv_eltwise14,res5c_branch2a,res5c_branch2b,res5c_branch2c,conv_eltwise15
 pool5
+
+# -------------------- RemoveEdge ------------------------ #
+res2a_branch1
+res3a_branch1
+res4a_branch1
+res5a_branch1
 
 
 # -------------------- Layers ------------------------ #
@@ -30,35 +26,35 @@ pool5
 Xilinx
 [res2a_branch2c:0] --> { conv_eltwise0 - Eltwise: F = 256x256x0x0; S = 19; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res2a:0]
 Xilinx
-[res2a:0, res2b_branch2c:0] --> { conv_eltwise1 - Eltwise: F = 256x256x0x0; S = 1027; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res2b:0]
+[res2b_branch2c:0] --> { conv_eltwise1 - Eltwise: F = 256x256x0x0; S = 1027; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res2b:0]
 Xilinx
-[res4c:0, res4d_branch2c:0] --> { conv_eltwise10 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4d:0]
+[res4d_branch2c:0] --> { conv_eltwise10 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4d:0]
 Xilinx
-[res4d:0, res4e_branch2c:0] --> { conv_eltwise11 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4e:0]
+[res4e_branch2c:0] --> { conv_eltwise11 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4e:0]
 Xilinx
-[res4e:0, res4f_branch2c:0] --> { conv_eltwise12 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4f:0]
+[res4f_branch2c:0] --> { conv_eltwise12 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4f:0]
 Xilinx
 [res5a_branch2c:0] --> { conv_eltwise13 - Eltwise: F = 2048x2048x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res5a:0]
 Xilinx
-[res5a:0, res5b_branch2c:0] --> { conv_eltwise14 - Eltwise: F = 2048x2048x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res5b:0]
+[res5b_branch2c:0] --> { conv_eltwise14 - Eltwise: F = 2048x2048x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res5b:0]
 Xilinx
-[res5b:0, res5c_branch2c:0] --> { conv_eltwise15 - Eltwise: F = 2048x2048x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res5c:0]
+[res5c_branch2c:0] --> { conv_eltwise15 - Eltwise: F = 2048x2048x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res5c:0]
 Xilinx
-[res2b:0, res2c_branch2c:0] --> { conv_eltwise2 - Eltwise: F = 256x256x0x0; S = 962392656; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res2c:0]
+[res2c_branch2c:0] --> { conv_eltwise2 - Eltwise: F = 256x256x0x0; S = 962392656; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res2c:0]
 Xilinx
 [res3a_branch2c:0] --> { conv_eltwise3 - Eltwise: F = 512x512x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res3a:0]
 Xilinx
-[res3a:0, res3b_branch2c:0] --> { conv_eltwise4 - Eltwise: F = 512x512x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res3b:0]
+[res3b_branch2c:0] --> { conv_eltwise4 - Eltwise: F = 512x512x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res3b:0]
 Xilinx
-[res3b:0, res3c_branch2c:0] --> { conv_eltwise5 - Eltwise: F = 512x512x0x0; S = 964367248; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res3c:0]
+[res3c_branch2c:0] --> { conv_eltwise5 - Eltwise: F = 512x512x0x0; S = 964367248; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res3c:0]
 Xilinx
-[res3c:0, res3d_branch2c:0] --> { conv_eltwise6 - Eltwise: F = 512x512x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res3d:0]
+[res3d_branch2c:0] --> { conv_eltwise6 - Eltwise: F = 512x512x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res3d:0]
 Xilinx
 [res4a_branch2c:0] --> { conv_eltwise7 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4a:0]
 Xilinx
-[res4a:0, res4b_branch2c:0] --> { conv_eltwise8 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4b:0]
+[res4b_branch2c:0] --> { conv_eltwise8 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4b:0]
 Xilinx
-[res4b:0, res4c_branch2c:0] --> { conv_eltwise9 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4c:0]
+[res4c_branch2c:0] --> { conv_eltwise9 - Eltwise: F = 1024x1024x0x0; S = 0; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [res4c:0]
 Xilinx
 [res5c:0] --> { pool5 - Pooling : PoolType = AVGPOOL; N = 2048; K = 7; S = 1; P = 0 } --> [pool5:0]
 Xilinx
