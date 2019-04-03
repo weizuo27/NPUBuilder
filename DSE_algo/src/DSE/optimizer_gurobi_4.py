@@ -77,7 +77,7 @@ class optimizer:
             #assign the mapping result
             self.assignMappingResult(graphs.exploreLayerQueue[g], explore_IP_types, hw_layers, IP_table, g, IP_table_org)
 #            self.updateGraph(g, hw_layers)
-            graphs.drawGraph(g)
+#            graphs.drawGraph(g)
             self.setPipelineFlag(hw_layers, g)
             if updateRowStep:
                 rowStepTable = dict()

@@ -1,5 +1,4 @@
 import matplotlib
-matplotlib.use('agg')
 from utils_4 import *
 #import matplotlib.pyplot as plt
 import pylab as plt
@@ -134,15 +133,12 @@ class graph:
                 inD = outD = 0
 #                if n.type == "Eltwise":
 #                    inD = outD = 1
-                if n.name in self.removeEdgeGroup:
-                    continue
                 if subGraph.in_degree(n) == inD:
                     subGraph.add_edge(blob_begin,  n)
                 if subGraph.out_degree(n) == outD:
                     subGraph.add_edge(n, blob_end)
-            self.graphs.append(subGraph)
-
-    print "shouldAddBackEdge", shouldAddBackEdge
+            self.graphs.append(subGraph) 
+	print "shouldAddBackEdge", self.shouldAddBackEdge
 
         for g in self.graphs:
             #Add the exploreLayerQueue
