@@ -7,6 +7,7 @@ from utils_4 import *
 from copy import deepcopy
 import networkx as nx
 from scheduler_4 import scheduler
+
 class optimizer:
     def __init__(self, latency_Budget, rowStep):
         self.rb = resourceILPBuilder()
@@ -20,17 +21,17 @@ class optimizer:
 
         self.latency_table = dict()
         self.numIPs=dict()
+	self.pipelineTable = dict()
 
     def run(self,IP_table, graphs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table_org, fixedRowStep, updateRowStep, verbose = False):
         for ip_type in IP_table:
             self.numIPs[ip_type] = len(IP_table[ip_type])
-
         firstIter = True
         oneIter = 0
         latency_target_changed = True
         while(-self.latency_lb + self.latency_ub > ESP):
-            assert(oneIter < 300), "Something is wrong"
-                
+            assert(oneIter < 300), "Should not iterate more than 300 times, Something is wrong"
+	    self.pipelineTable.clear()
             if(verbose):
                 print oneIter, "iteration\n"
                 print "Latency target changed? ", latency_target_changed 
@@ -76,27 +77,10 @@ class optimizer:
             firstIter = False
             #assign the mapping result
             self.assignMappingResult(graphs.exploreLayerQueue[g], explore_IP_types, hw_layers, IP_table, g, IP_table_org)
-#            self.updateGraph(g, hw_layers)
-#            graphs.drawGraph(g)
             self.setPipelineFlag(hw_layers, g)
-            if updateRowStep:
-                rowStepTable = dict()
-                f = open("./outputFiles/hw/rowStep.csv", "r")
-                for l in f:
-                    layerIdx, rowStep = l.replace(" ", "").strip().split(",")
-                    rowStepTable[int(layerIdx)] = int(rowStep)
-                f.close()
-
-                self.setRowStep(graphs.exploreLayerQueue[g], rowStepTable)
-            elif not fixedRowStep:
-                self.setRowStep(graphs.exploreLayerQueue[g])
             graphs.computeLatency(g)
             self.addPipelineNodes(g)
-#            self.simplifyGraph(g)
-
-#            self.addBackRemovedEdges(graphs.shouldAddBackEdge, g)
             status, ret = self.scheduling(g, explore_IP_types)
-
             if status == "Success":
                 self.latency_ub = ret
                 self.latency_achieved = ret
@@ -144,96 +128,28 @@ class optimizer:
         nodes = list(nx.topological_sort(g))
         for path in nx.all_simple_paths(g, source=nodes[0], target = nodes[-1]):
             pipelineTable = dict()
-            for m in path:
-                if m not in visited:
-                    visited[m] = 1
-                    preds = list(g.predecessors(m))
-                    numPreds = len(preds)
-                    numSuccs = len(list(g.successors(m)))
-                    if m.type not in hw_layers:
-#                            print m.name, m.type, "not in hw_layers"
-                        m.Pipelined = False
+	    s = path[0]
+            for t in path[1:]:
+                if (s, t) not in visited:
+                    visited[(s,t)] = 1
+                    if t.type not in hw_layers:
                         pipelineTable.clear()
-                    elif numPreds > 1 or numSuccs > 1:
-#                            print m.name, m.type, numPreds, numSuccs, "Preds or Succs > 1"
-                        m.Pipelined = False
+                    elif s.type not in hw_layers:
                         pipelineTable.clear()
-                        pipelineTable[m.mappedIP] = 1
-                    elif preds[0].type not in hw_layers:
-#                            print m.name, m.type, preds[0].name, "pred not in hw_layers"
-                        m.Pipelined = False
-                        pipelineTable.clear()
-                        pipelineTable[m.mappedIP] = 1
-                    elif m.mappedIP not in pipelineTable:
-#                            print m.name, m.type, "Pipelined "
-                        m.Pipelined = True
-                        pipelineTable[m.mappedIP] = 1
+                        pipelineTable[t.mappedIP] = 1
+                    elif t.mappedIP not in pipelineTable:
+			self.pipelineTable[(s,t)] = 1
+                        pipelineTable[t.mappedIP] = 1
                     else:
-#                            print m.name, m.type, "in the pipelineTable"
-                        m.Pipelined = False
                         pipelineTable.clear()
-                        pipelineTable[m.mappedIP] = 1
+                        pipelineTable[t.mappedIP] = 1
 
     def addPipelineNodes(self, g):
-        pipeNode_list = []
-        for (s_node, t_node) in g.edges():
-            if not isPipelined(s_node, t_node):
-                continue
-            neg_latency = 0
-            s_latency = 0
-            t_latency_rowStep = 0
-            s_latency = s_node.latency
-
-            if t_node.type == "Convolution"or t_node.type == "Convolution_g":
-                _, _, _, t_kh = map(int, (t_node.params[0].split("=")[1]).split("x"))
-                S = int(t_node.params[1].split("=")[1])
-            elif t_node.type == "Pooling":
-                kw = t_kh = int(t_node.params[2].split("=")[1])
-                S = int(t_node.params[3].split("=")[1])
-
-            elif t_node.type == "Eltwise":
-                t_kh = 1
-                S = 1
-
-            t_latency_rowStep = s_node.computeNRows(t_kh)
-            neg_latency = -s_latency + t_latency_rowStep
-#            print "s_node ", s_node.name, ", t_node ", t_node.name, ", neg_latency", neg_latency
-            if(neg_latency < 0):
-                node = pipeNode(neg_latency)
-                pipeNode_list.append([node, s_node, t_node])
-
-        for node, s_node, t_node in pipeNode_list:
+	for s_node, t_node in self.pipelineTable:
+	    n = pipeNode(-s.latency)
             g.remove_edge(s_node, t_node)
             g.add_node(node)
             g.add_edge(s_node, node)
-            g.add_edge(node, t_node)
-
-    def simplifyGraph(self, g):
-        end_n_table = dict()
-
-        for n in nx.topological_sort(g):
-            if n.type == "pipeNode":
-                pred_n = list(g.predecessors(n))[0]
-                succ_n = list(g.successors(n))[0]
-
-                # update the end_n_table
-                if pred_n in end_n_table:
-                    end_n_table[pred_n] += [n, succ_n]
-                    end_n_table[succ_n] = end_n_table.pop(pred_n)
-                else:
-                    end_n_table[succ_n] = [pred_n, n, succ_n]
-
-        #create the combineNode:
-        for end_n in end_n_table:
-            path = end_n_table[end_n]
-            cb_node = combineNode(path)
-            cb_node.computeLatency()
-            g.add_node(cb_node)
-            for pre in g.predecessors(path[0]):
-                g.add_edge(pre, cb_node)
-            for succ in g.successors(path[-1]):
-                g.add_edge(cb_node, succ)
-            g.remove_nodes_from(path)
 
     def scheduling(self, g, explore_IP_types):
         def compFoo(elem):
@@ -262,9 +178,6 @@ class optimizer:
 #                print self.latency_table
                 return "Failed", [cp_path, accLat]
 
-#        print "cp_path"
-#        for l, ip in cp_path:
-#            print l.name, ip.name
         if accLat in self.latency_table: 
             self.latency_table[accLat].append(cp_path)
         else:

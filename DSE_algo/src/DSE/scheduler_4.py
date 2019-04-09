@@ -21,7 +21,6 @@ class scheduler:
         for n in node_list:
             if n.type is "combineNode":
                 for m in n.node_list:
-#                    print m.name, m.type
                     resourceTable[m.mappedIP] = [n] if m.mappedIP not in resourceTable else resourceTable[m.mappedIP] + [n]
 
             elif n.type in explore_IP_types:
@@ -79,21 +78,4 @@ class scheduler:
 
         #findCriticalPath:
         path_tmp = nx.bellman_ford_path(g, node_list[0], node_list[-1])
-#        print "path_tmp"
-#        for nn in path_tmp:
-#            if nn.type is "combineNode":
-#                for mm in nn.node_list:
-#                    print mm.name, "latency ", mm.latency 
-#                    if mm.type in explore_IP_types:
-#                        print mm.mappedIP.name
-#            else:
-#                    print nn.name, "latency ", nn.latency
-#                    if nn.type in explore_IP_types:
-#                        print nn.mappedIP.name
-#        for idx, nn in enumerate(path_tmp):
-#            if idx < len(path_tmp)-1:
-#                print "edge", nn.name, "-->", path_tmp[idx+1].name, g[nn][path_tmp[idx+1]]['weight']
-#        max_latency = 0 - nx.bellman_ford_path_length(g, node_list[0], node_list[-1])
-#        print "max_latency", max_latency
-#        return path, max_latency
         return path_tmp

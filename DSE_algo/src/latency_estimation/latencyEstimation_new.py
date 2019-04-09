@@ -550,6 +550,17 @@ def computeLatency_conv_g(
 
     return max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
 
+def computeLatencyDSP(ip):
+    #Filled by Xinheng, foo1
+    if(ip_type == "Convolution" or ip_type == "Convolution_g"):
+	None
+    elif(ip_type == "Pooling"): 
+	None
+    elif(ip_type = "Eltwise"):
+	None
+    else:
+	assert(0), "Unsupported IP type"
+
 # computeLatency(7,7,7,7,2048,512,1,1,1,1,0,4,16,32,2048,True,14, None, 0)
 
 

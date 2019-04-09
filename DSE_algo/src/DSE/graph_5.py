@@ -172,6 +172,17 @@ class graph:
         None
 
     def computeLatency(self, g):
+	"""
+	BFS to get update the latency
+	"""
+        node_list = list(nx.topological_sort(g))
+	for n in node_list:
+	    n.computeLatency()
+	for n in node_list:
+	    for preds in g.predecessors(n):
+		n.latency = max(preds.latency, n.latency)
+	
+    def computeLatency_old(self, g):
         """
         For each node in the graph, compute the latency and pipelined latency
         """
@@ -193,21 +204,10 @@ class graph:
                 n.computeLatencyRowStep(prevLayers, total_bandWidth)
                 n.computeLatency()
 
-#    def computeResource(self, node):
-#        BRAMs, DSPs, LUTs, FFs = 0, 0, 0, 0
-#        for ip in self.IP_table:
-#            BRAMs += ip.BRAM
-#            DSPs += ip.DSP
-#            FFs += ip.FF
-#            LUTs += ip.LUT
-#        return BRAMs, DSPs, FFs, LUTs
-
     def retriveOriginalGraph(self, g):
-#        self.IP_table.clear()
         g.clear()
         g.add_edges_from(self.original_edges[g])
         g.add_nodes_from(self.original_nodes[g])
-#            self.maxPipelineLayer[g] = []
         #Node level clear
         for n in g.nodes:
             n.mappedIP = None
