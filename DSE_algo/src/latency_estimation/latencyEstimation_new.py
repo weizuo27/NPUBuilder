@@ -1,3 +1,4 @@
+from infoClass import *
 
 def AlignSize(x, y):
     ret = x if (x%y == 0) else ((x/y + 1)*y)
@@ -405,9 +406,9 @@ def computeLatency_conv_g(
     XI_WEIGHTBUFF_DEPTH,
     int6bit,
     layerID, 
-    AXILATENCY, 
+    AXILATENCY,
     oneTime,
-):
+    ):
     """
     Function: computeLatency
     -----------------------------
@@ -550,54 +551,50 @@ def computeLatency_conv_g(
 
     return max(latReadLineBuffer, latStoreOStagingBuff_fj, latProcInputBuff)
 
-def computeLatencyDSP(ip):
+def rawLatency( layerInfo, K_x_P ):
+    """
+    return the estimated latency for a certain K_x_P in first round scheduling
+    input layerInfo: the class containg convolution layer information
+    input K_x_P: the product of ker_proc and pix_proc
+    return: estimated latency
+    """
+    conv_filter_height= layerInfo.filter_height
+    conv_filter_width= layerInfo.filter_width
+    conv_inp_planes  = layerInfo.inp_planes 
+    conv_out_height  = layerInfo.out_height   
+    conv_out_width   = layerInfo.out_width    
+    conv_out_planes  = layerInfo.out_planes  
+    return conv_filter_height*conv_filter_width*conv_inp_planes*conv_out_planes*conv_out_height*conv_out_width/K_x_P/4*1.5;
+
+def computeLatencyDSP(layerInfo, IPInfo):
+    #the class definition is specified in Structure.py
+    #for convolution, 
+    #IP info is structure
     #Filled by Xinheng, foo1
-    if(ip_type == "Convolution" or ip_type == "Convolution_g"):
-	None
-    elif(ip_type == "Pooling"): 
-	None
-    elif(ip_type = "Eltwise"):
-	None
+    if(IPInfo.IPtype == "Convolution" or IPInfo.IPtype == "Convolution_g"):
+        return rawLatency(layerInfo, IPInfo.K_x_P)
+    elif(IPInfo.IPtype == "Pooling"): 
+	    return layerInfo.out_height*layerInfo.out_width*layerInfo.filter_height*layerInfo.filter_width*layerInfo.out_planes/16
+    elif(IPInfo.IPtype == "Eltwise"):
+	    return layerInfo.out_height*layerInfo.out_width*layerInfo.out_planes/16
     else:
-	assert(0), "Unsupported IP type"
+	    assert(0), "Unsupported IP type"
 
 # computeLatency(7,7,7,7,2048,512,1,1,1,1,0,4,16,32,2048,True,14, None, 0)
 
 
+layerInfo=layerInfo_t();
+layerInfo.filter_height=1;
+layerInfo.filter_width=1;
+layerInfo.out_height=55;
+layerInfo.out_width=55;
+layerInfo.inp_planes=64;
+layerInfo.out_planes=64;
 
-conv_inp_height = 7
-conv_inp_width = 7
-conv_out_height = 7
-conv_out_width = 7
-conv_out_planes =  512
-conv_inp_planes = 2048
-conv_stride = 1 
-conv_filter_height = 1
-conv_filter_width = 1
-conv_pad = 1
-conv_group = 0
-rowStep = 2
-XI_KER_PROC = 16
-XI_PIX_PROC = 32
-XI_WEIGHTBUFF_DEPTH = 1024
+IPInfo=IPinfo_t();
+IPInfo.K_x_P=1024;
+IPInfo.IPtype="Convolution"
 
-computeLatency (
-    conv_inp_height  , 
-    conv_inp_width   , 
-    conv_out_height  , 
-    conv_out_width   , 
-    conv_out_planes  , 
-    conv_inp_planes  , 
-    conv_stride      , 
-    conv_filter_height,
-    conv_filter_width, 
-    conv_pad         , 
-    conv_group       , 
-    rowStep,
-    16,
-    32,
-    1024,
-    1,
-    6, 
-    1, 
-    0)
+print computeLatencyDSP(layerInfo, IPInfo);
+
+
