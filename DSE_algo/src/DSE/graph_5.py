@@ -8,8 +8,7 @@ from IP import softwareIP
 from vertex import *
 
 class graph:
-    def __init__(self, fileName, explore_IP_types, hw_layers, rowStep):
-        self.rowStep = rowStep
+    def __init__(self, fileName, explore_IP_types, hw_layers):
         self.G = nx.DiGraph()
         self.mapping = dict()
         self.NameMapping = dict()
@@ -103,8 +102,6 @@ class graph:
             
         f.close()
         
-        print self.removeEdgeGroup
-
         #build Edges
         for bb in bottom_table:
             if bb in top_table:
@@ -131,8 +128,6 @@ class graph:
             nodes_list = list(subGraph.nodes)
             for n in nodes_list:
                 inD = outD = 0
-#                if n.type == "Eltwise":
-#                    inD = outD = 1
                 if subGraph.in_degree(n) == inD:
                     subGraph.add_edge(blob_begin,  n)
                 if subGraph.out_degree(n) == outD:
@@ -143,8 +138,6 @@ class graph:
         for g in self.graphs:
             #Add the exploreLayerQueue
             self.exploreLayerQueue[g] = dict()
-#            def comp(elem):
-#                return elem.ID
             explore_node_list = []
             for n in g.nodes:
 		if n.type in hw_layers:
@@ -152,7 +145,6 @@ class graph:
                 if n.type in explore_IP_types:
                     explore_node_list.append(n)
 
-#            explore_node_list.sort(key = comp)
 
             for layer_tmp in explore_node_list:
                 if layer_tmp.type in explore_IP_types:
@@ -176,14 +168,14 @@ class graph:
 	BFS to get update the latency
 	"""
         node_list = list(nx.topological_sort(g))
-	for n in node_list:
-	    n.computeLatency()
-	for n in node_list:
-	    max_latency = 0
-	    for preds in g.predecessors(n):
-		for p in preds:
-		   max_latency = max(max_latency, p.latency)
-	     n.latency = max(max_latency, n.latency)
+        for n in node_list:
+            n.computeLatency()
+        for n in node_list:
+            max_latency = 0
+            for preds in g.predecessors(n):
+                for p in preds:
+                    max_latency = max(max_latency, p.latency)
+            n.latency = max(max_latency, n.latency)
 	
     def retriveOriginalGraph(self, g):
         g.clear()
@@ -199,6 +191,7 @@ class graph:
             n.start_time = None
             n.isMaxPipeLayer = False
             n.bandWidth = 0
+            n.layerInfo.clearUnCertainItems()
 
     def drawGraph(self, g):
         h = nx.relabel_nodes(g, self.mapping)
@@ -207,11 +200,8 @@ class graph:
 
     def printNodesMapping(self, hw_types, g):
         print "\n print nodes mapping\n"
-#        nodes_list = list(nx.topological_sort(g))
-#        nodes_list = list(g.nodes)
         def comp(elem):
             return elem.name
-#        nodes_list.sort(key = comp)
         nodes_list = []
         for n in g.nodes:
             if n.type is "combineNode":
@@ -222,7 +212,7 @@ class graph:
                 nodes_list.append(n)
         nodes_list.sort(key = comp)
         for n in nodes_list:
-            print "IP", n.name, "type", n.type, "mappedIP", n.mappedIP, "is pipeined ?", n.Pipelined, n.lat_rowStep, n.latency
+            print "IP", n.name, "type", n.type, "mappedIP", n.mappedIP 
 
     def add_node(self, node):
         self.G.add_node(node)

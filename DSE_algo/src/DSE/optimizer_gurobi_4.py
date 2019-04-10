@@ -2,7 +2,6 @@ from resourceILPBuilder_gurobi_4 import resourceILPBuilder
 from vertex import layer
 from graph_5 import graph
 from graph_5 import pipeNode
-from graph_5 import combineNode
 from utils_4 import *
 from copy import deepcopy
 import networkx as nx
@@ -21,7 +20,7 @@ class optimizer:
 
         self.latency_table = dict()
         self.numIPs=dict()
-	self.pipelineTable = dict()
+        self.pipelineTable = dict()
 
     def run(self,IP_table, graphs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table_org, fixedRowStep, updateRowStep, verbose = False):
         for ip_type in IP_table:

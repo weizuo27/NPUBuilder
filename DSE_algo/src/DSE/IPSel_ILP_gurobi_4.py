@@ -53,7 +53,7 @@ class IPSel():
                     break
             numIPs = numConvIPs + numOtherIPs
             print "\n\nNumber of Convolution IP is ", numConvIPs, "\n\n"
-            gs = graph(app_fileName, explore_IP_types, hw_layers, rowStep)
+            gs = graph(app_fileName, explore_IP_types, hw_layers)
             
             #if the numIPs is bigger than the group size, then should exit
             legalNumIPs = False

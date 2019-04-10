@@ -4,16 +4,13 @@ import networkx as nx
 #import cvxpy as cvx
 from IP import softwareIP
 from math import ceil
+import os
+import sys
+dir_path = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(dir_path + "/../latency_estimation");
+from infoClass import layerInfo_t
 
 class vertex:
-    """
-        Base class for vertex class
-        Attrs:
-            name:
-            type:
-            latency:
-            lat_one_row:
-    """
     def __init__(self):
         self.name = None
         self.type = None
@@ -21,7 +18,6 @@ class vertex:
 	self.orgLatency = None
         self.rowStep = None
         self.ID = None
-
     def computeLatency(self):
         None
 
@@ -46,267 +42,74 @@ class blob(vertex):
         vertex.__init__(self)
         self.type = "blobNode"
         self.name = name
-
     def computeLatency(self):
         self.latency = 0
 
 class layer(vertex):
     def __init__(self, line, rowStep, layerIdxTable):
-        """
-        The class to describe one layer
-        Attrs:
-            name: The name of the layer
-            type: The type of the layer
-            params: The parameter list of the layers, according to different type, the list
-            has different interpretation.
-
-        """
         #All attributes are first initialized here
-	vertex.__init__(self)
+        vertex.__init__(self)
         n_t = line.split(":")[0]
         self.name, self.type = n_t.split("-")
+        self.layerInfo.type = self.type
         self.mappedIP = None
         self.firstLayer = False
         self.input_params = None
         self.output_params = None
-        self.ID = int(layerIdxTable[self.name])
-        self.params = line.split(":")[1].split(";")
-            
+        self.layerInfo.ID = int(layerIdxTable[self.name])
+        params = line.split(":")[1].split(";")
+        if self.type == "Convolution" or self.type == "Convolution_g":
+            self.layerInfo.out_planes, self.layerInfo.inp_planes, self.layerInfo.filter_width, self.layerInfo.filter_height =\
+            map(int, (params[0].split("=")[1]).split("x")) 
+            self.layerInfo.stride = int(self.params[1].split("=")[1])
+            self.layerInfo.pad = int(self.params[2].split("=")[1])
+            self.layerInfo.groupFlag = (int(self.params[4].split("=")[1]) > 1)
+
+        elif self.type == "Pooling":
+            self.layerInfo.out_planes= self.layerInfo.inp_planes = int(params[1].split("=")[1])
+            self.layerInfo.stride = int(self.params[3].split("=")[1])
+            self.layerInfo.pad = int(self.params[4].split("=")[1])
+
+        elif self.type == "Eltwise":
+            self.layerInfo.out_planes, self.layerInfo.inp_planes, 
+            self.layerInfo.filter_width, selfself.layerInfo.filter_height = map(int, (params[0].split("=")[1]).split("x"))
+            self.layerInfo.stride = int(self.params[1].split("=")[1])
+            self.layerInfo.pad = int(self.params[2].split("=")[1])
+            self.layerInfo.groupFlag = (int(self.params[4].split("=")[1]) > 1)
+        else: 
+            assert(0), "Unsupported layer type"
+
     def set_IP(self, IP):
-        """
-        set the mapped IP for this layer
-        Args:
-            IP: The object IP. The IP this layer is mapped to.
-        """
         self.mappedIP = IP
-        if self.type == "Convolution"or self.type == "Convolution_g":
-
-            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x")) 
-            out_height, out_width = map(int, self.output_params[2:4])
-
-            XI_KER_PROC, XI_PIX_PROC, XI_IBUFF_DEPTH, \
-                XI_OBUFF_DEPTH, XI_WEIGHTBUFF_DEPTH = IP.paramList
 
     def set_input_params(self, line):
-        """
-        The function sets the input parameters
-        """
-        if self.type == "Convolution" or self.type == "Convolution_g":
-            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x")) 
-        elif self.type == "Pooling":
-            cout=cin = int(self.params[1].split("=")[1])
-        elif self.type == "Eltwise":
-            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x"))
-
-        self.input_params = map(int,line.split("x")) #[batch, channel, height, width]
-        self.input_params[1] = int(cin)
+        assert( self.layerInfo.inp_height is None and
+               self.layerInfo.inp_width is None), "layerInfo of inputs is already set"
+        input_params = map(int,line.split("x")) #[batch, channel, height, width]
+        assert(len(input_params) == 4), "The input params length is not 4"
+        self.layerInfo.inp_height, self.layerInfo.inp_width = input_params[2:]
 
     def set_output_params(self, line):
-        """
-        The function sets the output parameters
-        """
-        if self.type == "Convolution" or self.type == "Convolution_g":
-            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x")) 
-        elif self.type == "Pooling":
-            cout=cin = int(self.params[1].split("=")[1])
-        elif self.type == "Eltwise":
-            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x"))
-
-        self.output_params = map(int,line.split("x")) #[batch, channel, height, width]
-        self.output_params[1]=int(cout)
+        assert(self.layerInfo.out_height is None and self.layerInfo.out_width is None), "layerInfo of output is already set"
+        output_params = map(int,line.split("x")) #[batch, channel, height, width]
+        assert(len(output_params) == 4), "The output params length is not 4"
+        self.layerInfo.out_height, self.layerInfo.out_width = output_params[2:]
 
     def computeLatencyIfMappedToOneIP(self, ip, totalBandwidth = None):
         """
         Compute the latency if the layer is mapped to one IP.
-        Args:
-            ip: The ip that the layer is mapped to.
-            ret: Int, the latency cycle to compute this layer
         """
         assert(ip.type == self.type), "The type of IP and layer do not match."
         in_height, in_width = map(int, self.input_params[2:4])
         out_height, out_width = map(int, self.output_params[2:4])
 
         #This part need to hard code for different layer type
-        if self.type == "Convolution"or self.type == "Convolution_g":
-            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x"))
-            S = int(self.params[1].split("=")[1])
-            padding = int(self.params[2].split("=")[1])
-            group = int(self.params[4].split("=")[1])
-
-            latency = ip.computeLatencyDSP(
-                    [cout, cin, kw, kh, S, padding, group],
-                    in_height, 
-                    in_width, 
-                    out_height, 
-                    out_width,
-                    self.rowStep,
-                    self.firstLayer
-                    )
-
-        elif self.type == "Pooling":
-            PoolType = self.params[0].split("=")[1]
-            N = int(self.params[1].split("=")[1])
-            kw = kh = int(self.params[2].split("=")[1])
-            S = int(self.params[3].split("=")[1])
-            P = int(self.params[4].split("=")[1])
-
-            latency = ip.computeLatencyDSP(
-                    [N,kh,S,P], 
-                    in_height, 
-                    in_width, 
-                    out_height, 
-                    out_width, 
-                    self.rowStep,
-                    self.firstLayer)
-
-        elif self.type == "Eltwise":
-            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x"))
-            S = int(self.params[1].split("=")[1])
-            padding = int(self.params[2].split("=")[1])
-            group = int(self.params[4].split("=")[1])
-
-            latency_rowStep = ip.computeLatency(
-                    [cout, cin, kw, kh, S, padding, group],
-                    in_height, 
-                    in_width, 
-                    out_height, 
-                    out_width,
-                    self.rowStep,
-                    self.firstLayer)
-
-        else: 
-            assert(0), "Unsupported layer type"
-
+        latency = ip.computeLatencyDSP(self.layerInfo)
         return latency
 
-
-#    def computeLatencyRowStep(self, prevLayers, totalBandwidth):
-#        """
-#        The latency to compute one row
-#        Args:
-#            prevLayers: the list of previous layers
-#        """
-#        assert (self.mappedIP is not None), self.name + " mapped IP is not decided,\
-#            so no way to compute the latency"
-#
-#        if self.mappedIP == "Software":
-#            return
-#
-#        out_height, out_width = map(int, self.output_params[2:4])
-#        self.IP_latency_rowStep = self.computeLatencyIfMappedToOneIP(self.mappedIP, totalBandwidth)/(float(out_height)/self.rowStep)
-#
-#        #This part need to hard code for different layer type
-#        if self.type == "Convolution"or self.type == "Convolution_g":
-#            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x"))
-#            S = int(self.params[1].split("=")[1])
-#            padding = int(self.params[2].split("=")[1])
-#            group = int(self.params[4].split("=")[1])
-#
-#        elif self.type == "Pooling":
-#            PoolType = self.params[0].split("=")[1]
-#            N = int(self.params[1].split("=")[1])
-#            kw = kh = int(self.params[2].split("=")[1])
-#            S = int(self.params[3].split("=")[1])
-#            P = int(self.params[4].split("=")[1])
-#
-#        elif self.type == "Eltwise":
-#            S = 1
-#
-#        #Now start computing the latency for computing one row
-#
-#        #If the current layer is the starting of a pipeline chain, the maxPipeilneLayer for this
-#        #chain is itself. Otherwise, if one layer's latency is bigger than the previous latency, 
-#        #it becomes the new maxPipelineLayer
-#
-#        if(len(prevLayers) == 0):
-#            self.lat_rowStep = self.IP_latency_rowStep
-##            self.isMaxPipeLayer = True
-##            maxPipelineLayer.append(self)
-#
-#        else:
-#            for prevLayer in prevLayers:
-#                if not isPipelined(prevLayer, self):
-#                    self.lat_rowStep = self.IP_latency_rowStep
-##                    self.isMaxPipeLayer = True
-##                    maxPipelineLayer.append(self)
-#                elif self.lat_rowStep == None:
-##                    if self.IP_latency_rowStep > prevLayer.computeNRows(S):
-##                        self.isMaxPipeLayer = True
-##                        maxPipelineLayer[-1] = self
-#                    self.lat_rowStep = max(self.IP_latency_rowStep, prevLayer.computeNRows(S*self.rowStep))
-#                        
-#    def computeNRows(self, n): 
-#        """
-#        return the latency of the compute n rows
-#        Args:
-#            n: int. The number of rows to compute
-#        return:
-#            the latency to compute n rows
-#        """
-#        assert (self.mappedIP is not None), self.name + " mapped IP is not decided,\
-#            so no way to compute the latency of n rows"
-#        assert(self.mappedIP.type is not "Software"), self.name + "mapped IP is software, \
-#            cannot seperately compute N rows"
-#
-#        assert (self.lat_rowStep != None), "layer " + self.name + "'s lat_one_row is not computed, cannot compute N rows"
-#        return self.lat_rowStep * (float(n)/self.rowStep)
-#
     def computeLatency(self):
         """
         Compute the full latency of this layer using one IP
         """
-        assert (self.mappedIP is not None), self.name + " mapped IP is not decided, \
-        so no way to compute the latency"
-	assert(self.mappedIP is in hw_layers), self.name + " is not mapped to a hardware IP"
+        assert (self.mappedIP is not None), self.name+" mapped IP is not decided, so no way to compute the latency"
         self.latency = self.computeLatencyIfMappedToOneIP(self.mappedIP)
-
-#    def computeMaxRowStep(self):
-#        assert self.mappedIP != None, "Cannot set row step if the mapped IP is not decided."
-#        if self.type == "Convolution_g" or self.type == "Convolution":
-#            XI_KER_PROC, XI_PIX_PROC, XI_IBUFF_DEPTH, \
-#            XI_OBUFF_DEPTH, XI_WEIGHTBUFF_DEPTH = self.mappedIP.paramList
-#            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x"))
-#            S = int(self.params[1].split("=")[1])
-#            padding = int(self.params[2].split("=")[1])
-#
-#            in_depth, in_height, in_width = map(int, self.input_params[1:4])
-#            out_depth, out_height, out_width = map(int, self.output_params[1:4]) 
-#
-#            XI_IBUFF_DEPTH = int(XI_IBUFF_DEPTH)
-#            XI_OBUFF_DEPTH = int(XI_OBUFF_DEPTH)
-#
-#            if self.firstLayer:
-#                maxRowStepIn = ((XI_IBUFF_DEPTH/64)-kh)/ S +1
-#            else:
-#                maxRowStepIn =((XI_IBUFF_DEPTH/(in_width * math.ceil(float(in_depth)/64))-kh)/S+1)/2
-#            maxRowStepOut = XI_OBUFF_DEPTH/(out_width * math.ceil(float(out_depth)/32))
-
-#            return min(out_height, min(int(maxRowStepIn), int(maxRowStepOut)))
-#    def setRowStep(self, rowStepTable=None):
-#        assert self.mappedIP != None, "Cannot set row step if the mapped IP is not decided."
-#        if(rowStepTable):
-#            if(self.type != "Convolution_g" and self.type != "Convolution"):
-#                self.rowStep = 1
-#            else:
-#                self.rowStep = rowStepTable[self.ID]
-#            return
-#        if self.type == "Convolution_g" or self.type == "Convolution":
-#            XI_KER_PROC, XI_PIX_PROC, XI_IBUFF_DEPTH, \
-#            XI_OBUFF_DEPTH, XI_WEIGHTBUFF_DEPTH = self.mappedIP.paramList
-#            cout, cin, kw, kh = map(int, (self.params[0].split("=")[1]).split("x"))
-#            S = int(self.params[1].split("=")[1])
-#            padding = int(self.params[2].split("=")[1])
-#
-#            in_depth, in_height, in_width = map(int, self.input_params[1:4])
-#            out_depth, out_height, out_width = map(int, self.output_params[1:4]) 
-#
-#            XI_IBUFF_DEPTH = int(XI_IBUFF_DEPTH)
-#            XI_OBUFF_DEPTH = int(XI_OBUFF_DEPTH)
-#
-#            if self.firstLayer:
-#                maxRowStepIn = ((XI_IBUFF_DEPTH/64)-kh)/ S +1
-#            else:
-#                maxRowStepIn =((XI_IBUFF_DEPTH/(in_width * math.ceil(float(in_depth)/64))-kh)/S+1)/2
-#            maxRowStepOut = XI_OBUFF_DEPTH/(out_width * math.ceil(float(out_depth)/32))
-#
-#            self.rowStep = min(out_height, min(int(maxRowStepIn), int(maxRowStepOut)))

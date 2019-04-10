@@ -23,6 +23,33 @@ class layerInfo_t():
         self.memInR=memInR
         self.memOut=memOut
         self.rowStep=rowStep
+    def clearUnCertainItems(self):
+        self.memInL = None
+        self.memInR = None
+        self.memIn = None
+        self.rowStep = None
+
+    def __str__(self):
+        ret_str = \
+        "layerType : " + str(self.layerType) + "\n" +\
+        "inp_height : " + str(self.inp_height) + "\n" +\
+        "inp_width : " + str(self.inp_width) + "\n" +\
+        "out_height : " + str(self.out_height) + "\n" +\
+        "out_width : " + str(self.out_width) + "\n" +\
+        "out_planes : " + str(self.out_planes) + "\n" +\
+        "inp_planes : " + str(self.inp_planes) + "\n" +\
+        "stride : " + str(self.stride) + "\n" +\
+        "filter_height : " + str(self.filter_height) + "\n" +\
+        "filter_width : " + str(self.filter_width) + "\n" +\
+        "pad : " + str(self.pad) + "\n" +\
+        "groupFlag : " + str(self.groupFlag) + "\n" +\
+        "layerID : " + str(self.layerID) + "\n" +\
+        "memIn : " + str(self.memIn) + "\n" +\
+        "memInL : " + str(self.memInL) + "\n" +\
+        "memInR : " + str(self.memInR) + "\n" +\
+        "memOut : " + str(self.memOut) + "\n" +\
+        "rowStep : " + str(self.rowStep) + "\n"
+        return ret_str
     
 class IPinfo_t():
     def __init__(self,
