@@ -179,31 +179,12 @@ class graph:
 	for n in node_list:
 	    n.computeLatency()
 	for n in node_list:
+	    max_latency = 0
 	    for preds in g.predecessors(n):
-		n.latency = max(preds.latency, n.latency)
+		for p in preds:
+		   max_latency = max(max_latency, p.latency)
+	     n.latency = max(max_latency, n.latency)
 	
-    def computeLatency_old(self, g):
-        """
-        For each node in the graph, compute the latency and pipelined latency
-        """
-#        maxPipelineLayer = []
-        node_list = list(nx.topological_sort(g))
-        # First, compute latency
-        total_bandWidth = 0
-        for n in node_list:
-#            print "nn", n.name
-            total_bandWidth += n.bandWidth
-
-        for n in node_list:
-            if n.name in self.SWMapping:
-                n.set_IP(softwareIP(n.name))
-                n.latency = int(self.SWMapping[n.name])
-            else:
-                prevLayers = list(g.predecessors(n))
-#                n.computeLatencyRowStep(prevLayers, maxPipelineLayer, total_bandWidth)
-                n.computeLatencyRowStep(prevLayers, total_bandWidth)
-                n.computeLatency()
-
     def retriveOriginalGraph(self, g):
         g.clear()
         g.add_edges_from(self.original_edges[g])

@@ -25,12 +25,6 @@ class vertex:
     def computeLatency(self):
         None
 
-    def computeLatencyRowStep(self, g, totalBandwidth):
-        None
-
-    def computeNRows(self,n):
-        None
-
 class pipeNode(vertex):
     """
     The node inserted to account for the pipeline structure
@@ -139,15 +133,7 @@ class layer(vertex):
             padding = int(self.params[2].split("=")[1])
             group = int(self.params[4].split("=")[1])
 
-            #Assumption: Now here we do not consider the warm-up phase of computation.
-            #E.g., a convolution. Stride =4, kh =11. For the first output row, it needs
-            #to compute 11 input rows, but for the remaining rows,  it only need 4.  #We neglect the first row, and assume that one output row requires 4 input row.
-
-#            if totalBandwidth:
-#                print "total111 ", totalBandwidth, self.name, self.type, self.bandWidth
-#            print "total222 ", totalBandwidth, self.name, self.type, self.bandWidth
-
-            latency = ip.computeLatency(
+            latency = ip.computeLatencyDSP(
                     [cout, cin, kw, kh, S, padding, group],
                     in_height, 
                     in_width, 
@@ -164,7 +150,7 @@ class layer(vertex):
             S = int(self.params[3].split("=")[1])
             P = int(self.params[4].split("=")[1])
 
-            latency = ip.computeLatency(
+            latency = ip.computeLatencyDSP(
                     [N,kh,S,P], 
                     in_height, 
                     in_width, 

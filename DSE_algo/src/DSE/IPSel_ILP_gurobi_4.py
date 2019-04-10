@@ -19,7 +19,7 @@ from find_best_rowStep import findBestRowStep
 class IPSel():
     def __init__(self):
         None
-    def run(self, BRAM_budget, DSP_budget, FF_budget, LUT_budget, BW_budget, Lat_budget, numOtherIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, fixedRowStep, updateRowStep,\
+    def run(self,  DSP_budget, Lat_budget, numOtherIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, fixedRowStep, updateRowStep,\
            manualSetingConvIPbound, convIPlb, convIPUb, lat_achieved_total_old) :
         status = "Undecided" 
 
@@ -71,8 +71,7 @@ class IPSel():
 
             IPs = generateIPs(IP_fileName, gs.containedHwType, numConvIPs)
 
-            IP_table = constructIPTable(IPs, BRAM_budget, DSP_budget, LUT_budget, \
-                    FF_budget, gs.exploreLayerQueue, explore_IP_types, numIPs)
+            IP_table = constructIPTable(IPs,DSP_budget, gs.exploreLayerQueue, explore_IP_types, numIPs)
 
             if IP_table is None:
                 print "Cannot fit in " + str(numIPs) +", exiting...\n"
@@ -89,7 +88,7 @@ class IPSel():
                     IP_list += IP_table[layer_type]
 
             def comp(elem):
-                return -(elem.BRAM + elem.DSP)
+                return -(elem.DSP)
 
             IP_list.sort(key = comp)
             lat_achieved = Lat_budget
@@ -99,11 +98,7 @@ class IPSel():
 
 
             allIPs = [ip for ip in itertools.combinations(IP_list, numIPs) if (\
-            (sum(item.BRAM for item in ip) < BRAM_budget) and \
             (sum(item.DSP for item in ip) < DSP_budget) and \
-            (sum(item.LUT for item in ip) < LUT_budget) and \
-            (sum(item.FF for item in ip) < FF_budget) and \
-            (sum(item.BRAM for item in ip) > 0.5 * BRAM_budget) and \
             (sum(item.DSP for item in ip) > 0.5 * DSP_budget)) ]
             
             #pick N IPs out of the IP list

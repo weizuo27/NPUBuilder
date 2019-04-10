@@ -1,7 +1,7 @@
 from IP import IP
 import math
 from copy import deepcopy
-def constructIPTable(IPs, BRAM_budget, DSP_budget, FF_budget, LUT_budget, layerQueue, explore_IP_types, pipelineLength):
+def constructIPTable(IPs, DSP_budget, layerQueue, explore_IP_types, pipelineLength):
     '''
     To construnct the IP_table.
     Basically, according to the resource consumption of each IP, the maximum numbers of IPs of that type can be allocated is
@@ -24,21 +24,16 @@ def constructIPTable(IPs, BRAM_budget, DSP_budget, FF_budget, LUT_budget, layerQ
 
     for ip in IPs:
         if ip.type not in minResourceIP:
-            minResourceIP[ip.type] = [ip.BRAM, ip.DSP, ip.FF, ip.LUT]
+            #minResourceIP[ip.type] = [ip.BRAM, ip.DSP, ip.FF, ip.LUT]
+            minResourceIP[ip.type] = [ip.DSP]
         else:
-            minBRAM, minDSP, minFF, minLUT = minResourceIP[ip.type]
-            minResourceIP[ip.type] = [min(minBRAM, ip.BRAM), min(minDSP, ip.DSP), min(minFF, ip.FF), min(minLUT, ip.LUT)]
+            minDSP = minResourceIP[ip.type]
+            minResourceIP[ip.type] = [min(minDSP, ip.DSP)]
 
-    minBRAM_total = 0;
     minDSP_total = 0;
-    minFF_total = 0;
-    minLUT_total = 0;
     
     for t in minResourceIP:
-        minBRAM_total += minResourceIP[t][0]
         minDSP_total += minResourceIP[t][1]
-        minFF_total += minResourceIP[t][2]
-        minLUT_total += minResourceIP[t][3]
     
     #print minBRAM_total, minDSP_total, minFF_total, minLUT_total, minBRAM_total
 
@@ -48,16 +43,13 @@ def constructIPTable(IPs, BRAM_budget, DSP_budget, FF_budget, LUT_budget, layerQ
         # Category. E.g., 1 smallest Pool and 1 smallest Conv have to be instantiated for functionality. So the number
         # of Pools should be (total_resource - smallest_conv_resource)/pool_resource. This should reduce the number
         # of variables  
-        BRAM_budget_local = BRAM_budget - (minBRAM_total - minResourceIP[ip.type][0])
         DSP_budget_local = DSP_budget - (minDSP_total - minResourceIP[ip.type][1])
-        FF_budget_local = FF_budget - (minFF_total - minResourceIP[ip.type][2])
-        LUT_budget_local = LUT_budget - (minLUT_total - minResourceIP[ip.type][3])
 
         if ip.type not in explore_IP_types:
             IP_table[ip.type] = [ip]
 
         else:
-            IP_resource = min(BRAM_budget_local/ip.BRAM, DSP_budget_local/ip.DSP, FF_budget_local/ip.FF, LUT_budget_local/ip.LUT)
+            IP_resource = min(DSP_budget_local/ip.DSP)
             IP_num = 0
             for g in layerQueue:
                 if ip.type not in layerQueue[g]:
