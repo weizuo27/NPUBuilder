@@ -1,17 +1,22 @@
 class layerInfo_t():
-    layerType= None
-    inp_height   =None
-    inp_width   =None
-    out_height   =None
-    out_width   =None
-    out_planes  =None
-    inp_planes   =None
-    stride       =None
+    layerType=None
+    inp_height=None
+    inp_width=None
+    out_height=None
+    out_width=None
+    out_planes=None
+    inp_planes=None
+    stride=None
     filter_height=None
-    filter_width =None
-    pad          =None
-    groupFlag        =None
-    layerID = None
+    filter_width=None
+    pad=None
+    groupFlag=None
+    layerID=None
+    memIn=None
+    memInL=None
+    memInR=None
+    memOut=None
+    rowStep=None
 
 class IPinfo_t():
     IPtype=None
@@ -31,23 +36,24 @@ class IPinfo_t():
 
 
 class runInfo_t():
-    layerInfo=None #layerInfo_t, or pointer to layerInfo_t
-    IPInfo=None #IPInfo_t, or pointer to IPInfo_t
-    nextIPidx=None
-    rowStep=None
-    memIn=None
-    memInL=None
-    memInR=None
-    memOut=None
-    memOutL=None
-    memOutR=None
+    #note by XInheng: I am trying to simulate latency for rounds that involves multiple pipeline chain
+    #latency for multiple pipeline chain would be not accurate
+    #we current cannot support branch structure
+    layerInfo=None #layerInfo_t
+    idle=None
+    IPidx=None
+    nextIPidx=None #if it is involved in a one chain pipeline, then specify next IPidx
+    prevIPidx=None #if it is involved in a one chain pipeline, then specify prev IPidx
+    
 
-class roundInfo():
+
+
+class roundILPInfo_t():
     roundIdx=None;
     rowStep=None;
     IBRAMList=[];
     OBRAMList=[];
     IPindexList=[];
-    ConstantBRAM
+    ConstantBRAM;
 
 
