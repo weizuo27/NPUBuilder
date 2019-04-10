@@ -40,7 +40,6 @@ class runInfo_t():
     #latency for multiple pipeline chain would be not accurate
     #we current cannot support branch structure
     layerInfo=None #layerInfo_t
-    idle=None
     IPidx=None
     nextIPidx=None #if it is involved in a one chain pipeline, then specify next IPidx
     prevIPidx=None #if it is involved in a one chain pipeline, then specify prev IPidx
