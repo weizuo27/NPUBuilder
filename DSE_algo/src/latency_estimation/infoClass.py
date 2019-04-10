@@ -23,7 +23,7 @@ class layerInfo_t():
         self.memInR=memInR
         self.memOut=memOut
         self.rowStep=rowStep
-    )
+    
 class IPinfo_t():
     def __init__(self,
             IPtype=None, IPidx=None, K_x_P= None,
@@ -35,7 +35,7 @@ class IPinfo_t():
             OtherBRAM=None):
             self.IPtype=IPtype
             self.IPidx=IPidx
-            self.K_x_P= k_x_P
+            self.K_x_P= K_x_P
             self.XI_KER_PROC=XI_KER_PROC
             self.XI_PIX_PROC=XI_PIX_PROC
             self.XI_WEIGHTBUFF_DEPTH=XI_WEIGHTBUFF_DEPTH
@@ -46,27 +46,36 @@ class IPinfo_t():
             self.IBRAM=IBRAM
             self.OBRAM=OBRAM
             self.WBRAM=WBRAM
-            self.OtherBRAM=OtherBRAM)
+            self.OtherBRAM=OtherBRAM
 
 
 class runInfo_t():
 #note by XInheng: I am trying to simulate latency for rounds that involves multiple pipeline chain
 #latency for multiple pipeline chain would be not accurate
 #we current cannot support branch structure
-    layerInfo=None #layerInfo_t
-    IPidx=None
-    nextIPidx=None #if it is involved in a one chain pipeline, then specify next IPidx
-    prevIPidx=None #if it is involved in a one chain pipeline, then specify prev IPidx
-    
+    def __init__(self,
+        layerInfo=None, #layerInfo_t
+        IPidx=None,
+        nextIPidx=None, #if it is involved in a one chain pipeline, then specify next IPidx
+        prevIPidx=None #if it is involved in a one chain pipeline, then specify prev IPidx
+        ):
+        self.layerInfo=None
+        self.IPidx=None
+        self.nextIPidx=None
+        self.prevIPidx=None
+        
 
 
 
 class roundILPInfo_t():
-    roundIdx=None;
-    rowStep=None;
-    IBRAMList=[];
-    OBRAMList=[];
-    IPindexList=[];
-    ConstantBRAM;
+    def __init__(self,
+    roundIdx=None,
+    rowStep=None):
+        self.roundIdx=None
+        self.rowStep=None
+        self.IBRAMList=[];
+        self.OBRAMList=[];
+        self.IPindexList=[];
+        self.ConstantBRAM=None;
 
 
