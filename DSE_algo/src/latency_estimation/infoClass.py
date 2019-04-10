@@ -104,5 +104,6 @@ class roundILPInfo_t():
         self.OBRAMList=[];
         self.IPindexList=[];
         self.ConstantBRAM=None;
+        self.latency=None;
 
 
