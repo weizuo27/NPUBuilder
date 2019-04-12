@@ -5,7 +5,7 @@ def AlignSize(x, y):
     return ret
 
 
-FEEDING_BUFF_DEPTH=1023.0
+FEEDING_BUFF_DEPTH=1024
 
 def computeWeightDepth(layerInfo, KER, PIX):
     """
@@ -17,14 +17,13 @@ def computeWeightDepth(layerInfo, KER, PIX):
     """
     conv_out_planes  = layerInfo.out_planes   
     conv_inp_planes  = layerInfo.inp_planes   
-    conv_stride      = layerInfo.stride       
     fh= layerInfo.filter_height
     fw= layerInfo.filter_width 
     groupNum= 1+layerInfo.groupFlag;
     layerID= layerInfo.layerID;
 
     alignedInputPlane=AlignSize(conv_inp_planes,4);
-    k=math.ceil( math.log2( FEEDING_BUFF_DEPTH/2*4/alignedInputPlane/fh/fw));
+    k=int.bit_length(-((FEEDING_BUFF_DEPTH/2-1)*4)//(alignedInputPlane*fh*fw)) ;
     if(k<0):k=0;
     straddle=1<<k;
     computePlanes=alignedInputPlane/(straddle*groupNum)
@@ -43,13 +42,14 @@ def computeWeightDepth(layerInfo, KER, PIX):
     if(layerID!=0):
         latLoadFeedingBuff_fl=computePlanesAligned/64*( fw*tmp*fh*16+13)+20;
     #here we made a allowance of 0.9 to make lat loatFeeding buffer correct
-    requiredNKPF = math.ceil(latLoadFeedingBuff_fl*0.9/latCompute16Ker)
+    requiredNKPF = int(math.ceil(latLoadFeedingBuff_fl*0.9/latCompute16Ker))
     alignedOutputPlane = AlignSize(conv_out_planes,16)
     NKPF=min(requiredNKPF, alignedOutputPlane/KER)
     #In CHaiDNN's flow, the NKPF shall be constraint at the factor of  alignedOutputPlane/KER, however, I think it does not have to be the real factor
     #need to modify hardware
+    print "WTF",NKPF
     weightDepth= AlignSize(fh*fw*computePlanesAligned/4*NKPF+1,1024)
-    return weightDepth
+    return weightDepth, conv_out_planes, conv_inp_planes, straddle, computePlanes,  requiredNKPF, NKPF, alignedOutputPlane,latLoadFeedingBuff_fl,latCompute16Ker
 
 
 
@@ -97,7 +97,7 @@ def computeLatencyConv (
     memIn= layerInfo.memIn
     memOut= layerInfo.memOut
     
-    oneTime= layerInfo.oneTime
+    # oneTime= layerInfo.oneTime
 
     XI_KER_PROC=IPinfo.XI_KER_PROC
     XI_PIX_PROC=IPinfo.XI_PIX_PROC
@@ -107,18 +107,19 @@ def computeLatencyConv (
 
 
     alignedInputPlane=AlignSize(conv_inp_planes,4);
-    k=math.ceil( math.log2( FEEDING_BUFF_DEPTH/2*4/alignedInputPlane/fh/fw));
 
+    k=int.bit_length(   -(1-FEEDING_BUFF_DEPTH/2)*4//( alignedInputPlane*fh*fw) );
+    print "k",k
     if(k<0):k=0;
     straddle=1<<k;
 
     computePlanes=alignedInputPlane/(straddle*groupNum)
     computePlanesAligned=AlignSize(computePlanes,4)
-    computeNum = fh * fw * computePlanesAligned/4
+    computeNum = fh * fw * computePlanesAligned /4
     
     latOsggBuff=XI_PIX_PROC+8
     latCompute16Ker=computeNum+XI_PIX_PROC/2+20;
-
+    tmp= -( (-XI_PIX_PROC)//16)
     if(layerID!=0):
         latLoadFeedingBuff=computePlanesAligned/64*( fw*tmp*fh*16+13)+20;
     else:
@@ -126,10 +127,12 @@ def computeLatencyConv (
 
 
     alignedOutputPlane = AlignSize(conv_out_planes,16)/groupNum
-    NKPF=min( alignedOutputPlane, (XI_WEIGHTBUFF_DEPTH -1)/ computeNum )
+    print "XI_WEIGHTBUFF_DEPTH", computeNum
+    NKPF=min( alignedOutputPlane/XI_KER_PROC, (XI_WEIGHTBUFF_DEPTH -1)/ computeNum )
+    print "NKPF",NKPF
     latOsggBuff_fx=XI_PIX_PROC+8
     latProcResult_fe=latOsggBuff_fx+latCompute16Ker+(NKPF-1)*max(latOsggBuff_fx,latCompute16Ker)+10
-
+    oneTime= (straddle==1) and (NKPF==alignedOutputPlane/XI_KER_PROC);
    
     AXILATENCY = 1
     if oneTime:
@@ -144,11 +147,11 @@ def computeLatencyConv (
     if(layerID==0):
         latReadLineBuffer=conv_inp_width*(fh+(rowStep-1)*conv_stride)+20;
     else:
-        latReadLineBuffer=rowStep*conv_stride*(Align( conv_inp_planes,16)/16) *(10+conv_inp_width*1.1)+10 
+        latReadLineBuffer=rowStep*conv_stride*( -((-conv_inp_planes)//16) *(10+conv_inp_width*1.1)+10 )
 
-    if(memIn!=0):
-        preOverhead=(fh+rowStep-1-conv_pad)*conv_stride*( Align( conv_inp_planes,16)/16)*(10+conv_inp_width)+10
-        latReadInputData= rowStep*conv_stride*(Align( conv_inp_planes,16)/16)*conv_inp_width
+    if memIn != 0 :
+        preOverhead=(fh+rowStep-1-conv_pad)*conv_stride*( -((-conv_inp_planes)//16)*(10+conv_inp_width)+10)
+        latReadInputData= rowStep*conv_stride*(-((-conv_inp_planes)//16)*conv_inp_width)
     else:
         preOverhead=0
         latReadInputData=0
@@ -255,35 +258,36 @@ def computeLatencyPool(
     return  [latProcWeight, latLoadWeight, latCompNumber,  preOverhead,postOverhead, latReadInputData, latWritOutputData,FirstEndRows,1]
 
 class layerLatencyInfo_t():
-    layerType=None
-    rowStep=None
-    latProcWeight=None
-    latLoadWeight=None
-    latLoadWeightCurrent=None,
-    latCompNumber=None
-    latPreOverhead=None
-    latReadInputData=None
-    latWritOutputData=None
-    height=None
-    width=None
-    stride=None
-    currentStartRows=0
-    currentEndRows=0
-    currentSegmentLatency=0;
-    NrowStep=None
-    FirstEndRows=None #must initiate this before start
+
 
     def __init__(self, layerInfo, IPinfo, rowStep):
+
+        self.layerType=IPinfo.IPtype
+        self.rowStep=None
+        self.latProcWeight=None
+        self.latLoadWeight=None
+        self.latLoadWeightCurrent=None,
+        self.latCompNumber=None
+        self.latPreOverhead=None
+        self.latReadInputData=None
+        self.latWritOutputData=None
+        self.height=None
+        self.width=None
+        self.stride=layerInfo.stride
+        self.currentStartRows=0
+        self.currentEndRows=0
+        self.currentSegmentLatency=0;
+        self.FirstEndRows=None #must initiate this before start
         self.rowStep=rowStep
         self.NrowStep=rowStep
-        self.height=layerInfo.conv_out_height
+        self.height=layerInfo.out_height
         self.currentStartRows=0;
         self.currentSegmentLatency=0;
         layerInfo.rowStep=rowStep
 
         if( IPinfo.IPtype== "Convolution"):
             [self.latProcWeight, self.latLoadWeight, self.latCompNumber,  self.latPreOverhead, self.latPostOverhead, self.latReadInputData, self.latWritOutputData,self.FirstEndRows,self.stride]=computeLatencyConv(layerInfo,IPinfo)
-        if( IPinfo.IPtype== "ElementWise"):
+        if( IPinfo.IPtype== "Eltwise"):
             [self.latProcWeight, self.latLoadWeight, self.latCompNumber,  self.latPreOverhead,  self.latPostOverhead, self.latReadInputData, self.latWritOutputData,self.FirstEndRows,self.stride]=computeLatencyEle(layerInfo,IPinfo)
         if( IPinfo.IPtype== "Pooling"):
             [self.latProcWeight, self.latLoadWeight, self.latCompNumber,  self.latPreOverhead,  self.latPostOverhead, self.latReadInputData, self.latWritOutputData,self.FirstEndRows,self.stride]=computeLatencyPool(layerInfo,IPinfo)
@@ -354,9 +358,9 @@ def computeRequiredIODepth(layerInfo, rowStep):
     conv_inp_height     =   layerInfo.inp_height
     conv_inp_width      =   layerInfo.inp_width
     conv_out_width      =   layerInfo.out_width
-    conv_filter_height  =   layerInfo.filer_height
+    conv_filter_height  =   layerInfo.filter_height
 
-    IN_D=1<< math.ceil( math.log2( conv_inp_width*math.ceil(conv_inp_planes/64)*(conv_filter_height+(rowStep*2-1)*conv_stride) ) );
+    IN_D=1<< int.bit_length( conv_inp_width* (-(-conv_inp_planes//64))*(conv_filter_height+(rowStep*2-1)*conv_stride) );
     IN_D=max(IN_D,1024)
     OUT_D= AlignSize( conv_out_width*math.ceil(conv_inp_planes/32)*rowStep , 1024)
     return [IN_D,OUT_D]
@@ -373,8 +377,8 @@ def computeWeightBRAM(wBufferSize, KER):
 
 def constantBramConv(wBufferSizei, ker_proc, pix_proc):
     #need validation
-    wBrams = ceil(wBufferSizei / 1024.0) * ker_proc * ceil(32.0/18) * 2
-    feedingBrams = 2*ceil(32.0/18) * pix_proc/2 * 2
+    wBrams = math.ceil(wBufferSizei / 1024.0) * ker_proc *  math.ceil(32.0/18) * 2
+    feedingBrams = 2* math.ceil(32.0/18) * pix_proc/2 * 2
     resulting = 2*ker_proc * 2 * 2
     bias_scale = 24
     brams = wBrams + feedingBrams + resulting + bias_scale
@@ -395,7 +399,7 @@ def multiChainLatency(
     chainLatencList.sort(key=takeFirst);
     prevLatency=0;
     totalLatency=0;
-    for i in len(chainLatencList):
+    for i in range(len(chainLatencList)):
         overLappingWeightLatency=0;
         overLappingComputeLatency=chainLatencList[i][0]-prevLatency;
         for j in range(i, len(chainLatencList)):
@@ -410,18 +414,25 @@ def multiChainLatency(
 def computeRoundIPindex(
     roundInfoList, #list of runInfo_t[], runInfo_t 
     KerPixList, #list of [Ker, Pix] tuples for each IP, if the IP is not a conv IP, then  [Ker, Pix] = [0,0]
-    IPinfoList #list of IPinfo, the only specified value in each element should only be IPtype and K_x_P
+    IPinfoList, #list of IPinfo, the only specified value in each element should only be IPtype and K_x_P
+    logIdx=None
 ):
+
+    if(logIdx != None ):
+        logFile=open("weightdepthcomputation.log","w");
+    logFile.write("IPIdx,weightDepth, out_planes, inp_planes, straddle, computePlanes,  requiredNKPF, NKPF, alignedOutputPlane,latLoadFeedingBuff_fl,latCompute16Ker")
     #1. choose the weight depth by finding the largest weight depth that is optimal result
     weightDepthList=[0]*len(KerPixList);
     for runInfoList in roundInfoList:
         for runInfo in runInfoList:
-            if( runInfo.IPInfo.IPtype=="Convolution" and runInfo.idle== False):
+            
+            if( IPinfoList[runInfo.IPidx].IPtype=="Convolution" ):
                 Ker, Pix=KerPixList[runInfo.IPidx]
-                weightDepth=computeWeightDepth(runInfo.layerInfo,Ker,Pix);
+                weightDepth, out_planes, inp_planes, straddle, computePlanes,  requiredNKPF, NKPF, alignedOutputPlane,latLoadFeedingBuff_fl,latCompute16Ker=computeWeightDepth(runInfo.layerInfo,Ker,Pix);
+                logFile.write(str(runInfo.IPidx)+","+str(weightDepth)+","+str( out_planes)+","+str( inp_planes)+","+str( straddle)+","+str( computePlanes)+","+str(  requiredNKPF)+","+str( NKPF)+","+str( alignedOutputPlane)+","+str(latLoadFeedingBuff_fl)+","+str(latCompute16Ker)+"\n" )
                 if(weightDepthList[runInfo.IPidx]< weightDepth):
                     weightDepthList[runInfo.IPidx]=weightDepth;
-
+    logFile.close();
     constBram=0;
     for i, IPinfo in enumerate(IPinfoList):
         if( IPinfo.IPtype=="Convolution"):
@@ -451,7 +462,7 @@ def computeRoundIPindex(
             runChain=[];
             startIdx=0;
             while( startIdx < len(roundInfoList[roundIdx]) ):
-                runInfo=roundInfoList[roundIdx] 
+                runInfo=roundInfoList[roundIdx][startIdx]
                 IPinfoInst=IPinfoList[runInfo.IPidx];
                 layerInfoInst=runInfo.layerInfo;
                 runChain.append([layerInfoInst,IPinfoInst]);
@@ -469,6 +480,7 @@ def computeRoundIPindex(
             roundILPInfo=roundILPInfo_t();
             roundILPInfo.roundIdx=roundIdx;
             roundILPInfo.rowStep=rowStep;
+            roundILPInfo.latency=latency;
             for i in range(len(IPinfoList)):
                 if ( IPinfoList[i].IPtype=="Convolution" ):
                     roundILPInfo.IPindexList.append(i);
@@ -486,35 +498,124 @@ def computeRoundIPindex(
 
 
     
-    
+KerPixList=[ [16,16],[0,0],[0,0],[16,32] ]
+
+IPlist=[]
+runList=[]
+
+x=IPinfo_t()
+x.IPidx=0;
+x.IPtype="Convolution"
+IPlist.append(x)
+
+x=IPinfo_t()
+x.IPidx=1;
+x.IPtype="Eltwise"
+IPlist.append(x)
+
+x=IPinfo_t()
+x.IPidx=2;
+x.IPtype="Pooling"
+IPlist.append(x)
+
+x=IPinfo_t()
+x.IPidx=3;
+x.IPtype="Convolution"
+IPlist.append(x)
+
+
+
+y=layerInfo_t()
+y.layerType="Convolution"
+y.inp_height=28
+y.inp_width=28
+y.out_height=28
+y.out_width=28
+y.out_planes=512
+y.inp_planes=1024
+y.stride=1
+y.filter_height=3
+y.filter_width=3
+y.pad=1
+y.groupFlag=0
+y.layerID=3
+y.memIn=1
+y.memInL=None
+y.memInR=None
+y.memOut=1
+y.rowStep=None
+z=runInfo_t()
+z.IPidx=3;
+z.layerInfo=y
+
+runList.append(z)
+
+
+y=layerInfo_t()
+y.layerType="Convolution"
+y.inp_height=28
+y.inp_width=28
+y.out_height=28
+y.out_width=28
+y.out_planes=1024
+y.inp_planes=512
+y.stride=1
+y.filter_height=3
+y.filter_width=3
+y.pad=1
+y.groupFlag=0
+y.layerID=3
+y.memIn=1
+y.memInL=None
+y.memInR=None
+y.memOut=0
+
+z=runInfo_t()
+z.IPidx=0;
+z.layerInfo=y
+z.nextIPidx=1
+runList.append(z)
+
+x=IPinfo_t()
+x.IPidx=0;
+x.IPtype="Eltwise"
+y=layerInfo_t()
+y.layerType="Eltwise"
+y.inp_height=28
+y.inp_width=28
+y.out_height=28
+y.out_width=28
+y.out_planes=1024
+y.inp_planes=512
+y.stride=1
+y.filter_height=3
+y.filter_width=3
+y.pad=1
+y.groupFlag=0
+y.layerID=3
+y.memIn=None
+y.memInL=1
+y.memInR=0
+y.memOut=0
+
+z=runInfo_t()
+z.IPidx=1;
+z.layerInfo=y
+runList.append(z)
+
+roundList=[]
+roundList.append(runList)
+
+computeRoundIPindex(roundList,KerPixList,IPlist,1)
+
+
 
     
         
 
 
 
-# def rawDSP( K_x_P):
-#     """
-#     return the estimated DSP for a conv IP with ker_proc by pix_proc  as K_x_P in first round scheduling
-#     input K_x_P: the product of ker_proc and pix_proc
-#     return: estiumated DSP
-#     """
-#     return K_x_P*2.2
 
-# def rawLatency( layerInfo, K_x_P ):
-#     """
-#     return the estimated latency for a certain K_x_P in first round scheduling
-#     input layerInfo: the class containg convolution layer information
-#     input K_x_P: the product of ker_proc and pix_proc
-#     return: estimated latency
-#     """
-#     conv_filter_height= layerInfo.conv_filter_height
-#     conv_filter_width= layerInfo.conv_filter_width
-#     conv_inp_planes  = layerInfo.conv_inp_planes 
-#     conv_out_height  = layerInfo.conv_out_height   
-#     conv_out_width   = layerInfo.conv_out_width    
-#     conv_out_planes  = layerInfo.conv_out_planes  
-#     return conv_filter_height*conv_filter_width*conv_inp_planes*conv_out_planes*conv_out_height*conv_out_width/K_x_P/4;
 
 
 
