@@ -16,7 +16,6 @@ class vertex:
         self.type = None
         self.pipeLatency = None
 	self.orgLatency = None
-        self.rowStep = None
         self.ID = None
     def computeLatency(self):
         None
@@ -46,11 +45,12 @@ class blob(vertex):
         self.latency = 0
 
 class layer(vertex):
-    def __init__(self, line, rowStep, layerIdxTable):
+    def __init__(self, line, layerIdxTable):
         #All attributes are first initialized here
         vertex.__init__(self)
         n_t = line.split(":")[0]
         self.name, self.type = n_t.split("-")
+        self.layerInfo = layerInfo_t()
         self.layerInfo.type = self.type
         self.mappedIP = None
         self.firstLayer = False
@@ -61,21 +61,21 @@ class layer(vertex):
         if self.type == "Convolution" or self.type == "Convolution_g":
             self.layerInfo.out_planes, self.layerInfo.inp_planes, self.layerInfo.filter_width, self.layerInfo.filter_height =\
             map(int, (params[0].split("=")[1]).split("x")) 
-            self.layerInfo.stride = int(self.params[1].split("=")[1])
-            self.layerInfo.pad = int(self.params[2].split("=")[1])
-            self.layerInfo.groupFlag = (int(self.params[4].split("=")[1]) > 1)
+            self.layerInfo.stride = int(params[1].split("=")[1])
+            self.layerInfo.pad = int(params[2].split("=")[1])
+            self.layerInfo.groupFlag = (int(params[4].split("=")[1]) > 1)
 
         elif self.type == "Pooling":
             self.layerInfo.out_planes= self.layerInfo.inp_planes = int(params[1].split("=")[1])
-            self.layerInfo.stride = int(self.params[3].split("=")[1])
-            self.layerInfo.pad = int(self.params[4].split("=")[1])
+            self.layerInfo.stride = int(params[3].split("=")[1])
+            self.layerInfo.pad = int(params[4].split("=")[1])
 
         elif self.type == "Eltwise":
-            self.layerInfo.out_planes, self.layerInfo.inp_planes, 
-            self.layerInfo.filter_width, selfself.layerInfo.filter_height = map(int, (params[0].split("=")[1]).split("x"))
-            self.layerInfo.stride = int(self.params[1].split("=")[1])
-            self.layerInfo.pad = int(self.params[2].split("=")[1])
-            self.layerInfo.groupFlag = (int(self.params[4].split("=")[1]) > 1)
+            self.layerInfo.out_planes, self.layerInfo.inp_planes, \
+            self.layerInfo.filter_width, self.layerInfo.filter_height = map(int, (params[0].split("=")[1]).split("x"))
+            self.layerInfo.stride = int(params[1].split("=")[1])
+            self.layerInfo.pad = int(params[2].split("=")[1])
+            self.layerInfo.groupFlag = (int(params[4].split("=")[1]) > 1)
         else: 
             assert(0), "Unsupported layer type"
 

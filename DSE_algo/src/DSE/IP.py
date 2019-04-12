@@ -55,7 +55,7 @@ class IP():
         self.necessaryHasSet = False
         ################
         if resource_list != None:
-            self.layerInfo.K_x_P, self.DSP, _, _= map(int, resource_list)
+            self.IPinfo.K_x_P, self.DSP, _, _= map(int, resource_list)
         if paramList != None:
             self.paramList =map(int, paramList)
 

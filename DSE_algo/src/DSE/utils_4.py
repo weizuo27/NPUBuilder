@@ -33,7 +33,7 @@ def constructIPTable(IPs, DSP_budget, layerQueue, explore_IP_types, pipelineLeng
     minDSP_total = 0;
     
     for t in minResourceIP:
-        minDSP_total += minResourceIP[t][1]
+        minDSP_total += minResourceIP[t][0]
     
     #print minBRAM_total, minDSP_total, minFF_total, minLUT_total, minBRAM_total
 
@@ -43,7 +43,7 @@ def constructIPTable(IPs, DSP_budget, layerQueue, explore_IP_types, pipelineLeng
         # Category. E.g., 1 smallest Pool and 1 smallest Conv have to be instantiated for functionality. So the number
         # of Pools should be (total_resource - smallest_conv_resource)/pool_resource. This should reduce the number
         # of variables  
-        DSP_budget_local = DSP_budget - (minDSP_total - minResourceIP[ip.type][1])
+        DSP_budget_local = DSP_budget - (minDSP_total - minResourceIP[ip.type][0])
 
         if ip.type not in explore_IP_types:
             IP_table[ip.type] = [ip]
@@ -51,6 +51,7 @@ def constructIPTable(IPs, DSP_budget, layerQueue, explore_IP_types, pipelineLeng
         else:
             IP_resource = min(DSP_budget_local/ip.DSP)
             IP_num = 0
+            print "layerQueue", layerQueue
             for g in layerQueue:
                 if ip.type not in layerQueue[g]:
                     continue

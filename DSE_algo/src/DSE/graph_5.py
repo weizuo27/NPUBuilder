@@ -67,7 +67,7 @@ class graph:
                         break
                     bot_str, layer_str, top_str = l.split("-->")
                     layer_str = layer_str[1:-1]
-                    layer_tmp = layer(layer_str, self.rowStep, self.layerIdxTable)
+                    layer_tmp = layer(layer_str, self.layerIdxTable)
                     if layer_str in pipeEndTable:
                         pipeEndTable[layer_str] = layer_tmp
 
@@ -125,7 +125,7 @@ class graph:
             subGraph = nx.DiGraph(self.G.subgraph(groupNodes))
             blob_begin = blob("begin")
             blob_end = blob("end")
-            nodes_list = list(subGraph.nodes)
+            nodes_list = list(subGraph.nodes())
             for n in nodes_list:
                 inD = outD = 0
                 if subGraph.in_degree(n) == inD:
@@ -133,13 +133,12 @@ class graph:
                 if subGraph.out_degree(n) == outD:
                     subGraph.add_edge(n, blob_end)
             self.graphs.append(subGraph) 
-	print "shouldAddBackEdge", self.shouldAddBackEdge
 
         for g in self.graphs:
             #Add the exploreLayerQueue
             self.exploreLayerQueue[g] = dict()
             explore_node_list = []
-            for n in g.nodes:
+            for n in g.nodes():
 		if n.type in hw_layers:
                     self.containedHwType[n.type] = 1
                 if n.type in explore_IP_types:
@@ -156,8 +155,8 @@ class graph:
                 del self.exploreLayerQueue[g]
 
             #Collect the original nodes and edges
-            self.original_nodes[g] = list(g.nodes)
-            self.original_edges[g] = list(g.edges)
+            self.original_nodes[g] = list(g.nodes())
+            self.original_edges[g] = list(g.edges())
 
     def __str__(self):
         #FIXME: Need to fill in
