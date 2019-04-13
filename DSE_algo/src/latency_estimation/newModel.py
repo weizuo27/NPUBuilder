@@ -35,13 +35,9 @@ def computeWeightDepth(layerInfo, KER, PIX):
     computePlanes=alignedInputPlane/(straddle*groupNum)
     computePlanesAligned=AlignSize(computePlanes,4)
 
-    print("computePlanesAligned "+str(computePlanesAligned))
-    print("straddle "+str(straddle))
-
     #find latProcResult and latLoadFeedingBuff latnecy
     latOsggBuff=PIX+8
     latCompute16Ker=(fh * fw * (computePlanesAligned/4)+1)+PIX/2+20;
-    print("LatCompute16Ker "+str(latCompute16Ker));
 
     tmp = (PIX/16+1) if (PIX%16) else  (PIX/16)
 
@@ -55,9 +51,7 @@ def computeWeightDepth(layerInfo, KER, PIX):
     #need to modify hardware
 
     weightDepth= AlignSize(fh*fw*computePlanesAligned/4*NKPF+1,1024)
-    print(str(layerInfo.layerID)+","+str(weightDepth)+","+str( conv_out_planes)+","+str( conv_inp_planes)+","+str( straddle)+","+str( computePlanes)+","+str(  requiredNKPF)+","+str( NKPF)+","+str( alignedOutputPlane)+","+str(latLoadFeedingBuff_fl)+","+str(latCompute16Ker)+"\n" )
     logFile.write(str(layerInfo.layerID)+","+str(weightDepth)+","+str( conv_out_planes)+","+str( conv_inp_planes)+","+str( straddle)+","+str( computePlanes)+","+str(  requiredNKPF)+","+str( NKPF)+","+str( alignedOutputPlane)+","+str(latLoadFeedingBuff_fl)+","+str(latCompute16Ker)+"\n" )
-                    
     return weightDepth
 
 
@@ -425,7 +419,6 @@ def KerPixCombSearch( K_x_P):
             K=K<<1;
             P=P>>1
             continue;
-        print [K,P]
         KerPix.append( [K,P] );
         K=K<<1;
         P=P>>1;
@@ -462,9 +455,13 @@ def exploitK_xPCombinations(
 
     depositLatency=float("inf")
     depositRowStepChoice=[]
-    depositIDepthList=[]
-    depositODepthList=[]
-    depositIPindex=[]
+    depositIDepthList=[0]*len(IPinfoList)
+    depositODepthList=[0]*len(IPinfoList)
+    depositKer=[0]*len(IPinfoList)
+    depositPix=[0]*len(IPinfoList)
+    depositWeight=[0]*len(IPinfoList)
+
+   
     while(1):
         KerPixList=[];
         for i,combinIndex in enumerate(counter):
@@ -486,40 +483,56 @@ def exploitK_xPCombinations(
         OB_nij=numpy.ndarray([N,I,J]);
         L_ij=numpy.ndarray([I,J]);
 
-        print I,J,N;
+
         for n in range(N):
             for i in range(I):
                 for j in range(J):
-                    IB_nij=roundILPInfoList[i][j].IBRAMList[n];
-                    OB_nij=roundILPInfoList[i][j].OBRAMList[n];
+                    IB_nij[n][i][j]=roundILPInfoList[i][j].IBRAMList[n];
+                    OB_nij[n][i][j]=roundILPInfoList[i][j].OBRAMList[n];
         for i in range(I):
             for j in range(J):
-                print roundILPInfoList[i][j].latency
                 L_ij[i][j]=roundILPInfoList[i][j].latency;
         BRAMbudget_ID=BRAMBudget-constBram;
+        rowStepChoice,InIdx,OutIdx,ILPlatency=rowStepILP.rowStepILP( BRAMbudget_ID, IB_nij, OB_nij, L_ij, N, I, J);
+        
+            
 
-        rowStepChoice,InIdx,OutIdx,ILPlatency=rowStepILP.rowStepILP( BRAMbudget_ID,IB_nij,OB_nij,L_ij,N,I,J);
-        if( ILPlatency< depositLatency):
+        if( ILPlatency !=None and ILPlatency< depositLatency):
             depositLatency=ILPlatency;
             depositRowStepChoice=rowStepChoice
-            deopsitIDepthList=[]
-            depositODepthList=[]
+            depositIDepthList=[0]*len(IPinfoList)
+            depositODepthList=[0]*len(IPinfoList)
+            depositKer=[0]*len(IPinfoList)
+            depositPix=[0]*len(IPinfoList)
+            depositWeight=[0]*len(IPinfoList)
+            depositIPindex=roundILPInfoList[0][0].IPindexList;
             for n in range(N):
                 [i,j]=InIdx[n]
-                depositIDepthList.append(roundILPInfoList[i][j].IN_D[n])
+                depositIDepthList[depositIPindex[n]]=roundILPInfoList[i][j].InDepthList[n]
                 [i,j]=OutIdx[n]
-                depositODepthList.append(roundILPInfoList[i][j].Out_D[n])
-            depositIPindex=roundILPInfoList[0][0].IPindexList;
+                depositODepthList[depositIPindex[n]]=roundILPInfoList[i][j].OutDepthList[n]
+            for n in range(len(IPinfoList)):
+                depositKer[n]=IPinfoList[n].XI_KER_PROC;
+                depositPix[n]=IPinfoList[n].XI_PIX_PROC;
+                depositWeight[n]=IPinfoList[n].XI_WEIGHTBUFF_DEPTH
+       
+        if(ILPlatency==None  ):
+            print "ker, Pix configuration", KerPixList, "does not have feasible solution";
 
         if(updateCombineCounter(counter,combNumListList) ): break;
 
     if( not depositRowStepChoice):
-        print "Feasible Solution not found";
+        print "Feasible Solution not found in KP iteration";
         return None
+    for n in range(len(IPinfoList)):
+        IPinfoList[n].XI_KER_PROC=depositKer[n];
+        IPinfoList[n].XI_PIX_PROC=depositPix[n];
+        IPinfoList[n].XI_WEIGHTBUFF_DEPTH=depositWeight[n];
+        IPinfoList[n].XI_INDEPTH=depositIDepthList[n];
+        IPinfoList[n].XI_OUTDEPTH=depositODepthList[n];
+    return rowStepChoice, depositLatency
     
-    for n,i in enumerate(depositIPindex):
-        IPinfoList[n].XI_INDEPTH=depositIDepthList[i];
-        IPinfoList[n].XI_OUTDEPTH=depositODepthList[i];
+
         
 
 
@@ -536,7 +549,6 @@ def computeRoundIPindex(
     IPinfoList, #list of IPinfo, the only specified value in each element should only be IPtype and K_x_P
     logIdx=None
 ):
-    print "IPInfolist",IPinfoList
     global logFile
     if(logIdx != None ):
         logFile=open("scheduling"+str(logIdx)+".log","w");
@@ -760,7 +772,7 @@ roundList.append(runList)
 
 
     
-exploitK_xPCombinations(roundList,IPlist, 1400)
+exploitK_xPCombinations(roundList,IPlist, 1450)
 
 
 
