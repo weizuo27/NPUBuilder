@@ -22,7 +22,7 @@ class optimizer:
         self.numIPs=dict()
         self.pipelineTable = dict()
 
-    def run(self,IP_table, graphs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table_org, fixedRowStep, updateRowStep, verbose = False):
+    def run(self,IP_table, graphs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table_org, verbose = False):
         for ip_type in IP_table:
             self.numIPs[ip_type] = len(IP_table[ip_type])
         firstIter = True

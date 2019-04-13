@@ -54,7 +54,6 @@ class layer(vertex):
         self.layerInfo.type = self.type
         self.mappedIP = None
         self.firstLayer = False
-        self.input_params = None
         self.output_params = None
         self.layerInfo.ID = int(layerIdxTable[self.name])
         params = line.split(":")[1].split(";")
@@ -100,9 +99,6 @@ class layer(vertex):
         Compute the latency if the layer is mapped to one IP.
         """
         assert(ip.type == self.type), "The type of IP and layer do not match."
-        in_height, in_width = map(int, self.input_params[2:4])
-        out_height, out_width = map(int, self.output_params[2:4])
-
         #This part need to hard code for different layer type
         latency = ip.computeLatencyDSP(self.layerInfo)
         return latency

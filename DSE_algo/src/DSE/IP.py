@@ -71,7 +71,7 @@ class IP():
     #This function should give latency of the using the IP with a 
     #sepcified application dimensions
     def computeLatencyDSP(self, layerInfo):
-        return computeLatencyDSP(self.IPinfo, layerInfo)
+        return computeLatencyDSP(layerInfo, self.IPinfo)
 	
     def __str__(self):
         return "name: "+str(self.name)\

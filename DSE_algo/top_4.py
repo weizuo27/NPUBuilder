@@ -65,15 +65,7 @@ opt = False
 updateRowStep = False
 f = open("./outputFiles/hw/rowSteps", "w")
 f.close()
-lat_achieved_total_old = latency_budget
-while(not opt):
-    lat_achieved_total = ipsel.run(DSP_budget, latency_budget, numOtherIPs,\
-    app_fileName, IP_fileName, 2000, RowStep, batchSize, fixedRowStep, updateRowStep, manualSetingConvIPbound, convIPlb, convIPUb, lat_achieved_total_old)
-    break	
-    updateRowStep = True
-    print "Old is ", lat_achieved_total_old, "new is ", lat_achieved_total
-    if lat_achieved_total > lat_achieved_total_old - 2000:
-        print "new one is slower. "
-        break
-    lat_achieved_total_old = lat_achieved_total
+
+lat_achieved_total = ipsel.run(DSP_budget, latency_budget, numOtherIPs,\
+app_fileName, IP_fileName, 2000, RowStep, batchSize, manualSetingConvIPbound, convIPlb, convIPUb)
 

@@ -19,8 +19,8 @@ from find_best_rowStep import findBestRowStep
 class IPSel():
     def __init__(self):
         None
-    def run(self,  DSP_budget, Lat_budget, numOtherIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, fixedRowStep, updateRowStep,\
-           manualSetingConvIPbound, convIPlb, convIPUb, lat_achieved_total_old) :
+    def run(self,  DSP_budget, Lat_budget, numOtherIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, \
+           manualSetingConvIPbound, convIPlb, convIPUb) :
         status = "Undecided" 
 
         #Hard code the hardware supported layers
@@ -77,10 +77,6 @@ class IPSel():
                 print "Cannot fit in " + str(numIPs) +", exiting...\n"
                 break
 
-            IP_table_per_layer_org = genIPTablePerLayer(IP_table, gs.exploreLayerQueue, hw_layers)
-
-            layerIPLatencyTable_org = computeIPLatencyPerLayer(IP_table, gs.exploreLayerQueue, hw_layers, IP_table_per_layer_org)
-
             #Flatten the IP_table
             IP_list = []
             for layer_type in IP_table:
@@ -130,6 +126,7 @@ class IPSel():
                 if self.isInAbandonTable(IPs):
                     print "IPs in abandonTable"
                     continue
+
                 self.updateAbandonTable(IPs)
 
                 IP_dict = dict()
@@ -157,12 +154,8 @@ class IPSel():
                     continue
                 acc_lat = 0
                 #Generate the IP_table_per_layer and layerIPLatencyTable 
-                IP_table_per_layer = genIPTablePerLayer(IP_dict, gs.exploreLayerQueue, hw_layers)
-                if IP_table_per_layer is None:
-                    print "cannot find valid IP table per layer, continue"
-                    continue
 
-                layerIPLatencyTable = computeIPLatencyPerLayer(IP_dict, gs.exploreLayerQueue, hw_layers, IP_table_per_layer)
+                layerIPLatencyTable = computeIPLatencyPerLayer(IP_dict, gs.exploreLayerQueue, hw_layers)
 
                 valid = True
                 lat_left = lat_achieved
@@ -176,12 +169,11 @@ class IPSel():
                     self.updateLayerQueue(gs.exploreLayerQueue[g], layerQueue)
                     opt = optimizer(lat_left, rowStep)
                     #If some of the graph, there is no feasible solution, then the current selection of IPs cannot work
-                    lat, sol = opt.run(IP_dict, gs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table, fixedRowStep, updateRowStep)
+                    lat, sol = opt.run(IP_dict, gs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table)
                     if lat == None:
                         valid = False
                         break
                     acc_lat += lat
-#                print gs.printNodesMapping(hw_layers, sol)
                     #If the current latency is worse than the achieved latency, then the current selection of IPs won't work
                     if acc_lat > lat_achieved:
                         valid = False
@@ -189,8 +181,6 @@ class IPSel():
                     lat_left = lat_achieved - acc_lat
                     mapping_solution_tmp[g] = sol
                     latency_solution_tmp[g] = lat
-#            print "update!", "lat_achieved_old = ", lat_achieved, "acc_lat = ", acc_lat, "lat = ", lat
-#            self.updateAbandonSet(IPs, layerQueue, IP_table, IP_table_per_layer_org, layerIPLatencyTable_org, numIPs)
                 if not valid:
                     print "cannot find valid latency, continue"
                     continue
@@ -213,9 +203,6 @@ class IPSel():
             print "No feasible solutions"
             return
 
-        if(lat_achieved_total > lat_achieved_total_old + ESP):
-            print "no better solution, return"
-            return lat_achieved_total
         self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
         return lat_achieved_total
 

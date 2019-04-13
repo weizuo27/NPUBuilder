@@ -19,39 +19,26 @@ def constructIPTable(IPs, DSP_budget, layerQueue, explore_IP_types, pipelineLeng
 
     IP_table = dict()
     maxIPnum = 0
-
     minResourceIP = dict() #The minimum resource for each IP. key: IP_type. value [BRAM, DSP, FF, LUT]
-
     for ip in IPs:
         if ip.type not in minResourceIP:
-            #minResourceIP[ip.type] = [ip.BRAM, ip.DSP, ip.FF, ip.LUT]
-            minResourceIP[ip.type] = [ip.DSP]
+            minResourceIP[ip.type] = ip.DSP
         else:
             minDSP = minResourceIP[ip.type]
-            minResourceIP[ip.type] = [min(minDSP, ip.DSP)]
+            minResourceIP[ip.type] = min(minDSP, ip.DSP)
 
     minDSP_total = 0;
     
     for t in minResourceIP:
-        minDSP_total += minResourceIP[t][0]
+        minDSP_total += minResourceIP[t]
     
-    #print minBRAM_total, minDSP_total, minFF_total, minLUT_total, minBRAM_total
-
     for ip in IPs:
-        # TODO: currently the number of IPs is calculated as: if only this IP is instantiated, what is the number
-        # An optimization is, assume the smallest IP of each category is generated once, and the number of IPs of each
-        # Category. E.g., 1 smallest Pool and 1 smallest Conv have to be instantiated for functionality. So the number
-        # of Pools should be (total_resource - smallest_conv_resource)/pool_resource. This should reduce the number
-        # of variables  
-        DSP_budget_local = DSP_budget - (minDSP_total - minResourceIP[ip.type][0])
-
+        DSP_budget_local = DSP_budget - (minDSP_total - minResourceIP[ip.type])
         if ip.type not in explore_IP_types:
             IP_table[ip.type] = [ip]
-
         else:
-            IP_resource = min(DSP_budget_local/ip.DSP)
+            IP_resource = DSP_budget_local/ip.DSP
             IP_num = 0
-            print "layerQueue", layerQueue
             for g in layerQueue:
                 if ip.type not in layerQueue[g]:
                     continue
@@ -62,7 +49,6 @@ def constructIPTable(IPs, DSP_budget, layerQueue, explore_IP_types, pipelineLeng
 
         IP_type = ip.type
         maxIPnum = max(maxIPnum, IP_num)
-#        print ip.name, ip.type, "IP_num", IP_num
         for i in range(IP_num):
             new_ip = deepcopy(ip)
             new_ip.name += ("_"+str(i))
@@ -70,8 +56,6 @@ def constructIPTable(IPs, DSP_budget, layerQueue, explore_IP_types, pipelineLeng
                 IP_table[IP_type].append(new_ip)
             else:
                 IP_table[IP_type] = [new_ip]
-#    if maxIPnum < pipelineLength:
-#        return None
     return IP_table
 
 def generateIPs(fileName, containedHwType, numIPs):
@@ -114,83 +98,7 @@ def isPipelined(s_node, t_node):
 #FIXME: This only works for NNs that is a chain
     return t_node.Pipelined
 
-def resourceConstr(layer, ip):
-    """
-    Function to generate CHaiDNN specific constraints about the buffer size.
-    The following must be satisified for correct functionality
-
-    Args:
-        layer: layer class. one layer in the application
-        ip: The IP class. One IP
-
-    Return:
-        const. The list of constraints. Currently only two elements:
-            The lower bound of XI_ISTGBUFFDEPTH and XI_OSTGBUFFDEPTH
-    """ 
-    #FIXME: This is hard-coded for one type of IP only. Should be modified
-    assert(layer.type == "Convolution" or layer.type == "Convolution_g"), "Unsupported layer type"
-
-    in_depth, in_height, in_width = map(int, layer.input_params[1:4])
-    out_depth, out_height, out_width = map(int, layer.output_params[1:4])
-    cout, cin, kw, kh = map(int, (layer.params[0].split("=")[1]).split("x"))
-    S = int(layer.params[1].split("=")[1])
-
-#    print layer.params[1]
-    const = []
-
-    #FIXME: This 32 may need to be changed later, should not be fixed
-    if layer.firstLayer:
-        const.append(((layer.rowStep-1)*S+kh)*64)
-    else:
-        const.append(in_width * math.ceil(float(in_depth)/64) * (kh + (2*layer.rowStep-1)*S))
-    #const.append(in_width * 8)
-    const.append(out_width * math.ceil(float(out_depth)/32) * layer.rowStep)
-
-#    print "in_depth", layer.name, in_depth, in_height, in_width, kh, S, const
-
-    return const
-    
-def genIPTablePerLayer(IP_table, layerQueue, hw_layers):
-    """
-    After generating the general IP_table, there are some IP specific constraints, 
-    These are application (layer) related. 
-    So for each layer, the IP candidates may be just a subset of general IP table.
-    This can reduce the number of variables in the ILP solution.
-
-    Args:
-        IP_table: Dict. The general IP_table. The output of function constructIPTable
-            Key: The IP type. Value: The list of IPs in that type
-        layerQueue:
-            the dict of layers that are in the application (NN).
-            Key: The layer type.  Value: The list of layers that are in that type
-        hw_layers: 
-            The dict of layers that can be mapped to hardware.
-            Key: The hardware supported layer type. Value: Dont'care
-    Return:
-        the dictionary of IP_table that is customized for each layer.
-        Key: The layer class. Value: The list of IPs that can be mapped to the layer
-    """
-    #FIXME currently this is hard-coded, since only 1 type of IP is there
-    ret = dict()
-    for g in layerQueue:
-        for layerType in layerQueue[g]:
-            if layerType in hw_layers:
-                for l in layerQueue[g][layerType]:
-#                    print l.name
-                    ret[l] =  []
-                    IP_queue = IP_table[layerType]
-                    for ip in IP_queue:
-                        if layerType != "Convolution" and layerType != "Convolution_g":
-                            ret[l].append(1)
-                        else:
-                            const = resourceConstr(l, ip)
-#                            print const, ip.name, ip.paramList
-                            ret[l].append(0) if (const[0] > ip.paramList[2] or const[1] > ip.paramList[3]) else ret[l].append(1)
-                    if sum(ret[l]) == 0:
-                        return None
-    return ret
-
-def computeIPLatencyPerLayer(IP_table, layerQueue, hw_layers, IPTablePerLayer):
+def computeIPLatencyPerLayer(IP_table, layerQueue, hw_layers):
     def keyComp(elem_tuple):
         return elem_tuple[1] #Return latency
 
@@ -206,9 +114,6 @@ def computeIPLatencyPerLayer(IP_table, layerQueue, hw_layers, IPTablePerLayer):
                 row = []
                 row_final = []
                 for idx, ip in enumerate(ip_q):
-#                    print layer_inst.name, idx, IPTablePerLayer
-                    if IPTablePerLayer[layer_inst][idx] == 0:
-                        continue
                     lat = layer_inst.computeLatencyIfMappedToOneIP(ip)
                     row.append((ip, lat, idx))
 
