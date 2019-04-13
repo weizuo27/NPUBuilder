@@ -1,9 +1,13 @@
 import math
 from infoClass import *
+from gurobipy import *
+import rowStepILP
+import numpy
+
 def AlignSize(x, y):
     ret = x if (x%y == 0) else ((x/y + 1)*y)
     return ret
-
+logFile=None
 
 FEEDING_BUFF_DEPTH=1024
 
@@ -15,6 +19,8 @@ def computeWeightDepth(layerInfo, KER, PIX):
     int PIX: pix factor
     retutrn [WeightDepth, latLoadFeedingBuff, latProcResult, latLoadWeight, onetime]
     """
+
+    global logFile
     conv_out_planes  = layerInfo.out_planes   
     conv_inp_planes  = layerInfo.inp_planes   
     fh= layerInfo.filter_height
@@ -23,7 +29,7 @@ def computeWeightDepth(layerInfo, KER, PIX):
     layerID= layerInfo.layerID;
 
     alignedInputPlane=AlignSize(conv_inp_planes,4);
-    k=int.bit_length(-((FEEDING_BUFF_DEPTH/2-1)*4)//(alignedInputPlane*fh*fw)) ;
+    k=int.bit_length(   -(-alignedInputPlane*fh*fw/4)//((FEEDING_BUFF_DEPTH/2-1)) );
     if(k<0):k=0;
     straddle=1<<k;
     computePlanes=alignedInputPlane/(straddle*groupNum)
@@ -47,10 +53,12 @@ def computeWeightDepth(layerInfo, KER, PIX):
     NKPF=min(requiredNKPF, alignedOutputPlane/KER)
     #In CHaiDNN's flow, the NKPF shall be constraint at the factor of  alignedOutputPlane/KER, however, I think it does not have to be the real factor
     #need to modify hardware
-    print "WTF",NKPF
-    weightDepth= AlignSize(fh*fw*computePlanesAligned/4*NKPF+1,1024)
-    return weightDepth, conv_out_planes, conv_inp_planes, straddle, computePlanes,  requiredNKPF, NKPF, alignedOutputPlane,latLoadFeedingBuff_fl,latCompute16Ker
 
+    weightDepth= AlignSize(fh*fw*computePlanesAligned/4*NKPF+1,1024)
+    print(str(layerInfo.layerID)+","+str(weightDepth)+","+str( conv_out_planes)+","+str( conv_inp_planes)+","+str( straddle)+","+str( computePlanes)+","+str(  requiredNKPF)+","+str( NKPF)+","+str( alignedOutputPlane)+","+str(latLoadFeedingBuff_fl)+","+str(latCompute16Ker)+"\n" )
+    logFile.write(str(layerInfo.layerID)+","+str(weightDepth)+","+str( conv_out_planes)+","+str( conv_inp_planes)+","+str( straddle)+","+str( computePlanes)+","+str(  requiredNKPF)+","+str( NKPF)+","+str( alignedOutputPlane)+","+str(latLoadFeedingBuff_fl)+","+str(latCompute16Ker)+"\n" )
+                    
+    return weightDepth
 
 
 
@@ -107,12 +115,10 @@ def computeLatencyConv (
 
 
     alignedInputPlane=AlignSize(conv_inp_planes,4);
-
-    k=int.bit_length(   -(1-FEEDING_BUFF_DEPTH/2)*4//( alignedInputPlane*fh*fw) );
-    print "k",k
+    
+    k=int.bit_length( -(-alignedInputPlane*fh*fw/4)//((FEEDING_BUFF_DEPTH/2-1)) );
     if(k<0):k=0;
     straddle=1<<k;
-
     computePlanes=alignedInputPlane/(straddle*groupNum)
     computePlanesAligned=AlignSize(computePlanes,4)
     computeNum = fh * fw * computePlanesAligned /4
@@ -127,9 +133,7 @@ def computeLatencyConv (
 
 
     alignedOutputPlane = AlignSize(conv_out_planes,16)/groupNum
-    print "XI_WEIGHTBUFF_DEPTH", computeNum
     NKPF=min( alignedOutputPlane/XI_KER_PROC, (XI_WEIGHTBUFF_DEPTH -1)/ computeNum )
-    print "NKPF",NKPF
     latOsggBuff_fx=XI_PIX_PROC+8
     latProcResult_fe=latOsggBuff_fx+latCompute16Ker+(NKPF-1)*max(latOsggBuff_fx,latCompute16Ker)+10
     oneTime= (straddle==1) and (NKPF==alignedOutputPlane/XI_KER_PROC);
@@ -332,7 +336,7 @@ def computeLatencyPipe(
         weightAmount=1;
         for i in range(firstOperatingLayerID,lastOperatingLayerID+1):
             weightAmount+=(layersCopy[i].latLoadWeight*layersCopy[i].latCompNumber+ layersCopy[i].latReadInputData+layersCopy[i].latWritOutputData)*layersCopy[i].NrowStep/layersCopy[i].rowStep;
-        weightTotalCycle+=weightTotalCycle
+        weightTotalCycle+=weightAmount
         maxLatency=0;
 
         for i in range(firstOperatingLayerID,lastOperatingLayerID+1):
@@ -375,9 +379,9 @@ def computeWeightBRAM(wBufferSize, KER):
     wBrams = math.ceil(wBufferSize / 1024.0)  * math.ceil(32.0/18) * 2
     return  wBrams
 
-def constantBramConv(wBufferSizei, ker_proc, pix_proc):
+def constantBramConv(wBufferSize, ker_proc, pix_proc):
     #need validation
-    wBrams = math.ceil(wBufferSizei / 1024.0) * ker_proc *  math.ceil(32.0/18) * 2
+    wBrams = math.ceil(wBufferSize / 1024.0) * ker_proc *  math.ceil(32.0/18) * 2
     feedingBrams = 2* math.ceil(32.0/18) * pix_proc/2 * 2
     resulting = 2*ker_proc * 2 * 2
     bias_scale = 24
@@ -406,10 +410,125 @@ def multiChainLatency(
             overLappingWeightLatency+=chainLatencList[j][1]*float(overLappingComputeLatency)/chainLatencList[j][0];
         totalLatency+=max(overLappingComputeLatency,overLappingWeightLatency);
         prevLatency=chainLatencList[i][0];
-    
+    return totalLatency
     
 
 
+def KerPixCombSearch( K_x_P):
+
+    if( K_x_P == 0 or  K_x_P==None): return [[0,0]];
+    KerPix=[]
+    K=8
+    P=K_x_P/K
+    while( K<=16 and P>=8 ):
+        if(P > 32): 
+            K=K<<1;
+            P=P>>1
+            continue;
+        print [K,P]
+        KerPix.append( [K,P] );
+        K=K<<1;
+        P=P>>1;
+    if not KerPix: print "not valid K_x_P"
+    return KerPix
+
+
+def updateCombineCounter(counter,counterNum ):
+    idx=0;
+    while(1):
+        if( idx == len(counterNum) ): return True;
+        counter[idx]+=1;
+        if(counter[idx]==counterNum[idx]):
+            counter[idx]=0;
+            idx+=1;
+        else:
+            break;
+    return False
+    
+
+
+def exploitK_xPCombinations(
+    roundInfoList,
+    IPinfoList,
+    BRAMBudget
+):
+    KerPixCombineList=[];
+    combNumListList=[]
+    for i in IPinfoList:
+        KerPix=KerPixCombSearch(i.K_x_P );
+        KerPixCombineList.append( KerPix);
+        combNumListList.append(len(KerPix));
+    counter=[0]*len(combNumListList);
+
+    depositLatency=float("inf")
+    depositRowStepChoice=[]
+    depositIDepthList=[]
+    depositODepthList=[]
+    depositIPindex=[]
+    while(1):
+        KerPixList=[];
+        for i,combinIndex in enumerate(counter):
+            KerPixList.append( KerPixCombineList[i][combinIndex]);
+
+        # call in_D, out_D, W_D, rowStep finder
+        roundILPInfoList,constBram=computeRoundIPindex(
+            roundInfoList, 
+            KerPixList,
+            IPinfoList,
+            1
+        );
+
+
+        I=len(roundILPInfoList)
+        J=len(roundILPInfoList[0])
+        N=len(roundILPInfoList[0][0].IBRAMList)
+        IB_nij=numpy.ndarray([N,I,J]);
+        OB_nij=numpy.ndarray([N,I,J]);
+        L_ij=numpy.ndarray([I,J]);
+
+        print I,J,N;
+        for n in range(N):
+            for i in range(I):
+                for j in range(J):
+                    IB_nij=roundILPInfoList[i][j].IBRAMList[n];
+                    OB_nij=roundILPInfoList[i][j].OBRAMList[n];
+        for i in range(I):
+            for j in range(J):
+                print roundILPInfoList[i][j].latency
+                L_ij[i][j]=roundILPInfoList[i][j].latency;
+        BRAMbudget_ID=BRAMBudget-constBram;
+
+        rowStepChoice,InIdx,OutIdx,ILPlatency=rowStepILP.rowStepILP( BRAMbudget_ID,IB_nij,OB_nij,L_ij,N,I,J);
+        if( ILPlatency< depositLatency):
+            depositLatency=ILPlatency;
+            depositRowStepChoice=rowStepChoice
+            deopsitIDepthList=[]
+            depositODepthList=[]
+            for n in range(N):
+                [i,j]=InIdx[n]
+                depositIDepthList.append(roundILPInfoList[i][j].IN_D[n])
+                [i,j]=OutIdx[n]
+                depositODepthList.append(roundILPInfoList[i][j].Out_D[n])
+            depositIPindex=roundILPInfoList[0][0].IPindexList;
+
+        if(updateCombineCounter(counter,combNumListList) ): break;
+
+    if( not depositRowStepChoice):
+        print "Feasible Solution not found";
+        return None
+    
+    for n,i in enumerate(depositIPindex):
+        IPinfoList[n].XI_INDEPTH=depositIDepthList[i];
+        IPinfoList[n].XI_OUTDEPTH=depositODepthList[i];
+        
+
+
+
+
+
+
+
+    
 
 def computeRoundIPindex(
     roundInfoList, #list of runInfo_t[], runInfo_t 
@@ -417,47 +536,52 @@ def computeRoundIPindex(
     IPinfoList, #list of IPinfo, the only specified value in each element should only be IPtype and K_x_P
     logIdx=None
 ):
-
+    print "IPInfolist",IPinfoList
+    global logFile
     if(logIdx != None ):
-        logFile=open("weightdepthcomputation.log","w");
-    logFile.write("IPIdx,weightDepth, out_planes, inp_planes, straddle, computePlanes,  requiredNKPF, NKPF, alignedOutputPlane,latLoadFeedingBuff_fl,latCompute16Ker")
+        logFile=open("scheduling"+str(logIdx)+".log","w");
+    logFile.write("IPIdx,weightDepth, out_planes, inp_planes, straddle, computePlanes,  requiredNKPF, NKPF, alignedOutputPlane,latLoadFeedingBuff_fl,latCompute16Ker\n")
     #1. choose the weight depth by finding the largest weight depth that is optimal result
     weightDepthList=[0]*len(KerPixList);
     for runInfoList in roundInfoList:
         for runInfo in runInfoList:
-            
             if( IPinfoList[runInfo.IPidx].IPtype=="Convolution" ):
                 Ker, Pix=KerPixList[runInfo.IPidx]
-                weightDepth, out_planes, inp_planes, straddle, computePlanes,  requiredNKPF, NKPF, alignedOutputPlane,latLoadFeedingBuff_fl,latCompute16Ker=computeWeightDepth(runInfo.layerInfo,Ker,Pix);
-                logFile.write(str(runInfo.IPidx)+","+str(weightDepth)+","+str( out_planes)+","+str( inp_planes)+","+str( straddle)+","+str( computePlanes)+","+str(  requiredNKPF)+","+str( NKPF)+","+str( alignedOutputPlane)+","+str(latLoadFeedingBuff_fl)+","+str(latCompute16Ker)+"\n" )
+                weightDepth=computeWeightDepth(runInfo.layerInfo,Ker,Pix);
                 if(weightDepthList[runInfo.IPidx]< weightDepth):
                     weightDepthList[runInfo.IPidx]=weightDepth;
-    logFile.close();
+    logFile.write("Computing Constant BRAM result\n")
     constBram=0;
     for i, IPinfo in enumerate(IPinfoList):
         if( IPinfo.IPtype=="Convolution"):
             Ker, Pix=KerPixList[i]
-            constBram+=constantBramConv(weightDepthList[i],Ker, Pix);
+            constBramIP=constantBramConv(weightDepthList[i],Ker, Pix);
+            constBram+=constBramIP
             IPinfoList[i].XI_WEIGHTBUFF_DEPTH=weightDepthList[i];
             IPinfoList[i].XI_KER_PROC=Ker;
             IPinfoList[i].XI_PIX_PROC=Pix;
+            logFile.write("Convolution,"+str(Ker)+","+str(Pix)+","+str(weightDepthList[i])+","+str(constBramIP)+"\n")
         elif( IPinfo.IPtype=="Pooling"):
             constBram+=constantBramPool();
+            logFile.write("Pooling,"+str(constantBramPool())+"\n")
         elif( IPinfo.IPtype=="Eltwise"):
             constBram+=constantBramEle();
+            logFile.write("Eltwise,"+str(constantBramEle())+"\n")
         else:
             assert(0), "Unsupported IP type"
+
+
     roundILPInfoList=[];
     for roundIdx in range(len(roundInfoList)):
         roundILPInfoList_row=[];
         for rowStep in range(1,7):
             IOBRAM={}
+            logFile.write("Round Latency Compute:"+str(roundIdx)+","+str(rowStep)+"\n");
             for runInfo in roundInfoList[roundIdx]:
                 if( IPinfoList[runInfo.IPidx].IPtype=="Convolution"):
                     IN_D,OUT_D = computeRequiredIODepth( runInfo.layerInfo, rowStep)
                     inBrams, outBrams = computeIOBram(IN_D,OUT_D)
-                    IOBRAM[runInfo.IPidx]=[inBrams,outBrams]
-            #Segment Different pipeline chain
+                    IOBRAM[runInfo.IPidx]=[inBrams,outBrams,IN_D,OUT_D ]
             chainLatencList=[];
             runChain=[];
             startIdx=0;
@@ -469,35 +593,58 @@ def computeRoundIPindex(
                 if(runInfo.nextIPidx == None):
                     layerLatencyInfoList=[]
                     for i in range( len(runChain) ):
-                        IPinfoInst,layerInfoInst=runChain[i];
-                        x=layerLatencyInfo_t(IPinfoInst,layerInfoInst,rowStep);
+                        layerInfoInst,IPinfoInst=runChain[i];
+                        x=layerLatencyInfo_t(layerInfoInst,IPinfoInst,rowStep);
+                        logFile.write(IPinfoInst.IPtype+","+str(IPinfoInst.IPidx)+","+str(x.latProcWeight)+","+str(x.latLoadWeight)+","+str(x.latCompNumber)+","+str(x.latPreOverhead)+","+str(x.latPostOverhead)+","+str(x.latReadInputData)+","+str(x.latWritOutputData)+","+str(x.FirstEndRows)+","+str(x.stride)+"\n");
                         layerLatencyInfoList.append(x)
                     cycles,weigthCycles=computeLatencyPipe(layerLatencyInfoList);
+                    logFile.write("chainCycles: "+str(int(cycles) )+", weight Cycles: "+str(int(weigthCycles))+"\n")
                     chainLatencList.append([cycles,weigthCycles]);
                 startIdx=startIdx+1;
             latency=multiChainLatency(chainLatencList);
-            #generate a validation testcase and add it into round.csv
             roundILPInfo=roundILPInfo_t();
             roundILPInfo.roundIdx=roundIdx;
             roundILPInfo.rowStep=rowStep;
+        
             roundILPInfo.latency=latency;
             for i in range(len(IPinfoList)):
                 if ( IPinfoList[i].IPtype=="Convolution" ):
                     roundILPInfo.IPindexList.append(i);
                     if i in IOBRAM:
-                        inBrams,outBrams=IOBRAM[i]
+                        inBrams,outBrams,IN_D,OUT_D=IOBRAM[i]
                         roundILPInfo.IBRAMList.append(inBrams)
                         roundILPInfo.OBRAMList.append(outBrams)
+                        roundILPInfo.InDepthList.append(IN_D)
+                        roundILPInfo.OutDepthList.append(OUT_D)
                     else:
+                        roundILPInfo.IBRAMList.append(0)
+                        roundILPInfo.OBRAMList.append(0)
                         roundILPInfo.IBRAMList.append(0)
                         roundILPInfo.OBRAMList.append(0)
             roundILPInfo.ConstantBRAM=constBram;
             roundILPInfoList_row.append(roundILPInfo);
         roundILPInfoList.append(roundILPInfoList_row);
-    return [roundILPInfoList, IPinfoList]
+    logFile.close();
+    return roundILPInfoList,constBram
 
 
-    
+# IPlist=[];
+# x=IPinfo_t(K_x_P=512)
+# x.IPidx=0;
+# IPlist.append(x)
+# x=IPinfo_t(K_x_P=256)
+# x.IPidx=0;
+# IPlist.append(x)
+# x=IPinfo_t(K_x_P=128)
+# x.IPidx=0;
+# IPlist.append(x)
+# x=IPinfo_t(K_x_P=64)
+# x.IPidx=0;
+# IPlist.append(x)
+
+
+
+# exploitK_xPCombinations(None,IPlist );
 KerPixList=[ [16,16],[0,0],[0,0],[16,32] ]
 
 IPlist=[]
@@ -506,6 +653,7 @@ runList=[]
 x=IPinfo_t()
 x.IPidx=0;
 x.IPtype="Convolution"
+x.K_x_P=512
 IPlist.append(x)
 
 x=IPinfo_t()
@@ -521,6 +669,7 @@ IPlist.append(x)
 x=IPinfo_t()
 x.IPidx=3;
 x.IPtype="Convolution"
+x.K_x_P=256
 IPlist.append(x)
 
 
@@ -606,12 +755,12 @@ runList.append(z)
 roundList=[]
 roundList.append(runList)
 
-computeRoundIPindex(roundList,KerPixList,IPlist,1)
+# computeRoundIPindex(roundList,KerPixList,IPlist,1)
 
 
 
     
-        
+exploitK_xPCombinations(roundList,IPlist, 1400)
 
 
 
