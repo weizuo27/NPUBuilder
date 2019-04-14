@@ -90,6 +90,7 @@ class IPinfo_t():
             string += "OBRAM " + str(self.OBRAM)+"\n"
             string += "WBRAM " + str(self.WBRAM)+"\n"
             string += "OtherBRAM " + str(self.OtherBRAM)+"\n"
+            return string
     __repr__ = __str__
 
 class runInfo_t():
