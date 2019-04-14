@@ -51,11 +51,11 @@ class layer(vertex):
         n_t = line.split(":")[0]
         self.name, self.type = n_t.split("-")
         self.layerInfo = layerInfo_t()
-        self.layerInfo.type = self.type
+        self.layerInfo.layerType = self.type
         self.mappedIP = None
         self.firstLayer = False
         self.output_params = None
-        self.layerInfo.ID = int(layerIdxTable[self.name])
+        self.layerInfo.layerID = int(layerIdxTable[self.name])
         params = line.split(":")[1].split(";")
         if self.type == "Convolution" or self.type == "Convolution_g":
             self.layerInfo.out_planes, self.layerInfo.inp_planes, self.layerInfo.filter_width, self.layerInfo.filter_height =\

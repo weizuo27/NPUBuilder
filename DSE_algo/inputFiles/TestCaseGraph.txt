@@ -1,4 +1,3 @@
-
 Network : ResNet-50
 Input Blob : data
 Output Blob : ele4

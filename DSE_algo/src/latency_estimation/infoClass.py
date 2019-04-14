@@ -24,9 +24,9 @@ class layerInfo_t():
         self.memOut=memOut
         self.rowStep=rowStep
     def clearUnCertainItems(self):
-        self.memInL = None
-        self.memInR = None
-        self.memIn = None
+        self.memInL = True
+        self.memInR = True
+        self.memIn = True
         self.rowStep = None
 
     def __str__(self):
@@ -50,6 +50,7 @@ class layerInfo_t():
         "memOut : " + str(self.memOut) + "\n" +\
         "rowStep : " + str(self.rowStep) + "\n"
         return ret_str
+    __repr__ = __str__
     
 class IPinfo_t():
     def __init__(self,
@@ -74,7 +75,22 @@ class IPinfo_t():
             self.OBRAM=OBRAM
             self.WBRAM=WBRAM
             self.OtherBRAM=OtherBRAM
-
+    def __str__(self):
+            string = ""
+            string += "IPtype " + str(self.IPtype)+"\n"
+            string += "IPidx " + str(self.IPidx)+"\n"
+            string += "K_x_P " + str(self.K_x_P)+"\n"
+            string += "XI_KER_PROC " + str(self.XI_KER_PROC)+"\n"
+            string += "XI_PIX_PROC " + str(self.XI_PIX_PROC)+"\n"
+            string += "XI_WEIGHTBUFF_DEPTH " + str(self.XI_WEIGHTBUFF_DEPTH)+"\n"
+            string += "XI_INDEPTH " + str(self.XI_INDEPTH)+"\n"
+            string += "int6bit " + str(self.int6bit)+"\n"
+            string += "BRAM " + str(self.BRAM)+"\n"
+            string += "IBRAM " + str(self.IBRAM)+"\n"
+            string += "OBRAM " + str(self.OBRAM)+"\n"
+            string += "WBRAM " + str(self.WBRAM)+"\n"
+            string += "OtherBRAM " + str(self.OtherBRAM)+"\n"
+    __repr__ = __str__
 
 class runInfo_t():
 #note by XInheng: I am trying to simulate latency for rounds that involves multiple pipeline chain
@@ -90,8 +106,15 @@ class runInfo_t():
         self.IPidx=IPidx
         self.nextIPidx=nextIPidx
         self.prevIPidx=prevIPidx
-        
 
+    def __str__(self):
+        string = ""
+        string += "layerInfo: " + str(self.layerInfo)+"\n"
+        string += "IPidx: " + str(self.IPidx)+"\n"
+        string += "nextIPidx: " + str(self.nextIPidx)+"\n"
+        string += "prevIPidx: " + str(self.prevIPidx)+"\n"
+        return string
+    __repr__ = __str__
 
 
 class roundILPInfo_t():

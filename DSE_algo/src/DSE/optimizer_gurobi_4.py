@@ -105,6 +105,8 @@ class optimizer:
             if(verbose):
                 print "Final solution"
                 self.printSchedulingMappingSol(graphs, hw_layers)
+#            for n in self.mapping_solution.node():
+#                print n.layerInfo
             return self.latency_achieved, self.mapping_solution, self.pipelineTable
 
     def assignMappingResult(self, exploreLayerQueue, explore_IP_types, hw_layers, IP_table, g, IP_table_org):
@@ -146,12 +148,15 @@ class optimizer:
                         pipelineTable[t.mappedIP] = 1
 
     def addPipelineNodes(self, g):
+        print "self.pipelineTable"
+        for (s, t) in self.pipelineTable:
+            print s.name, s.ID, "+", t.name, t.ID
         for s_node, t_node in self.pipelineTable:
-            s_node.memOut = False
+            s_node.layerInfo.memOut = False
             if(t_node.type == "Eltwise"):
-                t_node.memInR == False
+                t_node.layerInfo.memInR == False
             else:
-                t_node.memIn = False
+                t_node.layerInfo.memIn = False
             n = pipeNode(-s_node.latency)
             g.remove_edge(s_node, t_node)
             g.add_node(n)

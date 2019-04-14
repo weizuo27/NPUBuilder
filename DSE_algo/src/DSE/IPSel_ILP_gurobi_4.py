@@ -220,13 +220,24 @@ class IPSel():
         final_graph_list = reorderMapping(mapping_solution_total, hw_layers, pipelineTable_solution_total)
         roundInfoList, IPinfoList = self.genIPinfoLayerInfoList(final_graph_list, pipelineTable_solution_total)
         
+        ridx = 0
+        print "\n\n\nroundInfo\n"
+        for r in roundInfoList:
+            print "round "+ str(ridx) + "\n"
+            print r
+            ridx += 1
+
+        print "\n\nipInfo\n"
+        for ip in IPinfoList:
+            print ip
+
+        
         
 #        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
 
-        print "IPinfoList", IPinfoList
-        print "roundInfoList", roundInfoList
         rowStep, latency = exploitK_xPCombinations(roundInfoList, IPinfoList, BRAM_budget)
-        print "aaa", rowStep, latency
+        print "latency",  latency
+        print "rowStep", rowStep
         
         return lat_achieved_total
 
@@ -253,10 +264,8 @@ class IPSel():
             for n in g.nodes():
                 nextIPidx = None if n.name not in pipelineTargetNodes else 1
                 n.mappedIP.IPinfo = IPinfoDict[n.mappedIP.name]
-                print "n.name", n.mappedIP.IPinfo.IPidx
                 runInfo = runInfo_t(n.layerInfo, n.mappedIP.IPinfo.IPidx, 
                         nextIPidx, None)
-                print runInfo.IPidx
                 roundInfoList_row.append(runInfo)
             roundInfoList.append(roundInfoList_row)
         return roundInfoList, IPinfoList
