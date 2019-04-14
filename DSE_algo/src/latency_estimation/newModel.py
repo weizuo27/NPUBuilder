@@ -530,6 +530,10 @@ def exploitK_xPCombinations(
         IPinfoList[n].XI_WEIGHTBUFF_DEPTH=depositWeight[n];
         IPinfoList[n].XI_INDEPTH=depositIDepthList[n];
         IPinfoList[n].XI_OUTDEPTH=depositODepthList[n];
+    # for i,roundILPInfoList_row in enumerate( roundILPInfoList):
+    #     rowStepNum=rowStepChoice[i];
+    #     for roundILPInfo in roundILPInfoList_row:
+    #         roundILPInfo.layerInfo.rowStep=rowStepNum
     return rowStepChoice, depositLatency
     
 
@@ -657,122 +661,122 @@ def computeRoundIPindex(
 
 
 # exploitK_xPCombinations(None,IPlist );
-KerPixList=[ [16,16],[0,0],[0,0],[16,32] ]
+# KerPixList=[ [16,16],[0,0],[0,0],[16,32] ]
 
-IPlist=[]
-runList=[]
+# IPlist=[]
+# runList=[]
 
-x=IPinfo_t()
-x.IPidx=0;
-x.IPtype="Convolution"
-x.K_x_P=512
-IPlist.append(x)
+# x=IPinfo_t()
+# x.IPidx=0;
+# x.IPtype="Convolution"
+# x.K_x_P=512
+# IPlist.append(x)
 
-x=IPinfo_t()
-x.IPidx=1;
-x.IPtype="Eltwise"
-IPlist.append(x)
+# x=IPinfo_t()
+# x.IPidx=1;
+# x.IPtype="Eltwise"
+# IPlist.append(x)
 
-x=IPinfo_t()
-x.IPidx=2;
-x.IPtype="Pooling"
-IPlist.append(x)
+# x=IPinfo_t()
+# x.IPidx=2;
+# x.IPtype="Pooling"
+# IPlist.append(x)
 
-x=IPinfo_t()
-x.IPidx=3;
-x.IPtype="Convolution"
-x.K_x_P=256
-IPlist.append(x)
-
-
-
-y=layerInfo_t()
-y.layerType="Convolution"
-y.inp_height=28
-y.inp_width=28
-y.out_height=28
-y.out_width=28
-y.out_planes=512
-y.inp_planes=1024
-y.stride=1
-y.filter_height=3
-y.filter_width=3
-y.pad=1
-y.groupFlag=0
-y.layerID=3
-y.memIn=1
-y.memInL=None
-y.memInR=None
-y.memOut=1
-y.rowStep=None
-z=runInfo_t()
-z.IPidx=3;
-z.layerInfo=y
-
-runList.append(z)
+# x=IPinfo_t()
+# x.IPidx=3;
+# x.IPtype="Convolution"
+# x.K_x_P=256
+# IPlist.append(x)
 
 
-y=layerInfo_t()
-y.layerType="Convolution"
-y.inp_height=28
-y.inp_width=28
-y.out_height=28
-y.out_width=28
-y.out_planes=1024
-y.inp_planes=512
-y.stride=1
-y.filter_height=3
-y.filter_width=3
-y.pad=1
-y.groupFlag=0
-y.layerID=3
-y.memIn=1
-y.memInL=None
-y.memInR=None
-y.memOut=0
 
-z=runInfo_t()
-z.IPidx=0;
-z.layerInfo=y
-z.nextIPidx=1
-runList.append(z)
+# y=layerInfo_t()
+# y.layerType="Convolution"
+# y.inp_height=28
+# y.inp_width=28
+# y.out_height=28
+# y.out_width=28
+# y.out_planes=512
+# y.inp_planes=1024
+# y.stride=1
+# y.filter_height=3
+# y.filter_width=3
+# y.pad=1
+# y.groupFlag=0
+# y.layerID=3
+# y.memIn=1
+# y.memInL=None
+# y.memInR=None
+# y.memOut=1
+# y.rowStep=None
+# z=runInfo_t()
+# z.IPidx=3;
+# z.layerInfo=y
 
-x=IPinfo_t()
-x.IPidx=0;
-x.IPtype="Eltwise"
-y=layerInfo_t()
-y.layerType="Eltwise"
-y.inp_height=28
-y.inp_width=28
-y.out_height=28
-y.out_width=28
-y.out_planes=1024
-y.inp_planes=512
-y.stride=1
-y.filter_height=3
-y.filter_width=3
-y.pad=1
-y.groupFlag=0
-y.layerID=3
-y.memIn=None
-y.memInL=1
-y.memInR=0
-y.memOut=0
+# runList.append(z)
 
-z=runInfo_t()
-z.IPidx=1;
-z.layerInfo=y
-runList.append(z)
 
-roundList=[]
-roundList.append(runList)
+# y=layerInfo_t()
+# y.layerType="Convolution"
+# y.inp_height=28
+# y.inp_width=28
+# y.out_height=28
+# y.out_width=28
+# y.out_planes=1024
+# y.inp_planes=512
+# y.stride=1
+# y.filter_height=3
+# y.filter_width=3
+# y.pad=1
+# y.groupFlag=0
+# y.layerID=3
+# y.memIn=1
+# y.memInL=None
+# y.memInR=None
+# y.memOut=0
 
-# computeRoundIPindex(roundList,KerPixList,IPlist,1)
+# z=runInfo_t()
+# z.IPidx=0;
+# z.layerInfo=y
+# z.nextIPidx=1
+# runList.append(z)
+
+# x=IPinfo_t()
+# x.IPidx=0;
+# x.IPtype="Eltwise"
+# y=layerInfo_t()
+# y.layerType="Eltwise"
+# y.inp_height=28
+# y.inp_width=28
+# y.out_height=28
+# y.out_width=28
+# y.out_planes=1024
+# y.inp_planes=512
+# y.stride=1
+# y.filter_height=3
+# y.filter_width=3
+# y.pad=1
+# y.groupFlag=0
+# y.layerID=3
+# y.memIn=None
+# y.memInL=1
+# y.memInR=0
+# y.memOut=0
+
+# z=runInfo_t()
+# z.IPidx=1;
+# z.layerInfo=y
+# runList.append(z)
+
+# roundList=[]
+# roundList.append(runList)
+
+# # computeRoundIPindex(roundList,KerPixList,IPlist,1)
 
 
 
     
-exploitK_xPCombinations(roundList,IPlist, 1450)
+# exploitK_xPCombinations(roundList,IPlist, 1450)
 
 
 
