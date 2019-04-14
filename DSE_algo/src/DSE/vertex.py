@@ -14,9 +14,9 @@ class vertex:
     def __init__(self):
         self.name = None
         self.type = None
-        self.pipeLatency = None
-	self.orgLatency = None
+        self.latency = None
         self.ID = None
+        self.layerInfo = None
     def computeLatency(self):
         None
 
@@ -30,8 +30,8 @@ class pipeNode(vertex):
         self.name = "pipeNode" + str(pipeNode.idx)
         self.type = "pipeNode"
         pipeNode.idx+=1
-	assert(neg_latency < 0), "pipeline node should have neg latency"
-        self.pipeLatency = self.orgLatency = neg_latency
+        assert(neg_latency < 0), "pipeline node should have neg latency"
+        self.latency = neg_latency
 
 class blob(vertex):
     """
@@ -65,9 +65,11 @@ class layer(vertex):
             self.layerInfo.groupFlag = (int(params[4].split("=")[1]) > 1)
 
         elif self.type == "Pooling":
+            print "abc", params
             self.layerInfo.out_planes= self.layerInfo.inp_planes = int(params[1].split("=")[1])
             self.layerInfo.stride = int(params[3].split("=")[1])
             self.layerInfo.pad = int(params[4].split("=")[1])
+            self.layerInfo.filter_width = self.layerInfo.filter_height = int(params[2].split("=")[1])
 
         elif self.type == "Eltwise":
             self.layerInfo.out_planes, self.layerInfo.inp_planes, \

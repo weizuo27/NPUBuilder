@@ -11,7 +11,7 @@ class resourceILPBuilder():
         self.mappingVariables = dict()
         self.violation_constraints_table = dict()
 
-    def createVs(self, IP_table, IP_table_per_layer, layerQueue, hw_supported_layers, latency, verbose):
+    def createVs(self, IP_table, layerQueue, hw_supported_layers, latency, verbose):
         if(verbose):
             print "create Variables", self.status
         self.model = Model("resource")
@@ -22,17 +22,14 @@ class resourceILPBuilder():
                 IP_queue = IP_table[layer_type]
                 mapping_vars = []
                 for i in queue:
-                    IPs = IP_table_per_layer[i]
+                    IPs = IP_table[i.type]
                     row = []
                     containVs = False
                     for j in range(len(IPs)):
-                        if IPs[j] == 1:
-                            lat_est = i.computeLatencyIfMappedToOneIP(IP_table[i.type][j])
-                            if lat_est < latency:
-                                row.append(self.model.addVar(name=i.name + "_" + IP_queue[j].name, vtype = GRB.BINARY))
-                                containVs = True
-                            else:
-                                row.append(0.0)
+                        lat_est = i.computeLatencyIfMappedToOneIP(IP_table[i.type][j])
+                        if lat_est < latency:
+                            row.append(self.model.addVar(name=i.name + "_" + IP_queue[j].name, vtype = GRB.BINARY))
+                            containVs = True
                         else:
                             row.append(0.0)
                     if not containVs:

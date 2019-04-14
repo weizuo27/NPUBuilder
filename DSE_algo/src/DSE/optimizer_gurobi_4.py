@@ -22,15 +22,14 @@ class optimizer:
         self.numIPs=dict()
         self.pipelineTable = dict()
 
-    def run(self,IP_table, graphs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table_org, verbose = False):
+    def run(self,IP_table, graphs, g,  hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table_org, verbose = False):
         for ip_type in IP_table:
             self.numIPs[ip_type] = len(IP_table[ip_type])
         firstIter = True
         oneIter = 0
         latency_target_changed = True
         while(-self.latency_lb + self.latency_ub > ESP):
-            assert(oneIter < 300), "Should not iterate more than 300 times, Something is wrong"
-	    self.pipelineTable.clear()
+            assert(oneIter < 30000), "Should not iterate more than 30000 times, Something is wrong"
             if(verbose):
                 print oneIter, "iteration\n"
                 print "Latency target changed? ", latency_target_changed 
@@ -40,7 +39,7 @@ class optimizer:
                 self.rb.constraints = []
                 self.rb.violation_constraints_table.clear()
                 self.rb.status = "Undecided"
-                status = self.rb.createVs(IP_table, IP_table_per_layer, graphs.exploreLayerQueue[g], hw_layers, self.new_latency_target, verbose)
+                status = self.rb.createVs(IP_table,  graphs.exploreLayerQueue[g], hw_layers, self.new_latency_target, verbose)
                 status = self.rb.createConstraints(IP_table, graphs.exploreLayerQueue[g], self.numIPs, verbose)
                 if(verbose):
                     print self.rb.status, self.rb.status != "Failed"
@@ -59,7 +58,7 @@ class optimizer:
                 if firstIter:
                     if(verbose):
                         print "The resource budget is too tight, no feasible mapping solution."
-                    return self.latency_achieved, self.mapping_solution
+                    return self.latency_achieved, self.mapping_solution, self.pipelineTable
                 if(verbose):
                     print "cannot find a solution under the current latency budget: ", self.new_latency_target, \
                     "lossen the target"
@@ -76,6 +75,7 @@ class optimizer:
             firstIter = False
             #assign the mapping result
             self.assignMappingResult(graphs.exploreLayerQueue[g], explore_IP_types, hw_layers, IP_table, g, IP_table_org)
+            self.pipelineTable.clear()
             self.setPipelineFlag(hw_layers, g)
             graphs.computeLatency(g)
             self.addPipelineNodes(g)
@@ -100,12 +100,12 @@ class optimizer:
         if self.latency_achieved == None:
             if(verbose):
                 print "The latency budget is too small, cannot find any feasible solution."
-            return self.latency_achieved, self.mapping_solution
+            return self.latency_achieved, self.mapping_solution, self.pipelineTable
         else:
             if(verbose):
                 print "Final solution"
                 self.printSchedulingMappingSol(graphs, hw_layers)
-            return self.latency_achieved, self.mapping_solution
+            return self.latency_achieved, self.mapping_solution, self.pipelineTable
 
     def assignMappingResult(self, exploreLayerQueue, explore_IP_types, hw_layers, IP_table, g, IP_table_org):
         for layer_type in self.rb.mappingVariables:
@@ -116,7 +116,7 @@ class optimizer:
                     if (hasattr(variables[layer_idx][ip_idx], "X") and variables[layer_idx][ip_idx].X> 0.5 ): 
                         node.set_IP(IP_table[layer_type][ip_idx])
         idx = 0
-        for n in g.nodes:
+        for n in g.nodes():
             if n.type not in explore_IP_types and n.type in hw_layers:
                 n.set_IP(deepcopy(IP_table_org[n.type][0]))
                 n.mappedIP.name = n.mappedIP.name+"_" + str(idx)
@@ -127,8 +127,10 @@ class optimizer:
         nodes = list(nx.topological_sort(g))
         for path in nx.all_simple_paths(g, source=nodes[0], target = nodes[-1]):
             pipelineTable = dict()
-	    s = path[0]
-            for t in path[1:]:
+            idx = 1
+            for t in path[idx:]:
+                s = path[idx-1]
+                idx += 1
                 if (s, t) not in visited:
                     visited[(s,t)] = 1
                     if t.type not in hw_layers:
@@ -137,18 +139,19 @@ class optimizer:
                         pipelineTable.clear()
                         pipelineTable[t.mappedIP] = 1
                     elif t.mappedIP not in pipelineTable:
-			self.pipelineTable[(s,t)] = 1
+                        self.pipelineTable[(s,t)] = 1
                         pipelineTable[t.mappedIP] = 1
                     else:
                         pipelineTable.clear()
                         pipelineTable[t.mappedIP] = 1
 
     def addPipelineNodes(self, g):
-	for s_node, t_node in self.pipelineTable:
-	    n = pipeNode(-s.latency)
+        for s_node, t_node in self.pipelineTable:
+            n = pipeNode(-s_node.latency)
             g.remove_edge(s_node, t_node)
-            g.add_node(node)
-            g.add_edge(s_node, node)
+            g.add_node(n)
+            g.add_edge(s_node, n)
+            g.add_edge(n, t_node);
 
     def scheduling(self, g, explore_IP_types):
         def compFoo(elem):

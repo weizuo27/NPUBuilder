@@ -86,10 +86,10 @@ class runInfo_t():
         nextIPidx=None, #if it is involved in a one chain pipeline, then specify next IPidx
         prevIPidx=None #if it is involved in a one chain pipeline, then specify prev IPidx
         ):
-        self.layerInfo=None
-        self.IPidx=None
-        self.nextIPidx=None
-        self.prevIPidx=None
+        self.layerInfo=layerInfo
+        self.IPidx=IPidx
+        self.nextIPidx=nextIPidx
+        self.prevIPidx=prevIPidx
         
 
 

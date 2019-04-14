@@ -172,7 +172,7 @@ class graph:
         for n in node_list:
             max_latency = 0
             for preds in g.predecessors(n):
-                for p in preds:
+                for p in [preds]:
                     max_latency = max(max_latency, p.latency)
             n.latency = max(max_latency, n.latency)
 	
@@ -190,7 +190,8 @@ class graph:
             n.start_time = None
             n.isMaxPipeLayer = False
             n.bandWidth = 0
-            n.layerInfo.clearUnCertainItems()
+            if (n.layerInfo):
+                n.layerInfo.clearUnCertainItems()
 
     def drawGraph(self, g):
         h = nx.relabel_nodes(g, self.mapping)

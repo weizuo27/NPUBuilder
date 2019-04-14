@@ -66,6 +66,6 @@ updateRowStep = False
 f = open("./outputFiles/hw/rowSteps", "w")
 f.close()
 
-lat_achieved_total = ipsel.run(DSP_budget, latency_budget, numOtherIPs,\
+lat_achieved_total = ipsel.run(DSP_budget, BRAM_budget,  latency_budget, numOtherIPs,\
 app_fileName, IP_fileName, 2000, RowStep, batchSize, manualSetingConvIPbound, convIPlb, convIPUb)
 

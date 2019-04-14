@@ -14,12 +14,13 @@ from codeGen import *
 sys.path.append(dir_path + "/../SchedulerCodeGen");
 from genSwFiles import *
 sys.path.append(dir_path + "/../latency_estimation");
-from find_best_rowStep import findBestRowStep
+from infoClass import runInfo_t
+from newModel import exploitK_xPCombinations
 
 class IPSel():
     def __init__(self):
         None
-    def run(self,  DSP_budget, Lat_budget, numOtherIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, \
+    def run(self,  DSP_budget, BRAM_budget, Lat_budget, numOtherIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, \
            manualSetingConvIPbound, convIPlb, convIPUb) :
         status = "Undecided" 
 
@@ -43,6 +44,7 @@ class IPSel():
         lat_achieved_total = Lat_budget
         latency_solution_total = None
         mapping_solution_total = None
+        pipelineTable_solution_total = dict()
         numConvIPs_total =0
         numIPs_total = 0
 
@@ -90,6 +92,7 @@ class IPSel():
             lat_achieved = Lat_budget
             mapping_solution = dict()
             latency_solution = dict()
+            pipelineTable_solution = dict()
             self.abandonTable = dict()
 
 
@@ -107,6 +110,7 @@ class IPSel():
                 break
 
             nums = 0
+
 
             for IPs in allIPs:
                 nums += 1
@@ -162,6 +166,7 @@ class IPSel():
                 layerQueue = []
                 mapping_solution_tmp = dict()
                 latency_solution_tmp = dict()
+                pipelineTable_tmp = dict()
 
                 for g in gs.graphs:
                     if g not in gs.exploreLayerQueue:
@@ -169,7 +174,8 @@ class IPSel():
                     self.updateLayerQueue(gs.exploreLayerQueue[g], layerQueue)
                     opt = optimizer(lat_left, rowStep)
                     #If some of the graph, there is no feasible solution, then the current selection of IPs cannot work
-                    lat, sol = opt.run(IP_dict, gs, g, IP_table_per_layer, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table)
+                    lat, sol, pipelineTable = opt.run(IP_dict, gs, g, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table)
+            
                     if lat == None:
                         valid = False
                         break
@@ -181,6 +187,7 @@ class IPSel():
                     lat_left = lat_achieved - acc_lat
                     mapping_solution_tmp[g] = sol
                     latency_solution_tmp[g] = lat
+                    pipelineTable_tmp[g] = pipelineTable
                 if not valid:
                     print "cannot find valid latency, continue"
                     continue
@@ -190,12 +197,19 @@ class IPSel():
 
                 for g in latency_solution_tmp:
                     latency_solution[g] = latency_solution_tmp[g]
+
+                for g in pipelineTable_tmp:
+                    pipelineTable_solution[g] = pipelineTable_tmp[g]
+
             if not mapping_solution:
                 continue
             if lat_achieved < lat_achieved_total:
                 lat_achieved_total = lat_achieved
                 latency_solution_total = latency_solution
                 mapping_solution_total = mapping_solution
+                for g in pipelineTable_solution:
+                    for (s, t) in pipelineTable_solution[g]:
+                        pipelineTable_solution_total[(s.name, t.name)] = 1
                 numConvIPs_total = numConvIPs
                 numIPs_total = numIPs
         #post processing
@@ -203,8 +217,49 @@ class IPSel():
             print "No feasible solutions"
             return
 
-        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
+        final_graph_list = reorderMapping(mapping_solution_total, hw_layers, pipelineTable_solution_total)
+        roundInfoList, IPinfoList = self.genIPinfoLayerInfoList(final_graph_list, pipelineTable_solution_total)
+        
+        
+#        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
+
+        print "IPinfoList", IPinfoList
+        print "roundInfoList", roundInfoList
+        rowStep, latency = exploitK_xPCombinations(roundInfoList, IPinfoList, BRAM_budget)
+        print "aaa", rowStep, latency
+        
         return lat_achieved_total
+
+    def genIPinfoLayerInfoList(self, final_graph_list, pipelineTable_solution_total):
+        pipelineTargetNodes = dict()
+
+        IPinfoDict = dict()
+        IPinfoList = []
+        for g in final_graph_list:
+            for n in g.nodes():
+                IPinfoDict[n.mappedIP.name] = n.mappedIP.IPinfo
+        idx = 0
+        for n in IPinfoDict:
+            IPinfoDict[n].IPidx = idx
+            print IPinfoDict[n].IPidx
+            IPinfoList.append(IPinfoDict[n])
+            idx += 1
+
+        for (s, t) in pipelineTable_solution_total:
+            pipelineTargetNodes[t] = 1
+        roundInfoList = []
+        for g in final_graph_list:
+            roundInfoList_row = []
+            for n in g.nodes():
+                nextIPidx = None if n.name not in pipelineTargetNodes else 1
+                n.mappedIP.IPinfo = IPinfoDict[n.mappedIP.name]
+                print "n.name", n.mappedIP.IPinfo.IPidx
+                runInfo = runInfo_t(n.layerInfo, n.mappedIP.IPinfo.IPidx, 
+                        nextIPidx, None)
+                print runInfo.IPidx
+                roundInfoList_row.append(runInfo)
+            roundInfoList.append(roundInfoList_row)
+        return roundInfoList, IPinfoList
 
     def codeGen(self, lat_achieved, latency_solution, mapping_solution, hw_layers, gs, batchSize, numConvIPs, numIPs):
         print "\n\n #####################################################################"
@@ -239,7 +294,6 @@ class IPSel():
         outSwDir = "./outputFiles/sw"
         os.system("mkdir -p " + outHwDir)
         os.system("mkdir -p " + outSwDir)
-
 
         #Gen HW
         IP_g = createIPGraph(final_graph_list, hw_layers)
@@ -345,7 +399,7 @@ class IPSel():
         for layer_type in layerQueueIn:
             layerQueueOut += layerQueueIn[layer_type]
 
-def reorderMapping(mapping_solution, hw_layers):
+def reorderMapping(mapping_solution, hw_layers, pipelineNameTable):
     #For the solution, for each IP collect the mapping, 
     #reassign using the best order
 
@@ -361,8 +415,7 @@ def reorderMapping(mapping_solution, hw_layers):
 
     #Collect the set of IPs for each IP ID
     IPs = dict()
-    pipelinedDict = dict()
-    rowStepDict = dict()
+    layerInfoDict = dict()
     IPsIdx =  dict()
     firstLayerName = ""
     for g in mapping_solution:
@@ -372,8 +425,7 @@ def reorderMapping(mapping_solution, hw_layers):
                     if m.type in hw_layers:
                         if m.firstLayer:
                             firstLayerName = m.name
-                        pipelinedDict[m.name] = m.Pipelined
-                        rowStepDict[m.name] = m.rowStep
+                        layerInfoDict[n.name] = n.layerInfo
                         IPName = m.mappedIP.name.split("_")[0]
                         if IPName not in IPs:
                             IPs[IPName] = set([m.mappedIP]) 
@@ -383,8 +435,7 @@ def reorderMapping(mapping_solution, hw_layers):
                 if n.type in hw_layers:
                     if n.firstLayer:
                         firstLayerName = n.name
-                    pipelinedDict[n.name] = n.Pipelined
-                    rowStepDict[n.name] = n.rowStep
+                    layerInfoDict[n.name] = n.layerInfo
                     IPName = n.mappedIP.name.split("_")[0]
                     if IPName not in IPs:
                         IPs[IPName] = set([n.mappedIP]) 
@@ -414,8 +465,7 @@ def reorderMapping(mapping_solution, hw_layers):
             if n.type in hw_layers:
                 IPName = n.mappedIP.name.split("_")[0]
                 n.mappedIP = IPs[IPName][IPsIdx[IPName]]
-                n.Pipelined = pipelinedDict[n.name]
-                n.rowStep = rowStepDict[n.name]
+                n.layerInfo = layerInfoDict[n.name]
                 if n.name == firstLayerName:
                     n.firstLayer = True
                     n.mappedIP.firstLayer = True
@@ -424,8 +474,6 @@ def reorderMapping(mapping_solution, hw_layers):
             
 
     #If the node is not pipelined, then remove in edges
-    #FIXME:::: FINISH THIS: Chop the un-pipeilned nodes
-
     for g in mapping_solution:
         for n in g.nodes():
             if n.type is "Eltwise":
@@ -443,7 +491,8 @@ def reorderMapping(mapping_solution, hw_layers):
             if n.type in hw_layers:
                 for t in g.in_edges(n):
                     m = t[0]
-                    if not isPipelined(m, n):
+
+                    if not isPipelined(m, n, pipelineNameTable):
                         g.remove_edge(m, n)
 
     for g in mapping_solution:
@@ -454,11 +503,8 @@ def reorderMapping(mapping_solution, hw_layers):
         
         for nl in nodes_nodes_list:
             sub_g = g.subgraph(nl)
-#            nx.draw(sub_g)
-#            plt.show()
             graph_list.append(sub_g)
 
-#    print "abcdef", len(graph_list)
     return graph_list
 
 def nSplit(inList, outLists):

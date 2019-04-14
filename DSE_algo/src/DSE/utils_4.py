@@ -86,7 +86,7 @@ def printViolationPath(vioPath):
     for i, mappedIP in vioPath:
         print i.name, mappedIP,  "-->"
         
-def isPipelined(s_node, t_node):
+def isPipelined(s_node, t_node, pipelineNameTable):
     """
     The function to check whether two nodes are pipelined
     Args:
@@ -96,7 +96,7 @@ def isPipelined(s_node, t_node):
         bool: True if they are pipelined, False otherwise
     """
 #FIXME: This only works for NNs that is a chain
-    return t_node.Pipelined
+    return (s_node.name, t_node.name) in pipelineNameTable
 
 def computeIPLatencyPerLayer(IP_table, layerQueue, hw_layers):
     def keyComp(elem_tuple):

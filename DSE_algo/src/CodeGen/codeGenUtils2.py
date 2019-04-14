@@ -215,33 +215,9 @@ def genCSVFile(IP_g, roundIdx, fileName):
     f = open(fileName, "a")
     csvParamList = [roundIdx]
     for ip_inst in IP_g.nodes():
-#        if "ip_l" in ip_inst.name:
-#            continue
         if(ip_inst.type == "DDR"):
             continue
         csvParamList.append(ip_inst.type)
-#        if ip_inst.type == "Convolution_g":
-            #gen Div
-
-#            idle = ip_inst.CSVparameterListUnNece[0][0]
-#            GroupLayerIdx = ip_inst.CSVparameterListUnNece[0][3]
-#            IPIdx = ip_inst.CSVparameterListNecessary[0][4]
-#
-#            if ip_inst.streamInFlag:
-#                csvParamList.append("Divider")
-#                idle_d = not(ip_inst.CSVparameterListUnNece[0][1])
-#                csvParamList +=[idle_d, GroupLayerIdx, IPIdx]
-#
-#            csvParamList.append(ip_inst.type)
-#            for i in range(2):
-#                csvParamList += (ip_inst.CSVparameterListNecessary[i] + ip_inst.CSVparameterListUnNece[i])
-#            #gen Comb
-#            if ip_inst.streamOutFlag:
-#                print ip_inst.CSVparameterListUnNece
-#                idle_c = not(ip_inst.CSVparameterListUnNece[0][2])
-#                csvParamList.append("Combiner")
-#                csvParamList+=[idle_c, GroupLayerIdx, IPIdx]
-#        else:
         csvParamList += (ip_inst.CSVparameterListNecessary + ip_inst.CSVparameterListUnNece)
     csvParamList.append("END")
     line = ",".join(map(str, csvParamList))
