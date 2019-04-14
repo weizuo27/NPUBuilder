@@ -228,11 +228,12 @@ class IPSel():
             ridx += 1
 
         print "\n\nipInfo\n"
-        for ip in IPinfoList:
-            print ip
+#        for ip in IPinfoList:
+#            print ip
 
         
         
+#        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
 #        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
 
         rowStep, latency = exploitK_xPCombinations(roundInfoList, IPinfoList, BRAM_budget)
@@ -242,61 +243,81 @@ class IPSel():
         return lat_achieved_total
 
     def genIPinfoLayerInfoList(self, final_graph_list, pipelineTable_solution_total):
-        pipelineTargetNodes = dict()
 
-        IPinfoDict = dict()
-        IPinfoList = []
+        IPinfoDict = dict() #key: The IP name, value: IP info
+        IPinfoList = [] #the list of IP info
+        layerIPDict = dict() #Key: layer name, value: mapped IP info
+        #Generate IPinfoList
         for g in final_graph_list:
             for n in g.nodes():
                 IPinfoDict[n.mappedIP.name] = n.mappedIP.IPinfo
         idx = 0
         for n in IPinfoDict:
             IPinfoDict[n].IPidx = idx
-            print IPinfoDict[n].IPidx
             IPinfoList.append(IPinfoDict[n])
             idx += 1
 
+        for g in final_graph_list:
+            for n in g.nodes():
+                n.mappedIP.IPinfo = IPinfoDict[n.mappedIP.name]
+                layerIPDict[n.name] = n.mappedIP.IPinfo.IPidx
+
+        #generate roundInfoList
+        pipelineTargetNodes = dict()
+        pipelineSourceNodes = dict()
         for (s, t) in pipelineTable_solution_total:
-            pipelineTargetNodes[t] = 1
+            pipelineSourceNodes[t] = s
+            pipelineTargetNodes[s] = t
+
         roundInfoList = []
+        print "layerIPDict", layerIPDict
         for g in final_graph_list:
             roundInfoList_row = []
             for n in g.nodes():
-                nextIPidx = None if n.name not in pipelineTargetNodes else 1
+                if n.name in pipelineTargetNodes: #Then it is starting of a pipeline
+                    nextIPidx = layerIPDict[pipelineTargetNodes[n.name]]
+                else:
+                    nextIPidx = None
+                if n.name in pipelineSourceNodes:
+                    prevIPidx = layerIPDict[pipelineSourceNodes[n.name]]
+                else:
+                    prevIPidx = None
+                    
                 n.mappedIP.IPinfo = IPinfoDict[n.mappedIP.name]
                 runInfo = runInfo_t(n.layerInfo, n.mappedIP.IPinfo.IPidx, 
-                        nextIPidx, None)
+                        nextIPidx, prevIPidx)
                 roundInfoList_row.append(runInfo)
             roundInfoList.append(roundInfoList_row)
         return roundInfoList, IPinfoList
 
-    def codeGen(self, lat_achieved, latency_solution, mapping_solution, hw_layers, gs, batchSize, numConvIPs, numIPs):
+#    def codeGen(self, lat_achieved, latency_solution, mapping_solution, hw_layers, gs, batchSize, numConvIPs, numIPs):
+    def codeGen(self, lat_achieved, hw_layers,  numConvIPs, numIPs):
         print "\n\n #####################################################################"
         print "Final latency_achieved", lat_achieved, "number of IPs are ", numIPs, "number of convIPs are ", numConvIPs
-        print "each round latency is as follows",
-        def comp(item):
-            for n in item.nodes:
-                if n.type in hw_layers:
-                    return n.ID
+#        print "each round latency is as follows",
+#        def comp(item):
+#            for n in item.nodes:
+#                if n.type in hw_layers:
+#                    return n.ID
+#
+#        latency_list = []
 
-        latency_list = []
-
-        for g in latency_solution:
-            latency_list.append(g)
-        latency_list.sort(key=comp)
-        for g in latency_list:
-            print "round contain"
-            for n in g.nodes:
-                print n.name,
-            print ", total latency is ", latency_solution[g], "\n"
+#        for g in latency_solution:
+#            latency_list.append(g)
+#        latency_list.sort(key=comp)
+#        for g in latency_list:
+#            print "round contain"
+#            for n in g.nodes:
+#                print n.name,
+#            print ", total latency is ", latency_solution[g], "\n"
 
         #layerPipeInfo
-        pipeInfoTable = genPipeInfo(mapping_solution, hw_layers)
+        #pipeInfoTable = genPipeInfo(mapping_solution, hw_layers)
         #After the is done, re-order the mapping
-        final_graph_list = reorderMapping(mapping_solution, hw_layers) 
+#        final_graph_list = reorderMapping(mapping_solution, hw_layers) 
 
-        for g in final_graph_list:
-            print gs.printNodesMapping(hw_layers, g)
+#        for g in final_graph_list:
+#            print gs.printNodesMapping(hw_layers, g)
 
         #CodeGen process
         outHwDir = "./outputFiles/hw"
