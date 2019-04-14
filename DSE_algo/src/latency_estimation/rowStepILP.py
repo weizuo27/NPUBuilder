@@ -93,7 +93,7 @@ def rowStepILP(
         for j in range(0,J):
             if(X_ij[i][j].X !=0):
                 idx=j;
-                rowStepChoice[i]=idx;
+                rowStepChoice[i]=idx+1;
         for n in range(N):
             if IB_nij[n][i][idx]>IB[n]: 
                 IB[n]=IB_nij[n][i][idx]; 

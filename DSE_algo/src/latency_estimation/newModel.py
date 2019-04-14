@@ -438,115 +438,6 @@ def updateCombineCounter(counter,counterNum ):
             break;
     return False
     
-
-
-def exploitK_xPCombinations(
-    roundInfoList,
-    IPinfoList,
-    BRAMBudget
-):
-    KerPixCombineList=[];
-    combNumListList=[]
-    for i in IPinfoList:
-        KerPix=KerPixCombSearch(i.K_x_P );
-        KerPixCombineList.append( KerPix);
-        combNumListList.append(len(KerPix));
-    counter=[0]*len(combNumListList);
-
-    depositLatency=float("inf")
-    depositRowStepChoice=[]
-    depositIDepthList=[0]*len(IPinfoList)
-    depositODepthList=[0]*len(IPinfoList)
-    depositKer=[0]*len(IPinfoList)
-    depositPix=[0]*len(IPinfoList)
-    depositWeight=[0]*len(IPinfoList)
-
-   
-    while(1):
-        KerPixList=[];
-        for i,combinIndex in enumerate(counter):
-            KerPixList.append( KerPixCombineList[i][combinIndex]);
-
-        # call in_D, out_D, W_D, rowStep finder
-        roundILPInfoList,constBram=computeRoundIPindex(
-            roundInfoList, 
-            KerPixList,
-            IPinfoList,
-            1
-        );
-
-
-        I=len(roundILPInfoList)
-        J=len(roundILPInfoList[0])
-        N=len(roundILPInfoList[0][0].IBRAMList)
-        IB_nij=numpy.ndarray([N,I,J]);
-        OB_nij=numpy.ndarray([N,I,J]);
-        L_ij=numpy.ndarray([I,J]);
-
-
-        for n in range(N):
-            for i in range(I):
-                for j in range(J):
-                    IB_nij[n][i][j]=roundILPInfoList[i][j].IBRAMList[n];
-                    OB_nij[n][i][j]=roundILPInfoList[i][j].OBRAMList[n];
-        for i in range(I):
-            for j in range(J):
-                L_ij[i][j]=roundILPInfoList[i][j].latency;
-        BRAMbudget_ID=BRAMBudget-constBram;
-        rowStepChoice,InIdx,OutIdx,ILPlatency=rowStepILP.rowStepILP( BRAMbudget_ID, IB_nij, OB_nij, L_ij, N, I, J);
-        
-            
-
-        if( ILPlatency !=None and ILPlatency< depositLatency):
-            depositLatency=ILPlatency;
-            depositRowStepChoice=rowStepChoice
-            depositIDepthList=[0]*len(IPinfoList)
-            depositODepthList=[0]*len(IPinfoList)
-            depositKer=[0]*len(IPinfoList)
-            depositPix=[0]*len(IPinfoList)
-            depositWeight=[0]*len(IPinfoList)
-            depositIPindex=roundILPInfoList[0][0].IPindexList;
-            for n in range(N):
-                [i,j]=InIdx[n]
-                depositIDepthList[depositIPindex[n]]=roundILPInfoList[i][j].InDepthList[n]
-                [i,j]=OutIdx[n]
-                depositODepthList[depositIPindex[n]]=roundILPInfoList[i][j].OutDepthList[n]
-            for n in range(len(IPinfoList)):
-                depositKer[n]=IPinfoList[n].XI_KER_PROC;
-                depositPix[n]=IPinfoList[n].XI_PIX_PROC;
-                depositWeight[n]=IPinfoList[n].XI_WEIGHTBUFF_DEPTH
-       
-        if(ILPlatency==None  ):
-            print "ker, Pix configuration", KerPixList, "does not have feasible solution";
-
-        if(updateCombineCounter(counter,combNumListList) ): break;
-
-    if( not depositRowStepChoice):
-        print "Feasible Solution not found in KP iteration";
-        return None
-    for n in range(len(IPinfoList)):
-        IPinfoList[n].XI_KER_PROC=depositKer[n];
-        IPinfoList[n].XI_PIX_PROC=depositPix[n];
-        IPinfoList[n].XI_WEIGHTBUFF_DEPTH=depositWeight[n];
-        IPinfoList[n].XI_INDEPTH=depositIDepthList[n];
-        IPinfoList[n].XI_OUTDEPTH=depositODepthList[n];
-    # for i,roundILPInfoList_row in enumerate( roundILPInfoList):
-    #     rowStepNum=rowStepChoice[i];
-    #     for roundILPInfo in roundILPInfoList_row:
-    #         roundILPInfo.layerInfo.rowStep=rowStepNum
-    return rowStepChoice, depositLatency
-    
-
-        
-
-
-
-
-
-
-
-    
-
 def computeRoundIPindex(
     roundInfoList, #list of runInfo_t[], runInfo_t 
     KerPixList, #list of [Ker, Pix] tuples for each IP, if the IP is not a conv IP, then  [Ker, Pix] = [0,0]
@@ -644,142 +535,259 @@ def computeRoundIPindex(
     return roundILPInfoList,constBram
 
 
-# IPlist=[];
-# x=IPinfo_t(K_x_P=512)
-# x.IPidx=0;
-# IPlist.append(x)
-# x=IPinfo_t(K_x_P=256)
-# x.IPidx=0;
-# IPlist.append(x)
-# x=IPinfo_t(K_x_P=128)
-# x.IPidx=0;
-# IPlist.append(x)
-# x=IPinfo_t(K_x_P=64)
-# x.IPidx=0;
-# IPlist.append(x)
+def exploitK_xPCombinations(
+    roundInfoList,
+    IPinfoList,
+    BRAMBudget
+):
+    KerPixCombineList=[];
+    combNumListList=[]
+    for i in IPinfoList:
+        KerPix=KerPixCombSearch(i.K_x_P );
+        KerPixCombineList.append( KerPix);
+        combNumListList.append(len(KerPix));
+    counter=[0]*len(combNumListList);
+
+    depositLatency=float("inf")
+    depositRowStepChoice=[]
+    depositIDepthList=[0]*len(IPinfoList)
+    depositODepthList=[0]*len(IPinfoList)
+    depositKer=[0]*len(IPinfoList)
+    depositPix=[0]*len(IPinfoList)
+    depositWeight=[0]*len(IPinfoList)
+
+   
+    while(1):
+        KerPixList=[];
+        for i,combinIndex in enumerate(counter):
+            KerPixList.append( KerPixCombineList[i][combinIndex]);
+
+        # call in_D, out_D, W_D, rowStep finder
+        roundILPInfoList,constBram=computeRoundIPindex(
+            roundInfoList, 
+            KerPixList,
+            IPinfoList,
+            1
+        );
+
+
+        I=len(roundILPInfoList)
+        J=len(roundILPInfoList[0])
+        N=len(roundILPInfoList[0][0].IBRAMList)
+        IB_nij=numpy.ndarray([N,I,J]);
+        OB_nij=numpy.ndarray([N,I,J]);
+        L_ij=numpy.ndarray([I,J]);
+
+        print N,I,J
+        for n in range(N):
+            for i in range(I):
+                for j in range(J):
+                    IB_nij[n][i][j]=roundILPInfoList[i][j].IBRAMList[n];
+                    OB_nij[n][i][j]=roundILPInfoList[i][j].OBRAMList[n];
+        for i in range(I):
+            for j in range(J):
+                L_ij[i][j]=roundILPInfoList[i][j].latency;
+        BRAMbudget_ID=BRAMBudget-constBram;
+        rowStepChoice,InIdx,OutIdx,ILPlatency=rowStepILP.rowStepILP( BRAMbudget_ID, IB_nij, OB_nij, L_ij, N, I, J);
+        
+        print rowStepChoice;
+
+        if( ILPlatency !=None and ILPlatency< depositLatency):
+            depositLatency=ILPlatency;
+            depositRowStepChoice=rowStepChoice
+            depositIDepthList=[0]*len(IPinfoList)
+            depositODepthList=[0]*len(IPinfoList)
+            depositKer=[0]*len(IPinfoList)
+            depositPix=[0]*len(IPinfoList)
+            depositWeight=[0]*len(IPinfoList)
+            depositIPindex=roundILPInfoList[0][0].IPindexList;
+            for n in range(N):
+                [i,j]=InIdx[n]
+                depositIDepthList[depositIPindex[n]]=roundILPInfoList[i][j].InDepthList[n]
+                [i,j]=OutIdx[n]
+                depositODepthList[depositIPindex[n]]=roundILPInfoList[i][j].OutDepthList[n]
+            for n in range(len(IPinfoList)):
+                depositKer[n]=IPinfoList[n].XI_KER_PROC;
+                depositPix[n]=IPinfoList[n].XI_PIX_PROC;
+                depositWeight[n]=IPinfoList[n].XI_WEIGHTBUFF_DEPTH
+       
+        if(ILPlatency==None  ):
+            print "ker, Pix configuration", KerPixList, "does not have feasible solution";
+
+        if(updateCombineCounter(counter,combNumListList) ): break;
+
+    if( not depositRowStepChoice):
+        print "Feasible Solution not found in KP iteration";
+        return None
+    for n in range(len(IPinfoList)):
+        IPinfoList[n].XI_KER_PROC=depositKer[n];
+        IPinfoList[n].XI_PIX_PROC=depositPix[n];
+        IPinfoList[n].XI_WEIGHTBUFF_DEPTH=depositWeight[n];
+        IPinfoList[n].XI_INDEPTH=depositIDepthList[n];
+        IPinfoList[n].XI_OUTDEPTH=depositODepthList[n];
+
+    for i,roundInfoList_row in enumerate( roundInfoList):
+        rowStepNum=depositRowStepChoice[i];
+        print depositRowStepChoice[i];
+        for roundILPInfo in roundInfoList_row:
+            roundILPInfo.layerInfo.rowStep=rowStepNum
+    return depositRowStepChoice, depositLatency
+    
+
+        
 
 
 
-# exploitK_xPCombinations(None,IPlist );
-# KerPixList=[ [16,16],[0,0],[0,0],[16,32] ]
 
-# IPlist=[]
-# runList=[]
-
-# x=IPinfo_t()
-# x.IPidx=0;
-# x.IPtype="Convolution"
-# x.K_x_P=512
-# IPlist.append(x)
-
-# x=IPinfo_t()
-# x.IPidx=1;
-# x.IPtype="Eltwise"
-# IPlist.append(x)
-
-# x=IPinfo_t()
-# x.IPidx=2;
-# x.IPtype="Pooling"
-# IPlist.append(x)
-
-# x=IPinfo_t()
-# x.IPidx=3;
-# x.IPtype="Convolution"
-# x.K_x_P=256
-# IPlist.append(x)
-
-
-
-# y=layerInfo_t()
-# y.layerType="Convolution"
-# y.inp_height=28
-# y.inp_width=28
-# y.out_height=28
-# y.out_width=28
-# y.out_planes=512
-# y.inp_planes=1024
-# y.stride=1
-# y.filter_height=3
-# y.filter_width=3
-# y.pad=1
-# y.groupFlag=0
-# y.layerID=3
-# y.memIn=1
-# y.memInL=None
-# y.memInR=None
-# y.memOut=1
-# y.rowStep=None
-# z=runInfo_t()
-# z.IPidx=3;
-# z.layerInfo=y
-
-# runList.append(z)
-
-
-# y=layerInfo_t()
-# y.layerType="Convolution"
-# y.inp_height=28
-# y.inp_width=28
-# y.out_height=28
-# y.out_width=28
-# y.out_planes=1024
-# y.inp_planes=512
-# y.stride=1
-# y.filter_height=3
-# y.filter_width=3
-# y.pad=1
-# y.groupFlag=0
-# y.layerID=3
-# y.memIn=1
-# y.memInL=None
-# y.memInR=None
-# y.memOut=0
-
-# z=runInfo_t()
-# z.IPidx=0;
-# z.layerInfo=y
-# z.nextIPidx=1
-# runList.append(z)
-
-# x=IPinfo_t()
-# x.IPidx=0;
-# x.IPtype="Eltwise"
-# y=layerInfo_t()
-# y.layerType="Eltwise"
-# y.inp_height=28
-# y.inp_width=28
-# y.out_height=28
-# y.out_width=28
-# y.out_planes=1024
-# y.inp_planes=512
-# y.stride=1
-# y.filter_height=3
-# y.filter_width=3
-# y.pad=1
-# y.groupFlag=0
-# y.layerID=3
-# y.memIn=None
-# y.memInL=1
-# y.memInR=0
-# y.memOut=0
-
-# z=runInfo_t()
-# z.IPidx=1;
-# z.layerInfo=y
-# runList.append(z)
-
-# roundList=[]
-# roundList.append(runList)
-
-# # computeRoundIPindex(roundList,KerPixList,IPlist,1)
 
 
 
     
-# exploitK_xPCombinations(roundList,IPlist, 1450)
 
 
 
+IPlist=[];
+x=IPinfo_t(K_x_P=512)
+x.IPidx=0;
+IPlist.append(x)
+x=IPinfo_t(K_x_P=256)
+x.IPidx=0;
+IPlist.append(x)
+x=IPinfo_t(K_x_P=128)
+x.IPidx=0;
+IPlist.append(x)
+x=IPinfo_t(K_x_P=64)
+x.IPidx=0;
+IPlist.append(x)
+
+
+
+
+KerPixList=[ [16,16],[0,0],[0,0],[16,32] ]
+
+IPlist=[]
+runList=[]
+
+x=IPinfo_t()
+x.IPidx=0;
+x.IPtype="Convolution"
+x.K_x_P=512
+IPlist.append(x)
+
+x=IPinfo_t()
+x.IPidx=1;
+x.IPtype="Eltwise"
+IPlist.append(x)
+
+x=IPinfo_t()
+x.IPidx=2;
+x.IPtype="Pooling"
+IPlist.append(x)
+
+x=IPinfo_t()
+x.IPidx=3;
+x.IPtype="Convolution"
+x.K_x_P=256
+IPlist.append(x)
+
+
+
+y=layerInfo_t()
+y.layerType="Convolution"
+y.inp_height=28
+y.inp_width=28
+y.out_height=28
+y.out_width=28
+y.out_planes=512
+y.inp_planes=1024
+y.stride=1
+y.filter_height=3
+y.filter_width=3
+y.pad=1
+y.groupFlag=0
+y.layerID=3
+y.memIn=1
+y.memInL=None
+y.memInR=None
+y.memOut=1
+y.rowStep=None
+z=runInfo_t()
+z.IPidx=3;
+z.layerInfo=y
+
+runList.append(z)
+
+
+y=layerInfo_t()
+y.layerType="Convolution"
+y.inp_height=28
+y.inp_width=28
+y.out_height=28
+y.out_width=28
+y.out_planes=1024
+y.inp_planes=512
+y.stride=1
+y.filter_height=3
+y.filter_width=3
+y.pad=1
+y.groupFlag=0
+y.layerID=3
+y.memIn=1
+y.memInL=None
+y.memInR=None
+y.memOut=0
+
+z=runInfo_t()
+z.IPidx=0;
+z.layerInfo=y
+z.nextIPidx=1
+runList.append(z)
+
+x=IPinfo_t()
+x.IPidx=0;
+x.IPtype="Eltwise"
+y=layerInfo_t()
+y.layerType="Eltwise"
+y.inp_height=28
+y.inp_width=28
+y.out_height=28
+y.out_width=28
+y.out_planes=1024
+y.inp_planes=512
+y.stride=1
+y.filter_height=3
+y.filter_width=3
+y.pad=1
+y.groupFlag=0
+y.layerID=3
+y.memIn=None
+y.memInL=1
+y.memInR=0
+y.memOut=0
+
+z=runInfo_t()
+z.IPidx=1;
+z.layerInfo=y
+runList.append(z)
+
+roundList=[]
+roundList.append(runList)
+
+# computeRoundIPindex(roundList,KerPixList,IPlist,1)
+
+
+
+    
+exploitK_xPCombinations(roundList,IPlist, 1450)
+
+
+
+for i,roundList_row in enumerate( roundList):
+    for j,roundInfo in enumerate(roundList_row):
+        print i,j,roundInfo.layerInfo.rowStep
+
+# for i,roundList_row in enumerate( roundList):
+    
 
 
 
