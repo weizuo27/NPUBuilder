@@ -500,9 +500,17 @@ def reorderMapping(mapping_solution, hw_layers, pipelineNameTable):
             if n.type in hw_layers:
                 for t in g.in_edges(n):
                     m = t[0]
-
                     if not isPipelined(m, n, pipelineNameTable):
                         g.remove_edge(m, n)
+    #If there is edge,  update memin, memout
+    for g in mapping_solution:
+        for (s,t) in g.edges():
+            print s.name, s.mappedIP.name,  "-->", t.name, t.mappedIP.name
+            if(t.type == "Eltwise"):
+                t.layerInfo.memInR = False 
+            else:
+                t.layerInfo.memIn = False
+            s.layerInfo.memOut = False
 
     for g in mapping_solution:
         nodes_list= [x for x in list(g.nodes()) if x.type in hw_layers]

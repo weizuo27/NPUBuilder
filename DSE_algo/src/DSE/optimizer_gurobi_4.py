@@ -85,7 +85,6 @@ class optimizer:
                 self.latency_ub = ret
                 self.latency_achieved = ret
                 self.mapping_solution = deepcopy(g)
-                print "pipelineTable", self.pipelineTable
                 self.pipelineTable_ret = deepcopy(self.pipelineTable)
                 self.new_latency_target = (self.latency_ub + self.latency_lb) /2 
                 latency_target_changed = True
@@ -110,7 +109,7 @@ class optimizer:
                 self.printSchedulingMappingSol(graphs, hw_layers)
 #            for n in self.mapping_solution.node():
 #                print n.layerInfo
-            return self.latency_achieved, self.mapping_solution, self.pipelineTable
+            return self.latency_achieved, self.mapping_solution, self.pipelineTable_ret
 
     def assignMappingResult(self, exploreLayerQueue, explore_IP_types, hw_layers, IP_table, g, IP_table_org):
         for layer_type in self.rb.mappingVariables:
@@ -138,6 +137,7 @@ class optimizer:
             for t in path[idx:]:
                 s = path[idx-1]
                 idx += 1
+                print s.name, "-->", t.name
                 if (s, t) not in visited:
                     visited[(s,t)] = 1
                     if t.type not in hw_layers:
@@ -145,10 +145,13 @@ class optimizer:
                     elif s.type not in hw_layers:
                         pipelineTable.clear()
                         pipelineTable[t.mappedIP.name] = 1
-                    elif t.mappedIP not in pipelineTable:
+                        print "s not in hw_layers", pipelineTable
+                    elif t.mappedIP.name not in pipelineTable:
+                        print "s1 ", s.name, s.mappedIP.name, "-->", t.name, t.mappedIP.name
                         self.pipelineTable[(s,t)] = 1
                         pipelineTable[t.mappedIP.name] = 1
                     else:
+                        print "s2 ", s.name, s.mappedIP.name, "-->", t.name, t.mappedIP.name
                         pipelineTable.clear()
                         pipelineTable[t.mappedIP.name] = 1
 
@@ -157,11 +160,6 @@ class optimizer:
 #        for (s, t) in self.pipelineTable:
 #            print s.name, s.ID, "+", t.name, t.ID
         for s_node, t_node in self.pipelineTable:
-            s_node.layerInfo.memOut = False
-            if(t_node.type == "Eltwise"):
-                t_node.layerInfo.memInR == False
-            else:
-                t_node.layerInfo.memIn = False
             n = pipeNode(-s_node.latency)
             g.remove_edge(s_node, t_node)
             g.add_node(n)
