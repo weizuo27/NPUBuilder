@@ -100,6 +100,8 @@ class roundILPInfo_t():
     rowStep=None):
         self.roundIdx=None
         self.rowStep=None
+        self.InDepthList=[];
+        self.OutDepthList=[];
         self.IBRAMList=[];
         self.OBRAMList=[];
         self.IPindexList=[];
