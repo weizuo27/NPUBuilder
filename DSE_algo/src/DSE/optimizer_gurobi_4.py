@@ -147,6 +147,11 @@ class optimizer:
 
     def addPipelineNodes(self, g):
         for s_node, t_node in self.pipelineTable:
+            s_node.memOut = False
+            if(t_node.type == "Eltwise"):
+                t_node.memInR == False
+            else:
+                t_node.memIn = False
             n = pipeNode(-s_node.latency)
             g.remove_edge(s_node, t_node)
             g.add_node(n)
