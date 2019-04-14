@@ -3,8 +3,8 @@ class layerInfo_t():
         inp_width=None, out_height=None, out_width=None,
         out_planes=None, inp_planes=None, stride=None,
         filter_height=None, filter_width=None, pad=None,
-        groupFlag=None, layerID=None, memIn=None,
-        memInL=None, memInR=None, memOut=None, rowStep=None):
+        groupFlag=None, layerID=None, memIn=True,
+        memInL=True, memInR=True, memOut=True, rowStep=None):
         self.layerType=layerType
         self.inp_height=inp_height
         self.inp_width=inp_width
