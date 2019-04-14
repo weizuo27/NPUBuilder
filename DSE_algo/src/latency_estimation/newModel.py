@@ -22,7 +22,8 @@ def computeWeightDepth(layerInfo, KER, PIX):
 
     global logFile
     conv_out_planes  = layerInfo.out_planes   
-    conv_inp_planes  = layerInfo.inp_planes   
+    conv_inp_planes  = layerInfo.inp_planes 
+    conv_stride = layerInfo.stride  
     fh= layerInfo.filter_height
     fw= layerInfo.filter_width 
     groupNum= 1+layerInfo.groupFlag;
@@ -43,6 +44,8 @@ def computeWeightDepth(layerInfo, KER, PIX):
 
     if(layerID!=0):
         latLoadFeedingBuff_fl=computePlanesAligned/64*( fw*tmp*fh*16+13)+20;
+    else:
+        latLoadFeedingBuff_fl=(computePlanesAligned/4*fh*( fw+conv_stride*(PIX/2-1) )+6)*2;
     #here we made a allowance of 0.9 to make lat loatFeeding buffer correct
     requiredNKPF = int(math.ceil(latLoadFeedingBuff_fl*0.9/latCompute16Ker))
     alignedOutputPlane = AlignSize(conv_out_planes,16)
@@ -489,16 +492,20 @@ def computeRoundIPindex(
                     IN_D,OUT_D = computeRequiredIODepth( runInfo.layerInfo, rowStep)
                     inBrams, outBrams = computeIOBram(IN_D,OUT_D)
                     IOBRAM[runInfo.IPidx]=[inBrams,outBrams,IN_D,OUT_D ]
-            print IOBRAM
+            # print "IPBRAM",IOBRAM
             chainLatencList=[];
             runChain=[];
             startIdx=0;
+            print "roundIdx",roundIdx,
             while( startIdx < len(roundInfoList[roundIdx]) ):
                 runInfo=roundInfoList[roundIdx][startIdx]
                 IPinfoInst=IPinfoList[runInfo.IPidx];
                 layerInfoInst=runInfo.layerInfo;
                 runChain.append([layerInfoInst,IPinfoInst]);
+                print runInfo.layerInfo.layerType,runInfo.layerInfo.layerID,runInfo.nextIPidx,"|",
+                
                 if(runInfo.nextIPidx == None):
+                    
                     layerLatencyInfoList=[]
                     for i in range( len(runChain) ):
                         layerInfoInst,IPinfoInst=runChain[i];
@@ -509,7 +516,9 @@ def computeRoundIPindex(
                     logFile.write("chainCycles: "+str(int(cycles) )+", weight Cycles: "+str(int(weigthCycles))+"\n")
                     chainLatencList.append([cycles,weigthCycles]);
                 startIdx=startIdx+1;
+            print chainLatencList,""
             latency=multiChainLatency(chainLatencList);
+            
             roundILPInfo=roundILPInfo_t();
             roundILPInfo.roundIdx=roundIdx;
             roundILPInfo.rowStep=rowStep;
@@ -590,18 +599,27 @@ def exploitK_xPCombinations(
 
         print N,I,J
         for i in range(I):
+            print "round",i,":",
             for j in range(J):
-                print [len(roundILPInfoList[i][j].IBRAMList),len(roundILPInfoList[i][j].OBRAMList)],
-            
                 L_ij[i][j]=roundILPInfoList[i][j].latency;
+                print L_ij[i][j],
             print ""
+        print "latency"
         for n in range(N):
             for i in range(I):
                 for j in range(J):
                     IB_nij[n][i][j]=roundILPInfoList[i][j].IBRAMList[n];
                     OB_nij[n][i][j]=roundILPInfoList[i][j].OBRAMList[n];
+        
+        for i in range(I):
+            for j in range(J):
+                print IB_nij[:,i,j],
+                print OB_nij[:,i,j],   
+            print ""
 
         BRAMbudget_ID=BRAMBudget-constBram;
+
+        print "BRAMbudget_ID",BRAMbudget_ID
         rowStepChoice,InIdx,OutIdx,ILPlatency=rowStepILP.rowStepILP( BRAMbudget_ID, IB_nij, OB_nij, L_ij, N, I, J);
         
         # print rowStepChoice;
