@@ -1,0 +1,31 @@
+
+Network : ResNet-50
+Input Blob : data
+Output Blob : ele4
+Start Layer : data
+End Layer : ele4
+# -------------------- LayerGroups ------------------------ #
+conv0,pool1,conv2,conv3,ele4
+
+
+# -------------------- Layers ------------------------ #
+[data:0] --> { conv0 - Convolution: F = 16x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 16x256x3x3; BDim = 64;  } --> [conv0:0]
+Xilinx
+[data:0] --> { pool1 - Pooling: PoolType = MAXPOOL; N = 256; K = 3; S = 1; P = 1 } --> [pool1:0]
+Xilinx
+[conv0:0] --> { conv2 - Convolution: F = 256x16x5x5; S = 1; P = 2; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x16x5x5; BDim = 64;  } --> [conv2:0]
+Xilinx
+[pool1:0] --> { conv3 - Convolution: F = 256x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x256x1x1; BDim = 64;  } --> [conv3:0]
+Xilinx
+[conv2:0, conv3:0] --> { ele4 - Eltwise: F = 256x256x0x0; S = 19; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [ele4:0]
+Xilinx
+
+# -------------------- Blobs ------------------------ #
+conv0 : 1x16x112x112
+conv2 : 1x256x112x112
+data : 1x256x112x112 
+pool1 : 1x256x112x112 
+ele4 : 1x256x112x112 
+conv3 : 1x256x112x112
+
+
