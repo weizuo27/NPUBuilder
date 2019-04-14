@@ -17,6 +17,7 @@ class optimizer:
         self.new_latency_target = latency_Budget
         self.latency_achieved = None
         self.mapping_solution = None
+        self.pipelineTable_ret = None
 
         self.latency_table = dict()
         self.numIPs=dict()
@@ -58,7 +59,7 @@ class optimizer:
                 if firstIter:
                     if(verbose):
                         print "The resource budget is too tight, no feasible mapping solution."
-                    return self.latency_achieved, self.mapping_solution, self.pipelineTable
+                    return self.latency_achieved, self.mapping_solution, self.pipelineTable_ret
                 if(verbose):
                     print "cannot find a solution under the current latency budget: ", self.new_latency_target, \
                     "lossen the target"
@@ -84,6 +85,8 @@ class optimizer:
                 self.latency_ub = ret
                 self.latency_achieved = ret
                 self.mapping_solution = deepcopy(g)
+                print "pipelineTable", self.pipelineTable
+                self.pipelineTable_ret = deepcopy(self.pipelineTable)
                 self.new_latency_target = (self.latency_ub + self.latency_lb) /2 
                 latency_target_changed = True
                 if(verbose):
@@ -100,7 +103,7 @@ class optimizer:
         if self.latency_achieved == None:
             if(verbose):
                 print "The latency budget is too small, cannot find any feasible solution."
-            return self.latency_achieved, self.mapping_solution, self.pipelineTable
+            return self.latency_achieved, self.mapping_solution, self.pipelineTable_ret
         else:
             if(verbose):
                 print "Final solution"
@@ -130,6 +133,8 @@ class optimizer:
         for path in nx.all_simple_paths(g, source=nodes[0], target = nodes[-1]):
             pipelineTable = dict()
             idx = 1
+            if(path[0].type in hw_layers):
+                pipelineTable[path[0].mappedIP.name] = 1
             for t in path[idx:]:
                 s = path[idx-1]
                 idx += 1
@@ -139,18 +144,18 @@ class optimizer:
                         pipelineTable.clear()
                     elif s.type not in hw_layers:
                         pipelineTable.clear()
-                        pipelineTable[t.mappedIP] = 1
+                        pipelineTable[t.mappedIP.name] = 1
                     elif t.mappedIP not in pipelineTable:
                         self.pipelineTable[(s,t)] = 1
-                        pipelineTable[t.mappedIP] = 1
+                        pipelineTable[t.mappedIP.name] = 1
                     else:
                         pipelineTable.clear()
-                        pipelineTable[t.mappedIP] = 1
+                        pipelineTable[t.mappedIP.name] = 1
 
     def addPipelineNodes(self, g):
-        print "self.pipelineTable"
-        for (s, t) in self.pipelineTable:
-            print s.name, s.ID, "+", t.name, t.ID
+#        print "self.pipelineTable"
+#        for (s, t) in self.pipelineTable:
+#            print s.name, s.ID, "+", t.name, t.ID
         for s_node, t_node in self.pipelineTable:
             s_node.layerInfo.memOut = False
             if(t_node.type == "Eltwise"):
