@@ -16,7 +16,7 @@ Xilinx
 Xilinx
 [pool1:0] --> { conv3 - Convolution: F = 256x256x1x1; S = 1; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 256x256x1x1; BDim = 64;  } --> [conv3:0]
 Xilinx
-[conv2:0, conv3:0] --> { ele4 - Eltwise: F = 256x256x0x0; S = 19; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [ele4:0]
+[conv2:0] --> { ele4 - Eltwise: F = 256x256x0x0; S = 19; P = 0; D = 1; Group = 1; ReLU = 1; HasBias = 0; Weights = ; Bias = ; WDim = ; BDim = ;  } --> [ele4:0]
 Xilinx
 
 # -------------------- Blobs ------------------------ #
