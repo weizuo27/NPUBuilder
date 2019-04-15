@@ -496,13 +496,40 @@ def computeRoundIPindex(
             chainLatencList=[];
             runChain=[];
             startIdx=0;
-            print "roundIdx",roundIdx,
+            print "roundIdx",roundIdx
+
+            #processRunInfoChain
+            #Establish dictionary
+            # runInfoDict={}
+            # runInfoChain=[]
+            # for runInfo in roundInfoList[roundIdx]:
+            #     print runInfo.prevIPidx, runInfo.IPidx, runInfo.nextIPidx
+            #     runInfoDict[runInfo.IPidx]=runInfo;
+
+            # print runInfoDict.keys()
+
+            startIdx=0;
+
+            # while( startIdx < len(roundInfoList[roundIdx]) ):
+            #     runInfo=roundInfoList[roundIdx][startIdx]
+            #     if( runInfo.prevIPidx != None ):
+            #         startIdx+=1;
+            #         continue;
+            #     runInfoChain.append(runInfo);
+            #     del runInfoDict[runInfo.IPidx];
+
+            #     while (runInfo.nextIPidx !=None):
+            #         runInfo=runInfoDict[runInfo.nextIPidx];
+            #         runInfoChain.append(runInfo);
+            #         del runInfoDict[runInfo.IPidx];
+            # print runInfoDict
+
             while( startIdx < len(roundInfoList[roundIdx]) ):
                 runInfo=roundInfoList[roundIdx][startIdx]
                 IPinfoInst=IPinfoList[runInfo.IPidx];
                 layerInfoInst=runInfo.layerInfo;
                 runChain.append([layerInfoInst,IPinfoInst]);
-                print runInfo.layerInfo.layerType,runInfo.layerInfo.layerID,runInfo.nextIPidx,"|",
+                print runInfo.layerInfo.layerType,runInfo.IPidx,runInfo.nextIPidx,"|",
                 
                 if(runInfo.nextIPidx == None):
                     

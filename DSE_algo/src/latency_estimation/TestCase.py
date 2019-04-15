@@ -125,6 +125,8 @@ def computeOptimalLatencyDSP(
         IPfeasible=True
         runInfo=[]
         totalLatency=0
+        recordtotalLatency=[]
+        recordLayerTYp=[]
         KxPTable={}
         for runs in p:
             layerInfo={}
@@ -140,9 +142,11 @@ def computeOptimalLatencyDSP(
 
             breakFlag=False
             roundLatency=[]
+            layerTypeLatency=[]
+            
             for k,v in layerInfo.items():
                 if(len(v) > len(IPtable[k] )):
-                    print "illegal IP number", len(v), len(IPtable[k] ), v
+                    # print "illegal IP number", len(v), len(IPtable[k] ), v
                     breakFlag=True
                     break
                 for o,d in zip(v,IPtable[k]):
@@ -150,23 +154,22 @@ def computeOptimalLatencyDSP(
                     KxPTable[o[0]]=d;
                     tempIPinfo=infoClass.IPinfo_t(K_x_P=d, IPtype=layerInfoList[o[0]].layerType);
                     roundLatency.append( latencyEstimation_new.computeLatencyDSP( layerInfoList[o[0]],tempIPinfo) );
-
+                    layerTypeLatency.append(layerInfoList[o[0]].layerType );
             if breakFlag:
                 IPfeasible=False;
                 break;
             totalLatency+=max(roundLatency);
+            recordtotalLatency.append(roundLatency);
+            recordLayerTYp.append(layerTypeLatency);
         if IPfeasible and totalLatency< depositLatency:
             # print "legal pipeline",p
             # print totalLatency
             # print KxPTable
+            print "feasible Latency", recordtotalLatency, recordLayerTYp,p;
             depositKxP=KxPTable
             depositLatency=totalLatency
             depositPartition=p
-        # elif IPfeasible:
-        #     print "Not depositing",totalLatency,depositLatency
-        
-        # else:
-        #     print "Illegal IP" 
+
 
 
     return depositLatency,depositPartition,depositKxP
@@ -241,139 +244,139 @@ def computeOptimalLatencyExploreK_x_P(
 
 
 
-# BlobKey=["one","two","three","four","five"]            
-# Deps=[ [],[],["one"],["two"],["three","four"] ]
-# Rsts=["one","two","three","four","five"]
+BlobKey=["conv0","pool1","conv2","conv3","ele4"]            
+Deps=[ [],[],["conv0"],["pool1"],["conv2"] ]
+Rsts=["conv0","pool1","conv2","conv3","ele4"]
 
 
 
 
 
-# Ops=[300000,100000,30,2000000,20];
-# # Ops = computeLatencyDSP(layerInfo, IPInfo) with IPInfo.K_x_P = 1
+Ops=[300000,100000,30,2000000,20];
+# Ops = computeLatencyDSP(layerInfo, IPInfo) with IPInfo.K_x_P = 1
 
-# IPtable= { "Convolution":[512,256],
-#            "Pooling":[1],
-#            "Eltwise":[1]}
+IPtable= { "Convolution":[512,256],
+           "Pooling":[1],
+           "Eltwise":[1]}
 
-# # structure, () is blob, [1] is layer
-# # (0)->[0:Conv]->(1)->[2:Conv]->(3)
-# # (0)->[1:Pool]->(2)->[3:Conv]->(4)
-# # (2,4)->[4:ELe]->(5)
+# structure, () is blob, [1] is layer
+# (0)->[0:Conv]->(1)->[2:Conv]->(3)
+# (0)->[1:Pool]->(2)->[3:Conv]->(4)
+# (2,4)->[4:ELe]->(5)
 
 
-# layerInfoList=[]
+layerInfoList=[]
 
-# x=infoClass.layerInfo_t(
-#         layerType="Convolution", 
-#         inp_height=224,
-#         inp_width=224, 
-#         out_height=224, 
-#         out_width=224,
-#         out_planes=256, 
-#         inp_planes=256, 
-#         stride=None,
-#         filter_height=3, 
-#         filter_width=3, 
-#         pad=None,
-#         groupFlag=None, 
-#         layerID=None, 
-#         memIn=None,
-#         memInL=None, 
-#         memInR=None, 
-#         memOut=None, 
-#         rowStep=None)
-# layerInfoList.append(x)
+x=infoClass.layerInfo_t( #Conv0
+        layerType="Convolution", 
+        inp_height=112,
+        inp_width=112, 
+        out_height=112, 
+        out_width=112,
+        out_planes=16, 
+        inp_planes=256, 
+        stride=None,
+        filter_height=3, 
+        filter_width=3, 
+        pad=None,
+        groupFlag=None, 
+        layerID=1, 
+        memIn=None,
+        memInL=None, 
+        memInR=None, 
+        memOut=None, 
+        rowStep=None)
+layerInfoList.append(x)
 
-# x=infoClass.layerInfo_t(
-#         layerType="Pooling", 
-#         inp_height=224,
-#         inp_width=224, 
-#         out_height=224, 
-#         out_width=224,
-#         out_planes=256, 
-#         inp_planes=256, 
-#         stride=None,
-#         filter_height=2, 
-#         filter_width=2, 
-#         pad=None,
-#         groupFlag=None, 
-#         layerID=None, 
-#         memIn=None,
-#         memInL=None, 
-#         memInR=None, 
-#         memOut=None, 
-#         rowStep=None)
+x=infoClass.layerInfo_t(
+        layerType="Pooling", 
+        inp_height=112,
+        inp_width=112, 
+        out_height=112, 
+        out_width=112,
+        out_planes=256, 
+        inp_planes=256, 
+        stride=1,
+        filter_height=2, 
+        filter_width=2, 
+        pad=1,
+        groupFlag=None, 
+        layerID=None, 
+        memIn=None,
+        memInL=None, 
+        memInR=None, 
+        memOut=None, 
+        rowStep=None)
 
-# layerInfoList.append(x)
+layerInfoList.append(x)
 
-# x=infoClass.layerInfo_t(
-#         layerType="Convolution", 
-#         inp_height=224,
-#         inp_width=224, 
-#         out_height=224, 
-#         out_width=224,
-#         out_planes=16, 
-#         inp_planes=256, 
-#         stride=None,
-#         filter_height=1, 
-#         filter_width=1, 
-#         pad=None,
-#         groupFlag=None, 
-#         layerID=None, 
-#         memIn=None,
-#         memInL=None, 
-#         memInR=None, 
-#         memOut=None, 
-#         rowStep=None);
+x=infoClass.layerInfo_t(
+        layerType="Convolution", 
+        inp_height=112,
+        inp_width=112, 
+        out_height=112, 
+        out_width=112,
+        out_planes=256, 
+        inp_planes=16, 
+        stride=1,
+        filter_height=5, 
+        filter_width=5, 
+        pad=2,
+        groupFlag=None, 
+        layerID=None, 
+        memIn=None,
+        memInL=None, 
+        memInR=None, 
+        memOut=None, 
+        rowStep=None);
 
-# layerInfoList.append(x)
+layerInfoList.append(x)
 
-# x=infoClass.layerInfo_t(
-#         layerType="Convolution", 
-#         inp_height=224,
-#         inp_width=224, 
-#         out_height=224, 
-#         out_width=224,
-#         out_planes=256, 
-#         inp_planes=16, 
-#         stride=None,
-#         filter_height=1, 
-#         filter_width=1, 
-#         pad=None,
-#         groupFlag=None, 
-#         layerID=None, 
-#         memIn=None,
-#         memInL=None, 
-#         memInR=None, 
-#         memOut=None, 
-#         rowStep=None);
+x=infoClass.layerInfo_t(
+        layerType="Convolution", 
+        inp_height=112,
+        inp_width=112, 
+        out_height=112, 
+        out_width=112,
+        out_planes=256, 
+        inp_planes=256, 
+        stride=1,
+        filter_height=1, 
+        filter_width=1, 
+        pad=0,
+        groupFlag=None, 
+        layerID=None, 
+        memIn=None,
+        memInL=None, 
+        memInR=None, 
+        memOut=None, 
+        rowStep=None);
 
-# layerInfoList.append(x)
+layerInfoList.append(x)
 
 
             
-# x=infoClass.layerInfo_t(
-#     layerType="Eltwise", 
-#     inp_height=224,
-#     inp_width=224, 
-#     out_height=224, 
-#     out_width=224,
-#     out_planes=256, 
-#     inp_planes=256, 
-#     stride=None,
-#     filter_height=5, 
-#     filter_width=5, 
-#     pad=None,
-#     groupFlag=None, 
-#     layerID=None, 
-#     memIn=None,
-#     memInL=None, 
-#     memInR=None, 
-#     memOut=None, 
-#     rowStep=None);              
+x=infoClass.layerInfo_t(
+    layerType="Eltwise", 
+    inp_height=112,
+    inp_width=112, 
+    out_height=112, 
+    out_width=112,
+    out_planes=256, 
+    inp_planes=256, 
+    stride=None,
+    filter_height=0, 
+    filter_width=0, 
+    pad=None,
+    groupFlag=None, 
+    layerID=None, 
+    memIn=None,
+    memInL=None, 
+    memInR=None, 
+    memOut=None, 
+    rowStep=None);              
                     
-# layerInfoList.append(x)
+layerInfoList.append(x)
 
 
 
@@ -391,27 +394,27 @@ def computeOptimalLatencyExploreK_x_P(
 
             
                     
-# # computeOptimalLatencyDSP(
-# #     DepsTable=Deps,
-# #     RstsTable=Rsts,
-# #     layerInfoList=layerInfoList,
-# #     IPtable=IPtable,
-# #     blobKeys=BlobKey,
-# #     blobNumber=6
-# # )
+# computeOptimalLatencyDSP(
+#     DepsTable=Deps,
+#     RstsTable=Rsts,
+#     layerInfoList=layerInfoList,
+#     IPtable=IPtable,
+#     blobKeys=BlobKey,
+#     blobNumber=6
+# )
     
 
 
-# computeOptimalLatencyExploreK_x_P(
-#     Deps,
-#     Rsts,
-#     layerInfoList,
-#     2090,
-#     2,
-#     1,
-#     1,
-#     BlobKey
-# )
+computeOptimalLatencyExploreK_x_P(
+    Deps,
+    Rsts,
+    layerInfoList,
+    2090,
+    2,
+    1,
+    1,
+    BlobKey
+)
     
 
 

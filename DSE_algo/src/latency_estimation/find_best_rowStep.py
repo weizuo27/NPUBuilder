@@ -35,7 +35,7 @@ def nkpfCount(scalar_conv_args,KER_PROC,XI_WEIGHTBUFF_DEPTH):
         max_nkpf = n_kbuff_depth/(((fsz*fsz))*(ip/4)*2)
     else:
         max_nkpf = n_kbuff_depth/(((fsz*fsz))*(ip/4))
-
+    print max_nkpf, op,  KER_PROC
     if(max_nkpf>15):
         max_nkpf=15
 
@@ -131,7 +131,7 @@ def computeLatencyConv (
     conv_filter_height= layerInfo.conv_filter_height
     conv_filter_width= layerInfo.conv_filter_width 
     conv_pad        = layerInfo.conv_pad          
-    conv_group      = layerInfo.conv_group        
+    conv_group      = 0      
     rowStep= layerInfo.rowStep
     layerID= layerInfo.layerID
     streamIn= layerInfo.streamIn
@@ -207,8 +207,9 @@ def computeLatencyConv (
     compute_planes=scalar_conv_args[61]
     latLoadFeedingBuff_fl = 0
     tmp = (XI_PIX_PROC/16+1) if (XI_PIX_PROC%16) else  (XI_PIX_PROC/16)
+
     if(layerID!=0):
-        latLoadFeedingBuff_fl=compute_planes/64*( conv_filter_height*conv_filter_width*16*tmp+13)+20;
+        latLoadFeedingBuff_fl=compute_planes/64*( conv_filter_height*tmp*conv_filter_width*16+13)+20;
     else:
         latLoadFeedingBuff_fl=LatLoadInputBuff32Pix_fn+10
     # print "latLoadFeedingBuff_fl:"+str(latLoadFeedingBuff_fl)
@@ -262,82 +263,7 @@ def computeLatencyConv (
 
 
 
-def computeLatencyEle(
-    layerInfo,
-    IPinfo
-):
-    conv_out_height  = layerInfo.conv_out_height   
-    conv_out_width   = layerInfo.conv_out_width    
-    conv_out_planes  = layerInfo.conv_out_planes  
-    rowStep= layerInfo.rowStep
-    streamIn= layerInfo.streamIn
-    streamOut= layerInfo.streamOut
-    latProcWeight= 68+(conv_out_width+4);
-    if( not streamIn or not streamOut ):
-        latLoadWeight= (conv_out_width+4);
-    else:
-        latLoadWeight= 0;
 
-    latCompNumber=conv_out_planes/16;
-    if( not streamIn ):
-        preOverhead= (conv_out_width+4);
-    else:
-        preOverhead=0
-
-    if( not streamOut):
-        postOverhead=(conv_out_width+4);
-    else:
-        postOverhead=0
-
-    FirstEndRows=1;
-    latReadInputData=0;
-    latWritOutputData=0;
-    return  [latProcWeight, latLoadWeight, latCompNumber,  preOverhead,postOverhead, latReadInputData, latWritOutputData,FirstEndRows,1]
-
-def computeLatencyPool(
-    layerInfo,
-    IPinfo
-):
-    conv_stride      = layerInfo.conv_stride      
-    conv_filter_height= layerInfo.conv_filter_height
-    conv_filter_width= layerInfo.conv_filter_width
-
-    conv_inp_height  = layerInfo.conv_inp_height   
-    conv_inp_width   = layerInfo.conv_inp_width   
-    conv_pad        = layerInfo.conv_pad 
-
-    conv_out_height  = layerInfo.conv_out_height   
-    conv_out_width   = layerInfo.conv_out_width    
-    conv_out_planes  = layerInfo.conv_out_planes  
-
-    rowStep= layerInfo.rowStep
-    streamIn= layerInfo.streamIn
-    streamOut= layerInfo.streamOut
-
-
-    latProcWeight=conv_out_height*conv_out_planes/16*conv_filter_height*conv_filter_width
-    latLoadWeight=conv_inp_width*conv_stride*conv_out_planes/16
-    latCompNumber=rowStep
-
-
-    FirstEndRows=conv_filter_height+(rowStep-1)*conv_stride-conv_pad-1
-
-
-    if( not streamIn ):
-        preOverhead= FirstEndRows*conv_inp_width*conv_out_planes/16
-    else:
-        preOverhead=0
-
-
-    if( not streamOut):
-        postOverhead=rowStep*conv_out_width*conv_out_planes/16
-    else:
-        postOverhead=0
-
-
-    latReadInputData=0
-    latWritOutputData=0
-    return  [latProcWeight, latLoadWeight, latCompNumber,  preOverhead,postOverhead, latReadInputData, latWritOutputData,FirstEndRows,1]
 
 class convInfo_t():
     streamIn = None
@@ -415,94 +341,8 @@ class IPinfo_t():
         self.XI_WEIGHTBUFF_DEPTH=XI_WEIGHTBUFF_DEPTH
         self.int6bit=int6bit
 
-class layerLatencyInfo_t():
-    layerType=None
-    rowStep=None
-    latProcWeight=None
-    latLoadWeight=None
-    latLoadWeightCurrent=None,
-    latCompNumber=None
-    latPreOverhead=None
-    latReadInputData=None
-    latWritOutputData=None
-    height=None
-    width=None
-    stride=None
-    currentStartRows=0
-    currentEndRows=0
-    currentSegmentLatency=0;
-    NrowStep=None
-    FirstEndRows=None #must initiate this before start
-
-    def __init__(self, layerInfo, IPinfo, rowStep):
-        self.rowStep=rowStep
-        self.NrowStep=rowStep
-        self.height=layerInfo.conv_out_height
-        self.currentStartRows=0;
-        self.currentSegmentLatency=0;
-        layerInfo.rowStep=rowStep
-
-        if( IPinfo.IPtype== "Convolution"):
-            [self.latProcWeight, self.latLoadWeight, self.latCompNumber,  self.latPreOverhead, self.latPostOverhead, self.latReadInputData, self.latWritOutputData,self.FirstEndRows,self.stride]=computeLatencyConv(layerInfo,IPinfo)
-        if( IPinfo.IPtype== "ElementWise"):
-            [self.latProcWeight, self.latLoadWeight, self.latCompNumber,  self.latPreOverhead,  self.latPostOverhead, self.latReadInputData, self.latWritOutputData,self.FirstEndRows,self.stride]=computeLatencyEle(layerInfo,IPinfo)
-        if( IPinfo.IPtype== "Pooling"):
-            [self.latProcWeight, self.latLoadWeight, self.latCompNumber,  self.latPreOverhead,  self.latPostOverhead, self.latReadInputData, self.latWritOutputData,self.FirstEndRows,self.stride]=computeLatencyPool(layerInfo,IPinfo)
 
 
-def computeLatencyPipe(
-    layers
-):
-    layersCopy=layers[:];
-
-    timeStamp=0;
-    timeStamp+=layers[0].latPreOverhead;
-
-    layers[0].FirstEndRows=-1;
-
-    firstOperatingLayerID=0;
-    lastOperatingLayerID=0;
-
-    segmentIdx=0;
-    while 1:
-
-        # compute by the rowstep timing range for the latest running stage
-        if( firstOperatingLayerID==lastOperatingLayerID and lastOperatingLayerID== len(layersCopy) -1  and layersCopy[lastOperatingLayerID].currentStartRows>=layersCopy[lastOperatingLayerID].height ):
-            timeStamp+=layersCopy[lastOperatingLayerID].latPostOverhead
-            break;
-        # print "round ", segmentIdx
-        segmentIdx+=1
-        #updating first pipeline stage
-        if ( firstOperatingLayerID<len(layersCopy)-1 and layersCopy[firstOperatingLayerID].currentStartRows>= layersCopy[firstOperatingLayerID].height):
-            firstOperatingLayerID=firstOperatingLayerID+1;
-        
-        #updating last pipeline stage
-        if ( lastOperatingLayerID<len(layersCopy)-1 and layersCopy[lastOperatingLayerID+1].FirstEndRows< layersCopy[lastOperatingLayerID].currentStartRows):
-            lastOperatingLayerID=lastOperatingLayerID+1;
-            layersCopy[lastOperatingLayerID].NrowStep=layersCopy[lastOperatingLayerID].rowStep;
-
-        for i in range(lastOperatingLayerID,firstOperatingLayerID,-1):
-            layersCopy[i-1].NrowStep=layersCopy[i].NrowStep*layersCopy[i].stride;
-        
-        weightAmount=1;
-        for i in range(firstOperatingLayerID,lastOperatingLayerID+1):
-            weightAmount+=(layersCopy[i].latLoadWeight*layersCopy[i].latCompNumber+ layersCopy[i].latReadInputData+layersCopy[i].latWritOutputData)*layersCopy[i].NrowStep/layersCopy[i].rowStep;
-        
-        maxLatency=0;
-
-        for i in range(firstOperatingLayerID,lastOperatingLayerID+1):
-            layersCopy[i].latLoadWeightCurrent=layersCopy[i].latLoadWeight*weightAmount/ float(layersCopy[i].latLoadWeight*layersCopy[i].latCompNumber*layersCopy[i].NrowStep/layersCopy[i].rowStep);
-            layersCopy[i].currentSegmentLatency=( layersCopy[i].latLoadWeightCurrent+ (layersCopy[i].latCompNumber-1)*max(layersCopy[i].latLoadWeightCurrent, layersCopy[i].latProcWeight )+ layersCopy[i].latProcWeight);
-            if maxLatency< layersCopy[i].currentSegmentLatency:
-                maxLatency = layersCopy[i].currentSegmentLatency
-            # print "latency ", i, layersCopy[i].latLoadWeightCurrent, layersCopy[i].currentSegmentLatency, "MaxLatency ", maxLatency
- 
-        timeStamp+=maxLatency;
-        # for i in range(firstOperatingLayerID,lastOperatingLayerID+1):
-        #     # print "Layer ", i, "startRow ", layersCopy[i].currentStartRows, "endRow",  layersCopy[i].currentStartRows+layersCopy[i].NrowStep-1;
-        for i in range(firstOperatingLayerID,lastOperatingLayerID+1):
-            layersCopy[i].currentStartRows+=layersCopy[i].NrowStep;
-    return timeStamp
 
 def findBestRowStep(finName, foutName):
     f = open(finName, 'r');

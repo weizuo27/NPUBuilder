@@ -424,22 +424,45 @@ def genWrapper(g, n):
 #    print "streamArgs", streamArgs
     return topArg, streamArgs, dispatcherList,ConvPortTable
 
-def genTopFunctionPre(topArgs, fileName, headerFile = False):
-    f = open(fileName, "a")
 
+
+
+def genTopFunctionPre(topArgs, fileName, headerFile = False):
+
+
+    f = open(fileName, "a")
+    if(not headerFile):
+        f.write("#ifdef __CSIM___ \n");
+        f.write("void pipeSystemCSIMWrapper(\n");
+        f.write("\tint* args,");
+        f.write("\tchar* data[100]){\n");
+        f.write("pipeSystem(args,\n");
+        args_cmd = ""
+        i=0;
+        for args in topArgs:
+            for arg in args:
+                if "MemArgs" in arg: continue
+                paramList = arg.split("*")
+                args_cmd += "\t("+paramList[0]+"*) data["+str(i)+"],\n"
+                i=i+1;
+        args_cmd = args_cmd[0:-2] + "\n"
+        f.write(args_cmd)
+        f.write("#ifdef __SDSVHLS__\n")
+        f.write("\t, 0\n")
+        f.write("#endif\n);\n}\n")
+
+        f.write("#endif\n")
     f.write("void pipeSystem(\n");
     args_cmd = ""
     for args in topArgs:
         for arg in args:
             args_cmd += ("\t"+arg+",\n")
-
     args_cmd = args_cmd[0:-2] + "\n"
     f.write(args_cmd)
-
     f.write("#ifdef __SDSVHLS__\n")
     f.write("\t, bool ap_clk_div2\n")
     f.write("#endif\n")
-    
+
     if headerFile:
         f.write(");\n")
     else:

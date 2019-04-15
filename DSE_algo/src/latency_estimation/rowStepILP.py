@@ -113,13 +113,13 @@ def rowStepILP(
 
 
 
-N=2
-I=8
-P=5
+# N=2
+# I=8
+# P=5
    
-# numpy.random.seed(seed=)
-IB_nij=numpy.random.rand(N,I,P)
-OB_nij=numpy.random.rand(N,I,P)
-L_ij=numpy.random.rand(I,P)
+# # numpy.random.seed(seed=)
+# IB_nij=numpy.random.rand(N,I,P)
+# OB_nij=numpy.random.rand(N,I,P)
+# L_ij=numpy.random.rand(I,P)
 
-rowStepILP(5.5,IB_nij,OB_nij,L_ij,N,I,P)
+# rowStepILP(5.5,IB_nij,OB_nij,L_ij,N,I,P)
