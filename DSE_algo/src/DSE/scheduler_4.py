@@ -10,8 +10,8 @@ class scheduler:
         self.model = Model(g.name)
         self.model.Params.OutputFlag = 0
         schedulingVariables = []
-        resourceSharingVariables = dict()
-        resourceTable = dict()
+        resourceSharingVariables = dict() 
+        resourceTable = dict()#key: IP. Value: the layers that are mapped to this IP.
 #        bigConstant = 10000000000
         bigConstant = 10000000
         #1 create variable and resource table
@@ -19,11 +19,11 @@ class scheduler:
         node_list = list(nx.topological_sort(g))
         #Only combineNode and layerNodes have scheduing varibles
         for n in node_list:
-            if n.type is "combineNode":
-                for m in n.node_list:
-                    resourceTable[m.mappedIP] = [n] if m.mappedIP not in resourceTable else resourceTable[m.mappedIP] + [n]
+#            if n.type is "combineNode":
+#                for m in n.node_list:
+#                    resourceTable[m.mappedIP] = [n] if m.mappedIP not in resourceTable else resourceTable[m.mappedIP] + [n]
 
-            elif n.type in explore_IP_types:
+            if n.type in explore_IP_types:
                 resourceTable[n.mappedIP] = [n] if n.mappedIP not in resourceTable else resourceTable[n.mappedIP] + [n]
             schedulingVariables.append(self.model.addVar(name = n.name, vtype = GRB.INTEGER))
 
@@ -34,8 +34,9 @@ class scheduler:
             if len(resourceTable[ip]) == 1:
                 continue
             for n1, n2 in list(itertools.combinations(resourceTable[ip], 2)):
-                if nx.has_path(g, n1, n2):
+                if nx.has_path(g, n1, n2): #If n1 and n2 has a path in the original graph, then n1 and n2 have dependence already`
                     continue
+                #otherwise, we need to add dependence to n1 and n2, because they map to the same IP,so they can not run in parallel
                 var_n1 = self.model.getVarByName(n1.name)
                 var_n2 = self.model.getVarByName(n2.name)
                 resourceSharingV = self.model.addVar(name = n1.name + "_" + n2.name, vtype = GRB.BINARY)
@@ -59,7 +60,9 @@ class scheduler:
 #        print node_list[-1].name
         self.model.setObjective(self.model.getVarByName(node_list[-1].name), GRB.MINIMIZE)
         #4 solve the problem
+        self.model.write("out_scheduling.lp")
         self.model.optimize()
+
         assert(self.model.status == GRB.Status.OPTIMAL) #There should be a optimial solution
 
         # rebuildGraph:
@@ -71,6 +74,7 @@ class scheduler:
                         g.add_edge(n1, n2)
                     else:
                         g.add_edge(n2, n1)
+
 
         #assign weights to the edge
         for s1, s2 in g.edges:

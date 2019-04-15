@@ -76,10 +76,12 @@ class optimizer:
             firstIter = False
             #assign the mapping result
             self.assignMappingResult(graphs.exploreLayerQueue[g], explore_IP_types, hw_layers, IP_table, g, IP_table_org)
+#            self.assignMappingResult_hack(graphs.exploreLayerQueue[g], explore_IP_types, hw_layers, IP_table, g, IP_table_org)
             self.pipelineTable.clear()
             self.setPipelineFlag(hw_layers, g)
             graphs.computeLatency(g)
-            self.addPipelineNodes(g)
+            self.addPipelineNodes(g) 
+#            graphs.drawGraph(g)
             status, ret = self.scheduling(g, explore_IP_types)
             if status == "Success":
                 self.latency_ub = ret
@@ -126,6 +128,27 @@ class optimizer:
                 n.mappedIP.name = n.mappedIP.name+"_" + str(idx)
                 idx += 1
 
+    def assignMappingResult_hack(self, exploreLayerQueue, explore_IP_types, hw_layers, IP_table, g, IP_table_org):
+        for ip in IP_table["Convolution"]:
+            if int(ip.IPinfo.K_x_P) == 512:
+                ip512 = ip;
+                break
+        for ip in IP_table["Convolution"]:
+            if int(ip.IPinfo.K_x_P) == 256:
+                ip256 = ip;
+                break
+        for n in g.nodes():
+            if n.name == "conv0":
+                n.mappedIP = ip512
+            elif n.name == "conv2":
+                n.mappedIP = ip512
+            elif n.name == "conv3":
+                n.mappedIP = ip256
+            elif n.name == "pool1":
+                n.mappedIP = IP_table[n.type][0]
+            elif n.name == "ele4":
+                n.mappedIP = IP_table[n.type][0]
+
     def setPipelineFlag(self, hw_layers, g):
         visited = dict()
         nodes = list(nx.topological_sort(g))
@@ -137,7 +160,6 @@ class optimizer:
             for t in path[idx:]:
                 s = path[idx-1]
                 idx += 1
-                print s.name, "-->", t.name
                 if (s, t) not in visited:
                     visited[(s,t)] = 1
                     if t.type not in hw_layers:
@@ -145,13 +167,10 @@ class optimizer:
                     elif s.type not in hw_layers:
                         pipelineTable.clear()
                         pipelineTable[t.mappedIP.name] = 1
-                        print "s not in hw_layers", pipelineTable
                     elif t.mappedIP.name not in pipelineTable:
-                        print "s1 ", s.name, s.mappedIP.name, "-->", t.name, t.mappedIP.name
                         self.pipelineTable[(s,t)] = 1
                         pipelineTable[t.mappedIP.name] = 1
                     else:
-                        print "s2 ", s.name, s.mappedIP.name, "-->", t.name, t.mappedIP.name
                         pipelineTable.clear()
                         pipelineTable[t.mappedIP.name] = 1
 
@@ -172,15 +191,14 @@ class optimizer:
 
         cp_path = []
         accLat = 0
+        #graph has already assigned the pipeline and the resource, before entering scheduling
         path = self.scheduler.scheduling(g, explore_IP_types)
         for p in path:
+            if p.name == "end":
+                break
             accLat += p.latency
-            if p.type == "combineNode":
-                for mm in p.node_list:
-                    if mm.type in explore_IP_types:
-                        cp_path.append((mm, mm.mappedIP))
 
-            elif p.type not in explore_IP_types:
+            if p.type not in explore_IP_types:
                 None
             else:
                 cp_path.append((p, p.mappedIP))

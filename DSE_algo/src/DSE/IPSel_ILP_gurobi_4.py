@@ -217,15 +217,22 @@ class IPSel():
             print "No feasible solutions"
             return
 
+        for g in mapping_solution_total:
+            for l in mapping_solution_total[g].nodes():
+                print "latency per layer", l.name, l.latency
+
         final_graph_list = reorderMapping(mapping_solution_total, hw_layers, pipelineTable_solution_total)
         roundInfoList, IPinfoList = self.genIPinfoLayerInfoList(final_graph_list, pipelineTable_solution_total)
+
         
         ridx = 0
-#        print "\n\n\nroundInfo\n"
-#        for r in roundInfoList:
-#            print "round "+ str(ridx) + "\n"
-#            print r
-#            ridx += 1
+        print "\n\n\nroundInfo\n"
+        for r in roundInfoList:
+            print "round "+ str(ridx) + "\n"
+            print r
+            ridx += 1
+
+        print "First step latency, ", lat_achieved_total
 
         rowStep, latency = exploitK_xPCombinations(roundInfoList, IPinfoList, BRAM_budget)
         
