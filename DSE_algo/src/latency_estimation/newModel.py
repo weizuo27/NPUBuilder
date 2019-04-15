@@ -473,9 +473,11 @@ def computeRoundIPindex(
             logFile.write("Convolution,"+str(Ker)+","+str(Pix)+","+str(weightDepthList[i])+","+str(constBramIP)+"\n")
         elif( IPinfo.IPtype=="Pooling"):
             constBram+=constantBramPool();
+            IPinfo.BRAM=constantBramPool();
             logFile.write("Pooling,"+str(constantBramPool())+"\n")
         elif( IPinfo.IPtype=="Eltwise"):
             constBram+=constantBramEle();
+            IPinfo.BRAM=constantBramEle();
             logFile.write("Eltwise,"+str(constantBramEle())+"\n")
         else:
             assert(0), "Unsupported IP type"
@@ -690,6 +692,16 @@ def exploitK_xPCombinations(
             i.IBRAM,i.OBRAM = computeIOBram(i.XI_INDEPTH, i.XI_OUTDEPTH);
             i.OtherBRAM = constantBramConv(i.XI_WEIGHTBUFF_DEPTH,i.XI_KER_PROC, i.XI_PIX_PROC);
             i.WBRAM=  math.ceil(i.XI_WEIGHTBUFF_DEPTH / 1024.0) * i.XI_KER_PROC *  math.ceil(32.0/18) * 2
+            i.BRAM= i.IBRAM+i.OBRAM+i.OtherBRAM;
+        else:
+            i.IBRAM=0;
+            i.OBRAM=0;
+            i.WBRAM=0;
+            i.OtherBRAM=0;
+        print "BRAM",i.BRAM
+
+    
+
 
     for i,roundInfoList_row in enumerate( roundInfoList):
         rowStepNum=depositRowStepChoice[i];
