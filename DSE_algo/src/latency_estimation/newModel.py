@@ -685,6 +685,12 @@ def exploitK_xPCombinations(
         IPinfoList[n].XI_INDEPTH=depositIDepthList[n];
         IPinfoList[n].XI_OUTDEPTH=depositODepthList[n];
 
+    for i in IPinfoList:
+        if(i.IPtype=="Convolution"):
+            i.IBRAM,i.OBRAM = computeIOBram(i.XI_INDEPTH, i.XI_OUTDEPTH);
+            i.OtherBRAM = constantBramConv(i.XI_WEIGHTBUFF_DEPTH,i.XI_KER_PROC, i.XI_PIX_PROC);
+            i.WBRAM=  math.ceil(i.XI_WEIGHTBUFF_DEPTH / 1024.0) * i.XI_KER_PROC *  math.ceil(32.0/18) * 2
+
     for i,roundInfoList_row in enumerate( roundInfoList):
         rowStepNum=depositRowStepChoice[i];
         print depositRowStepChoice[i];
