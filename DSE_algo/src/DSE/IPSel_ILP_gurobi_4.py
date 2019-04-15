@@ -232,13 +232,14 @@ class IPSel():
 #            print ip
 
         
-        
-#        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
-#        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
-
         rowStep, latency = exploitK_xPCombinations(roundInfoList, IPinfoList, BRAM_budget)
         print "latency",  latency
         print "rowStep", rowStep
+        
+#        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
+#        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
+        self.codeGen(final_graph_list, latency_solution_total, hw_layers, numConvIPs_total, numIPs_total)
+
         
         return lat_achieved_total
 
@@ -291,7 +292,7 @@ class IPSel():
         return roundInfoList, IPinfoList
 
 #    def codeGen(self, lat_achieved, latency_solution, mapping_solution, hw_layers, gs, batchSize, numConvIPs, numIPs):
-    def codeGen(self, lat_achieved, hw_layers,  numConvIPs, numIPs):
+    def codeGen(self,final_graph_list, lat_achieved, hw_layers,  numConvIPs, numIPs):
         print "\n\n #####################################################################"
         print "Final latency_achieved", lat_achieved, "number of IPs are ", numIPs, "number of convIPs are ", numConvIPs
 #        print "each round latency is as follows",
