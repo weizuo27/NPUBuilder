@@ -234,7 +234,11 @@ def genTop(g, outDir, batchSize):
 
     node_list = list(g.nodes())
     def comp(elem):
-        return 0-elem.IPinfo.BRAM
+        if(not elem.IPinfo.BRAM):
+            BRAM = 0
+        else:
+            BRAM = elem.IPinfo.BRAM
+        return 0-BRAM
     node_list.sort(key = comp)
     for n in node_list:
         genSubFunction(n, fileName, ConvPortTableTotal)

@@ -221,24 +221,17 @@ class IPSel():
         roundInfoList, IPinfoList = self.genIPinfoLayerInfoList(final_graph_list, pipelineTable_solution_total)
         
         ridx = 0
-        print "\n\n\nroundInfo\n"
-        for r in roundInfoList:
-            print "round "+ str(ridx) + "\n"
-            print r
-            ridx += 1
+#        print "\n\n\nroundInfo\n"
+#        for r in roundInfoList:
+#            print "round "+ str(ridx) + "\n"
+#            print r
+#            ridx += 1
 
-        print "\n\nipInfo\n"
-#        for ip in IPinfoList:
-#            print ip
-
-        
         rowStep, latency = exploitK_xPCombinations(roundInfoList, IPinfoList, BRAM_budget)
-        print "latency",  latency
-        print "rowStep", rowStep
         
 #        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
 #        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
-        self.codeGen(final_graph_list, latency_solution_total, hw_layers, numConvIPs_total, numIPs_total, int(batchSize))
+        self.codeGen(final_graph_list, lat_achieved_total, hw_layers, numConvIPs_total, numIPs_total, int(batchSize))
 
         
         return lat_achieved_total
@@ -333,32 +326,31 @@ class IPSel():
         assignStreamPorts(IP_g, 2)
         genTop(IP_g, outHwDir, batchSize)
         #Gen CSV
-        genCSVConfigs(final_graph_list, IP_g, muxSelTable, hw_layers, outHwDir, pipeInfoTable)
+        genCSVConfigs(final_graph_list, IP_g, muxSelTable, hw_layers, outHwDir)
 
         #GenFindBestRowStep
         newPipeInfoFile = outHwDir+"/pipeInfo.csv"
         newRowStepFile = outHwDir + "/rowStep.csv"
 
-        findBestRowStep(newPipeInfoFile, newRowStepFile)
-        
-        oldRowStepFile = outHwDir + "/rowSteps"
+#        findBestRowStep(newPipeInfoFile, newRowStepFile)
+#        oldRowStepFile = outHwDir + "/rowSteps"
 
         #compare the old and new rowstep file
-        cmd = "sort -o " + oldRowStepFile + " " + oldRowStepFile
-        os.system(cmd)
-#        print "oldRowStepFile abcd"
-#        os.system("cat " + oldRowStepFile)
-        cmd = "sort -o " + newRowStepFile + " " + newRowStepFile
-        os.system(cmd)
-#        print "newRowStepFile abcd"
-#        os.system("cat " + newRowStepFile)
-        if(filecmp.cmp(oldRowStepFile, newRowStepFile)):
-            print "They are the same"
-            converged = True
-            return converged
-        else:
-            converged = False
-
+#        cmd = "sort -o " + oldRowStepFile + " " + oldRowStepFile
+#        os.system(cmd)
+##        print "oldRowStepFile abcd"
+##        os.system("cat " + oldRowStepFile)
+#        cmd = "sort -o " + newRowStepFile + " " + newRowStepFile
+#        os.system(cmd)
+##        print "newRowStepFile abcd"
+##        os.system("cat " + newRowStepFile)
+#        if(filecmp.cmp(oldRowStepFile, newRowStepFile)):
+#            print "They are the same"
+#            converged = True
+#            return converged
+#        else:
+#            converged = False
+#
         #rowStepGen
         genRowStepFile(final_graph_list, outHwDir) 
 
@@ -369,7 +361,7 @@ class IPSel():
         genXkernelCPP(functionArgs, outSwDir)
         copyUtilsCSV(outSwDir)
         
-        return converged
+#return converged
 
 
     def updateAbandonTable(self, IPs):

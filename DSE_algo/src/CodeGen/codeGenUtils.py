@@ -173,7 +173,7 @@ def genRowStepFile(graph_list,outDir):
         return elem.ID
     nodes.sort(key = comp)
     for n in nodes:
-        f.write(str(n.ID) + ", " + str(n.rowStep)+"\n")
+        f.write(str(n.ID) + ", " + str(n.layerInfo.rowStep)+"\n")
     f.close()
 
 

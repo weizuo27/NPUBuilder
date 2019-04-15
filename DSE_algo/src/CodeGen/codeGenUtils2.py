@@ -113,7 +113,7 @@ def CSVconfigUnNece(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxS
         assert 0, "Unsupported IP type" #Should not come here
 
 
-def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers, outDir, pipeInfoTable):
+def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers, outDir):
         
     layerIdxTable = readLayerId( "./inputFiles/layerIDMapping")
     poolingTypeTable = readLayerId("./inputFiles/PoolingTyping")
@@ -192,7 +192,7 @@ def genCSVConfigs(gs, IP_g, muxSelTable, hw_layers, outDir, pipeInfoTable):
                         CSVconfigUnNece(n, ip_inst, s, t, False, layerIdxTable, poolingTypeTable,  muxSel)
             callOrder.append(t.mappedIP.name)
         genCSVFile(IP_g, roundIdx, fileName)
-        genPipeInfoFile(IP_g, roundIdx, pipeInfoFileName, pipeInfoTable, hw_layers)
+#        genPipeInfoFile(IP_g, roundIdx, pipeInfoFileName, pipeInfoTable, hw_layers)
 
         callOrderList = []
 #        nSplit(callOrder, callOrderList)
