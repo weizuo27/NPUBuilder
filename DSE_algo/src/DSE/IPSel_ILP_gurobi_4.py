@@ -231,7 +231,7 @@ class IPSel():
         
 #        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
 #        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
-        self.codeGen(final_graph_list, lat_achieved_total, hw_layers, numConvIPs_total, numIPs_total, int(batchSize))
+        self.codeGen(final_graph_list, latency, hw_layers, numConvIPs_total, numIPs_total, int(batchSize))
 
         
         return lat_achieved_total
