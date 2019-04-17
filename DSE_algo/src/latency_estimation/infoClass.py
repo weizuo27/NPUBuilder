@@ -26,6 +26,7 @@ class layerInfo_t():
     def clearUnCertainItems(self):
         self.memInL = True
         self.memInR = True
+        self.memOut = True
         self.memIn = True
         self.rowStep = None
 

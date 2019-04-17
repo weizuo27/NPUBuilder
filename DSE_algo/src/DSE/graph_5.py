@@ -183,13 +183,7 @@ class graph:
         #Node level clear
         for n in g.nodes:
             n.mappedIP = None
-            n.IP_latency_rowStep = None
             n.latency = None
-            n.lat_rowStep = None
-            n.Pipelined = False
-            n.start_time = None
-            n.isMaxPipeLayer = False
-            n.bandWidth = 0
             if (n.layerInfo):
                 n.layerInfo.clearUnCertainItems()
 

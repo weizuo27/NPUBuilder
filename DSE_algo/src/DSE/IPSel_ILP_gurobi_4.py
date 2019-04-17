@@ -95,7 +95,6 @@ class IPSel():
             pipelineTable_solution = dict()
             self.abandonTable = dict()
 
-
             allIPs = [ip for ip in itertools.combinations(IP_list, numIPs) if (\
             (sum(item.DSP for item in ip) < DSP_budget) and \
             (sum(item.DSP for item in ip) > 0.5 * DSP_budget)) ]
@@ -110,7 +109,6 @@ class IPSel():
                 break
 
             nums = 0
-
 
             for IPs in allIPs:
                 nums += 1
@@ -157,8 +155,8 @@ class IPSel():
                     print "some of the layers type not in the current IP selection, continue"
                     continue
                 acc_lat = 0
-                #Generate the IP_table_per_layer and layerIPLatencyTable 
 
+                #Generate the IP_table_per_layer and layerIPLatencyTable 
                 layerIPLatencyTable = computeIPLatencyPerLayer(IP_dict, gs.exploreLayerQueue, hw_layers)
 
                 valid = True
@@ -174,8 +172,7 @@ class IPSel():
                     self.updateLayerQueue(gs.exploreLayerQueue[g], layerQueue)
                     opt = optimizer(lat_left, rowStep)
                     #If some of the graph, there is no feasible solution, then the current selection of IPs cannot work
-                    lat, sol, pipelineTable = opt.run(IP_dict, gs, g, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table)
-            
+#                    lat, sol, pipelineTable = opt.run(IP_dict, gs, g, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table)
                     if lat == None:
                         valid = False
                         break
@@ -221,25 +218,31 @@ class IPSel():
             for l in mapping_solution_total[g].nodes():
                 print "latency per layer", l.name, l.latency
 
-        final_graph_list = reorderMapping(mapping_solution_total, hw_layers, pipelineTable_solution_total)
+        #########################
+        #you get the round_solution_total
+        #final_graph_list is a list, where each item is subgraph of the original graph, with the layers in the round.
+        #Fill in the graph info based on the mapping/scheduling solution
+        final_graph_list = []
+        for g in graphs:
+            graphs.retriveOriginalGraph(g) #clean up the graph
+            for n in sol.nodes():
+                n.mappIP = #Has to be all filled in
+                n.layerInfo =  #Has to be all filled in
+
+        #generate the subgraph list
+        for g in roundSol:
+            for r in roundSol[g]:
+                nodes = foo(r, g) #Find all the nodes in the g, which is in r
+                subg = nx.DiGraph(graphs.subgraph(nodes)) #or g.subgraph(node)
+                final_graph_list.append(subg)
+###############################
+
+#        final_graph_list = reorderMapping(mapping_solution_total, hw_layers, pipelineTable_solution_total)
         roundInfoList, IPinfoList = self.genIPinfoLayerInfoList(final_graph_list, pipelineTable_solution_total)
-
-        
-        ridx = 0
-        print "\n\n\nroundInfo\n"
-        for r in roundInfoList:
-            print "round "+ str(ridx) + "\n"
-            print r
-            ridx += 1
-
-        print "First step latency, ", lat_achieved_total
 
         rowStep, latency = exploitK_xPCombinations(roundInfoList, IPinfoList, BRAM_budget)
         
-#        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
-#        self.codeGen(lat_achieved_total, latency_solution_total, mapping_solution_total, hw_layers, gs, batchSize, numConvIPs_total, numIPs_total)
         self.codeGen(final_graph_list, latency, hw_layers, numConvIPs_total, numIPs_total, int(batchSize))
-
         
         return lat_achieved_total
 
@@ -339,25 +342,6 @@ class IPSel():
         newPipeInfoFile = outHwDir+"/pipeInfo.csv"
         newRowStepFile = outHwDir + "/rowStep.csv"
 
-#        findBestRowStep(newPipeInfoFile, newRowStepFile)
-#        oldRowStepFile = outHwDir + "/rowSteps"
-
-        #compare the old and new rowstep file
-#        cmd = "sort -o " + oldRowStepFile + " " + oldRowStepFile
-#        os.system(cmd)
-##        print "oldRowStepFile abcd"
-##        os.system("cat " + oldRowStepFile)
-#        cmd = "sort -o " + newRowStepFile + " " + newRowStepFile
-#        os.system(cmd)
-##        print "newRowStepFile abcd"
-##        os.system("cat " + newRowStepFile)
-#        if(filecmp.cmp(oldRowStepFile, newRowStepFile)):
-#            print "They are the same"
-#            converged = True
-#            return converged
-#        else:
-#            converged = False
-#
         #rowStepGen
         genRowStepFile(final_graph_list, outHwDir) 
 
@@ -557,62 +541,3 @@ def nSplit(inList, outLists):
             nSplit(inList[idx:], outLists)
             return
     outLists.append(subList)
-
-def genPipeInfo(mapping_solution, hw_layers):
-    layerInfoTable = dict()
-    for g in mapping_solution:
-        for n in list(mapping_solution[g].nodes):
-            if n.type not in hw_layers:
-                continue
-
-            lineList = [n.Pipelined]
-            if n.Pipelined:
-                n.memIn = False
-            else:
-                n.memIn = True
-            succList = list(mapping_solution[g].successors(n))
-            if(len(succList) >= 1):
-                n.memOut = True
-            elif(len(succList) == 0):
-                n.memOut = True
-            else:
-                n.memOut = False if(succList[0].Pipelined) else True
-
-            lineList.append(int(n.memIn))
-            lineList.append(int(n.memOut))
-            in_height, in_width = map(int, n.input_params[2:4])
-            out_height, out_width = map(int, n.output_params[2:4])
-            if(n.type == "Convolution" or n.type == "Convolution_g"):
-                group = 0 if n.type == "Convolution" else 1
-                cout, cin, kw, kh = map(int, (n.params[0].split("=")[1]).split("x")) 
-                out_height, out_width = map(int, n.output_params[2:4])
-                S = int(n.params[1].split("=")[1])
-                padding = int(n.params[2].split("=")[1])
-                group = int(n.params[4].split("=")[1])
-                maxRowStep = n.computeMaxRowStep()
-                XI_KER_PROC, XI_PIX_PROC, XI_IBUFF_DEPTH, \
-                XI_OBUFF_DEPTH, XI_WEIGHTBUFF_DEPTH = n.mappedIP.paramList
-                if(ceil(float(cin)/4) * ceil(float(cout)/XI_KER_PROC) * kh * kw <= XI_WEIGHTBUFF_DEPTH * 2):
-                    oneTime = True
-                else:
-                    oneTime = False
-                lineList += [in_height, in_width, out_height, out_width, cout, cin, S, kh, kw, padding, group, maxRowStep, oneTime, n.ID]
-            elif(n.type == "Pooling"):
-                PoolType = n.params[0].split("=")[1]
-                N = int(n.params[1].split("=")[1])
-                kw = kh = int(n.params[2].split("=")[1])
-                S = int(n.params[3].split("=")[1])
-                padding = int(n.params[4].split("=")[1])
-                cout=cin = int(n.params[1].split("=")[1])
-                oneTime = False
-                maxRowStep = 1000
-                group = 0
-                lineList += [in_height, in_width, out_height, out_width, cout, cin, S, kh, kw, padding, group, maxRowStep, oneTime, n.ID]
-            elif(n.type == "Eltwise"):
-                cout, cin, kw, kh = map(int, (n.params[0].split("=")[1]).split("x"))
-                lineList += [out_height, out_width, cout, 1000, n.ID]
-            if(n.type == "Convolution" or n.type == "Convolution_g"):
-                int6 = 1
-                lineList += [XI_KER_PROC, XI_PIX_PROC, XI_WEIGHTBUFF_DEPTH, int6]
-            layerInfoTable[n.ID] = lineList
-    return layerInfoTable
