@@ -6,6 +6,8 @@ End Layer : ele4
 # -------------------- LayerGroups ------------------------ #
 conv0,pool1,conv2,conv3,ele4
 
+# --------------------NoStreamEdge------------------------ #
+conv3,ele4
 
 # -------------------- Layers ------------------------ #
 [data:0] --> { conv0 - Convolution: F = 16x256x3x3; S = 1; P = 1; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 16x256x3x3; BDim = 64;  } --> [conv0:0]

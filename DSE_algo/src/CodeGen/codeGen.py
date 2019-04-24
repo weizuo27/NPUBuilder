@@ -597,9 +597,14 @@ def genIPPackCmd(fileName, fileNameIPNameList, IP_g, batchSize):
         if ip.type == "Convolution" or ip.type == "Convolution_g":
             IPNAME = ip.name
 
-            XI_KER_PROC, XI_PIX_PROC, XI_ISTAGE_BUFF, \
-            XI_OSTAGE_BUFF, XI_WEIGHT_BUFF = ip.paramList
+            # XI_KER_PROC, XI_PIX_PROC, XI_ISTAGE_BUFF, \
+            # XI_OSTAGE_BUFF, XI_WEIGHT_BUFF = ip.paramList
 
+            XI_KER_PROC=ip.IPinfo.XI_KER_PROC
+            XI_PIX_PROC=ip.IPinfo.XI_PIX_PROC
+            XI_WEIGHT_BUFF=ip.IPinfo.XI_WEIGHTBUFF_DEPTH
+            XI_OSTAGE_BUFF=ip.IPinfo.XI_OUTDEPTH
+            XI_ISTAGE_BUFF=ip.IPinfo.XI_INDEPTH
             STREAM_OUT = int(ip.streamOutFlag)
             STREAM_IN = int(ip.streamInFlag)
             MEM_IN = int(ip.memInFlag)

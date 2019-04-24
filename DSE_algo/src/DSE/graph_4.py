@@ -38,6 +38,7 @@ class graph:
         bottom_table = dict()
         pipeStartTable = dict()
         top_table = dict()
+        noStreamEdge=set()
         f = open(filename)
         for l in f:
             l = l.replace(" ", "")
@@ -92,8 +93,10 @@ class graph:
                     l = l.replace(" ", "")[0:-1]
                     layer_name, layer_lat = l.split(":")
                     self.SWMapping[layer_name] = int(layer_lat)
-        f.close()
 
+
+        f.close()
+    
         print "pipeStart", pipeStartTable
         #Build Edges
         idx = 0

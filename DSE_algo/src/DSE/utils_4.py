@@ -103,6 +103,7 @@ def computeIPLatencyPerLayer(IP_table, layerQueue, hw_layers):
         return elem_tuple[1] #Return latency
 
     layerIpLatencyTable = dict()
+    layerIpLatencyTable_ILP = {};
 
     for g in layerQueue:
         for layer_type in layerQueue[g]:
@@ -112,16 +113,22 @@ def computeIPLatencyPerLayer(IP_table, layerQueue, hw_layers):
             ip_q = IP_table[layer_type]
             for layer_inst in layer_q:
                 row = []
+                row2 = []
                 row_final = []
+                
                 for idx, ip in enumerate(ip_q):
                     lat = layer_inst.computeLatencyIfMappedToOneIP(ip)
+                    row2.append(lat)
                     row.append((ip, lat, idx))
+                
+                layerIpLatencyTable_ILP[layer_inst] = row
 
                 row.sort(key=keyComp)
                 for ip, lat, idx in row:
                     row_final.append((idx,ip))
                 layerIpLatencyTable[layer_inst] = [row, row_final]
-    return layerIpLatencyTable
+                
+    return layerIpLatencyTable,layerIpLatencyTable_ILP
 
 def unconstrMapping(g, layerQueue, layerIpLatencyTable, IP_table, explore_IP_types):
     bram, dsp, ff, lut = 0, 0, 0, 0

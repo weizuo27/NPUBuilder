@@ -24,6 +24,15 @@ res5b_branch2a,res5b_branch2b,res5b_branch2c,conv_eltwise14
 res5c_branch2a,res5c_branch2b,res5c_branch2c,conv_eltwise15
 pool5
 
+# -------------------NoStreamEdge------------------------ #
+res2a_branch1,conv_eltwise0
+pool1,res2a_branch1
+res3a_branch1,conv_eltwise3
+conv_eltwise2,res3a_branch1
+res4a_branch1,conv_eltwise7
+conv_eltwise6,res4a_branch1
+res5a_branch1,conv_eltwise13
+conv_eltwise12,res5a_branch1
 
 # -------------------- Layers ------------------------ #
 [data:0] --> { conv1 - Convolution: F = 64x3x7x7; S = 2; P = 3; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x3x7x7; BDim = 64;  } --> [conv1:0]

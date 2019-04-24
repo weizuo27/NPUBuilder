@@ -58,6 +58,7 @@ def createIPGraph(gs, hw_layers):
     IPSet = set()
     for g in gs:
         for n in g.nodes:
+            if n.ID==0:n.mappedIP.firstLayer=1;
             IPSet.add(n.mappedIP)
     #create one node for an IP
     for ip in IPSet:

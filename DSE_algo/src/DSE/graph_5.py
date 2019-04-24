@@ -25,6 +25,7 @@ class graph:
         self.readLayerId("./inputFiles/layerIDMapping")
         self.removeEdgeGroup= dict()
         self.shouldAddBackEdge = []
+        self.noStreamEdge=set()
 
         self.construct(fileName, explore_IP_types, hw_layers)
 
@@ -99,7 +100,14 @@ class graph:
                     if blobname in top_table:
                         for ll in top_table[blobname]:
                             ll.set_output_params(dims)
-            
+            if l.find("--NoStreamEdge--") >= 0:      
+                for l in f:
+                    if l == "\n":
+                        break
+                    l = l.replace(" ", "")[0:-1]
+                    source,target= l.split(",")
+                    self.noStreamEdge.add( (source,target) )
+        print self.noStreamEdge
         f.close()
         
         #build Edges

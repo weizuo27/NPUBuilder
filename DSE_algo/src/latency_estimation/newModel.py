@@ -363,7 +363,7 @@ def computeRequiredIODepth(layerInfo, rowStep):
 
     IN_D=1<< int.bit_length( conv_inp_width* (-(-conv_inp_planes//64))*(conv_filter_height+(rowStep*2-1)*conv_stride) );
     IN_D=max(IN_D,1024)
-    OUT_D= AlignSize( conv_out_width*math.ceil(conv_inp_planes/32)*rowStep , 1024)
+    OUT_D= AlignSize( int( conv_out_width*math.ceil(conv_inp_planes/32)*rowStep ) , 1024)
     return [IN_D,OUT_D]
     
 
@@ -498,7 +498,7 @@ def computeRoundIPindex(
             chainLatencList=[];
             runChain=[];
             startIdx=0;
-            print "roundIdx",roundIdx
+  
 
             #processRunInfoChain
             #Establish dictionary
@@ -531,7 +531,6 @@ def computeRoundIPindex(
                 IPinfoInst=IPinfoList[runInfo.IPidx];
                 layerInfoInst=runInfo.layerInfo;
                 runChain.append([layerInfoInst,IPinfoInst]);
-                print runInfo.layerInfo.layerType,runInfo.IPidx,runInfo.nextIPidx,"|",
                 
                 if(runInfo.nextIPidx == None):
                     
@@ -545,7 +544,6 @@ def computeRoundIPindex(
                     logFile.write("chainCycles: "+str(int(cycles) )+", weight Cycles: "+str(int(weigthCycles))+"\n")
                     chainLatencList.append([cycles,weigthCycles]);
                 startIdx=startIdx+1;
-            print chainLatencList,""
             latency=multiChainLatency(chainLatencList);
             
             roundILPInfo=roundILPInfo_t();
@@ -576,7 +574,7 @@ def computeRoundIPindex(
             roundILPInfoList_row.append(roundILPInfo);
         roundILPInfoList.append(roundILPInfoList_row);
     logFile.close();
-    return roundILPInfoList,constBram
+    return roundILPInfoList,constBram,weightDepthList
 
 
 def exploitK_xPCombinations(
@@ -603,7 +601,6 @@ def exploitK_xPCombinations(
     depositKer=[0]*len(IPinfoList)
     depositPix=[0]*len(IPinfoList)
     depositWeight=[0]*len(IPinfoList)
-
    
     while(1):
         KerPixList=[];
@@ -611,7 +608,7 @@ def exploitK_xPCombinations(
             KerPixList.append( KerPixCombineList[i][combinIndex]);
 
         # call in_D, out_D, W_D, rowStep finder
-        roundILPInfoList,constBram=computeRoundIPindex(
+        roundILPInfoList,constBram,weightDepthList=computeRoundIPindex(
             roundInfoList, 
             KerPixList,
             IPinfoList,
@@ -626,31 +623,26 @@ def exploitK_xPCombinations(
         OB_nij=numpy.ndarray([N,I,J]);
         L_ij=numpy.ndarray([I,J]);
 
-        print N,I,J
+
         for i in range(I):
-            print "round",i,":",
             for j in range(J):
                 L_ij[i][j]=roundILPInfoList[i][j].latency;
-                print L_ij[i][j],
-            print ""
-        print "latency"
         for n in range(N):
             for i in range(I):
                 for j in range(J):
                     IB_nij[n][i][j]=roundILPInfoList[i][j].IBRAMList[n];
                     OB_nij[n][i][j]=roundILPInfoList[i][j].OBRAMList[n];
         
-        for i in range(I):
-            for j in range(J):
-                print IB_nij[:,i,j],
-                print OB_nij[:,i,j],   
-            print ""
+        # for i in range(I):
+        #     for j in range(J):
+        #         print IB_nij[:,i,j],
+        #         print OB_nij[:,i,j],   
+        #     print ""
 
         BRAMbudget_ID=BRAMBudget-constBram;
 
-        print "BRAMbudget_ID",BRAMbudget_ID
         rowStepChoice,InIdx,OutIdx,ILPlatency=rowStepILP.rowStepILP( BRAMbudget_ID, IB_nij, OB_nij, L_ij, N, I, J);
-        
+
         # print rowStepChoice;
 
         if( ILPlatency !=None and ILPlatency< depositLatency):
@@ -671,6 +663,7 @@ def exploitK_xPCombinations(
                 depositKer[n]=IPinfoList[n].XI_KER_PROC;
                 depositPix[n]=IPinfoList[n].XI_PIX_PROC;
                 depositWeight[n]=IPinfoList[n].XI_WEIGHTBUFF_DEPTH
+        
        
         if(ILPlatency==None  ):
             print "ker, Pix configuration", KerPixList, "does not have feasible solution";
@@ -679,13 +672,14 @@ def exploitK_xPCombinations(
 
     if( not depositRowStepChoice):
         print "Feasible Solution not found in KP iteration";
-        return None
+        return None,None
     for n in range(len(IPinfoList)):
         IPinfoList[n].XI_KER_PROC=depositKer[n];
         IPinfoList[n].XI_PIX_PROC=depositPix[n];
         IPinfoList[n].XI_WEIGHTBUFF_DEPTH=depositWeight[n];
         IPinfoList[n].XI_INDEPTH=depositIDepthList[n];
         IPinfoList[n].XI_OUTDEPTH=depositODepthList[n];
+        print "[IPINFO]",IPinfoList[n].XI_KER_PROC, IPinfoList[n].XI_PIX_PROC, IPinfoList[n].XI_WEIGHTBUFF_DEPTH, IPinfoList[n].XI_INDEPTH, IPinfoList[n].XI_OUTDEPTH
 
     for i in IPinfoList:
         if(i.IPtype=="Convolution"):
@@ -698,14 +692,13 @@ def exploitK_xPCombinations(
             i.OBRAM=0;
             i.WBRAM=0;
             i.OtherBRAM=0;
-        print "BRAM",i.BRAM
+  
 
     
 
 
     for i,roundInfoList_row in enumerate( roundInfoList):
         rowStepNum=depositRowStepChoice[i];
-        print depositRowStepChoice[i];
         for roundILPInfo in roundInfoList_row:
             roundILPInfo.layerInfo.rowStep=rowStepNum
     return depositRowStepChoice, depositLatency

@@ -16,6 +16,64 @@ from genSwFiles import *
 sys.path.append(dir_path + "/../latency_estimation");
 from infoClass import runInfo_t
 from newModel import exploitK_xPCombinations
+import RawILP
+import TestCase
+import validateILP2
+
+
+def generateILPInput(
+    g,
+    layerIpLatencyTable_ILP,
+    IP_dict,
+    noStreamEdgeSet):
+
+    tempDictGroup={}
+    h=g.copy();
+    schedulingIndex=0;
+    layerArray=[]
+    layerTypeArray=[]
+    latencyPerIPTable=[]
+    nodeListDict={}
+    for nd in list(h.node()):
+        if nd.name == "end" or nd.name == "begin":
+            h.remove_node(nd);
+        else:
+            nodeListDict[nd.name]=nd;
+            tempDictGroup[nd]=schedulingIndex;
+            layerArray.append(nd);
+            layerTypeArray.append(nd.layerInfo.layerType);
+            latencyPerIPTable.append( layerIpLatencyTable_ILP[nd] )
+            schedulingIndex+=1;
+    
+    depsTable=[]
+    for edge in h.edges():
+        s,t=edge
+        depsTable.append( (tempDictGroup[s],tempDictGroup[t]) );
+    noStreamTable=[]
+    for pair in noStreamEdgeSet :
+        sName,tName = pair
+        if sName in nodeListDict and tName in nodeListDict:
+            s=nodeListDict[sName];
+            t=nodeListDict[tName];
+            noStreamTable.append( (tempDictGroup[s],tempDictGroup[t]));
+            depsTable.append( (tempDictGroup[s],tempDictGroup[t]) );
+    for edge in h.edges():
+        s,t=edge
+        print "[", s.name, t.name,"]",
+    print ""
+    
+
+        
+    convNums=len(IP_dict["Convolution"])
+    if "Pooling" in  IP_dict:
+        PoolNums=len(IP_dict["Pooling"])
+    else:
+        PoolNums=0;
+    if "Eltwise" in  IP_dict:
+        EleNums=len(IP_dict["Eltwise"]) 
+    else:
+        EleNums=0;
+    return  depsTable,noStreamTable,layerTypeArray,layerArray,latencyPerIPTable,convNums,PoolNums,EleNums
 
 class IPSel():
     def __init__(self):
@@ -94,6 +152,7 @@ class IPSel():
             latency_solution = dict()
             pipelineTable_solution = dict()
             self.abandonTable = dict()
+            final_graph_list=[]
 
             allIPs = [ip for ip in itertools.combinations(IP_list, numIPs) if (\
             (sum(item.DSP for item in ip) < DSP_budget) and \
@@ -110,23 +169,24 @@ class IPSel():
 
             nums = 0
 
+
             for IPs in allIPs:
                 nums += 1
                 tmp = ""
                 for ip in IPs:
                     tmp += ip.name + " "
-                print str(nums), "iteration", " selected IPs: ", tmp
+                # print str(nums), "iteration", " selected IPs: ", tmp
                 
                 numConvs = 0
                 for ip in IPs:
                     numConvs += (ip.type == "Convolution" or ip.type == "Convolution_g")
                 if numConvs != numConvIPs:
-                    print "The number of convolution IPs is not correct"
+                    # print "The number of convolution IPs is not correct"
                     continue
 
                 #if the selected set of IPs are subset of the abandoned set, continue
                 if self.isInAbandonTable(IPs):
-                    print "IPs in abandonTable"
+                    # print "IPs in abandonTable"
                     continue
 
                 self.updateAbandonTable(IPs)
@@ -157,7 +217,7 @@ class IPSel():
                 acc_lat = 0
 
                 #Generate the IP_table_per_layer and layerIPLatencyTable 
-                layerIPLatencyTable = computeIPLatencyPerLayer(IP_dict, gs.exploreLayerQueue, hw_layers)
+                layerIPLatencyTable,layerIpLatencyTable_ILP = computeIPLatencyPerLayer(IP_dict, gs.exploreLayerQueue, hw_layers)
 
                 valid = True
                 lat_left = lat_achieved
@@ -165,96 +225,210 @@ class IPSel():
                 mapping_solution_tmp = dict()
                 latency_solution_tmp = dict()
                 pipelineTable_tmp = dict()
+                depositPipelineTable_solution = dict()
+  
 
-                for g in gs.graphs:
-                    if g not in gs.exploreLayerQueue:
-                        continue
-                    self.updateLayerQueue(gs.exploreLayerQueue[g], layerQueue)
-                    opt = optimizer(lat_left, rowStep)
-                    #If some of the graph, there is no feasible solution, then the current selection of IPs cannot work
-#                    lat, sol, pipelineTable = opt.run(IP_dict, gs, g, hw_layers, explore_IP_types, numIPs, layerIPLatencyTable, ESP, IP_table)
+                
+                for gIdx,g in enumerate(gs.graphs):
+                    
+                    # print "Generating ILP input"
+                    [depsTable,
+                    noStreamTable,
+                    layerTypeArray,
+                    layerArray,
+                    latencyPerIPTable,
+                    convNums,
+                    PoolNums,
+                    EleNums]=generateILPInput(g,layerIpLatencyTable_ILP,IP_dict,gs.noStreamEdge)
+
+                    # print "Running ILP"
+                    roundMapping,roundDict,lat=RawILP.roundScheduling(
+                        depsTable, 
+                        noStreamTable,
+                        layerTypeArray,
+                        layerArray,
+                        latencyPerIPTable, 
+                        convNums,
+                        PoolNums,
+                        EleNums,
+                        len(layerTypeArray)
+                    );
+                    for i in roundMapping:
+                        print "{",
+                        for j in i:
+                            print j[1].name,
+                        print "}",
+                    print ""
+                    # print "Running BRUTAL FORCE"
+                    # roundMapping2,roundDict2,lat2=TestCase.computeOptimalLatencyDSP(
+                    #     depsTable, 
+                    #     noStreamTable,
+                    #     layerTypeArray,
+                    #     layerArray,
+                    #     latencyPerIPTable, 
+                    #     convNums,
+                    #     PoolNums,
+                    #     EleNums,
+                    #     len(layerTypeArray)
+                    # );
+
+
+                    # if (lat!=lat2):
+                    #     print "Cross verification Failed!!!", lat, lat2
+                    # else:
+                    #     print "Cross verification Success!!!", lat, lat2
+                    # for rounds in roundMapping:
+                    #     print "[",
+                    #     for item in rounds:
+                    #         print item[1].name,
+                    #     print "]",
+                    # print ""
+                    # for rounds in roundMapping2:
+                    #     print "[",
+                    #     for item in rounds:
+                    #         print item[1].name,
+                    #     print "]",
+                    # print ""
+                        
+
+                    pipelineTable2={}
+                    for i in depsTable:
+                        s,t = i;
+                        if( roundDict[s]==roundDict[t] ):
+                            pipelineTable2[(layerArray[s],layerArray[t])]=1;
+                            
+
+              
                     if lat == None:
                         valid = False
-                        break
+                        break                 
                     acc_lat += lat
+
                     #If the current latency is worse than the achieved latency, then the current selection of IPs won't work
                     if acc_lat > lat_achieved:
                         valid = False
                         break
                     lat_left = lat_achieved - acc_lat
-                    mapping_solution_tmp[g] = sol
-                    latency_solution_tmp[g] = lat
-                    pipelineTable_tmp[g] = pipelineTable
+                    mapping_solution_tmp[gIdx] = roundMapping
+                    latency_solution_tmp[gIdx] = lat
+                    pipelineTable_tmp[gIdx] = pipelineTable2
+    
+
                 if not valid:
                     print "cannot find valid latency, continue"
                     continue
                 lat_achieved = acc_lat
-                for g in mapping_solution_tmp:
-                    mapping_solution[g] = mapping_solution_tmp[g]
+                for k,v in mapping_solution_tmp.items():
+                    mapping_solution[k] = v;
 
-                for g in latency_solution_tmp:
-                    latency_solution[g] = latency_solution_tmp[g]
+                for k,v in latency_solution_tmp.items():
+                    latency_solution[k] = v
 
-                for g in pipelineTable_tmp:
-                    pipelineTable_solution[g] = pipelineTable_tmp[g]
+                for k,v in pipelineTable_tmp.items():
+                    pipelineTable_solution[k] = v
+
+
+
 
             if not mapping_solution:
                 continue
-            if lat_achieved < lat_achieved_total:
-                lat_achieved_total = lat_achieved
+
+            for gIdx,g in enumerate(gs.graphs):
+                for rounds in mapping_solution[gIdx]:
+                    for layer in rounds:
+                        print layer[1].name,
+                    print ""
+
+
+            for gIdx,g in enumerate(gs.graphs):
+                graph.retriveOriginalGraph(gs,g) #clean up the graph
+                for rounds in mapping_solution[gIdx]:
+                    for layer in rounds:
+                        n=layer[1];
+                        n.mappedIP=layer[2];
+                for pair in pipelineTable_solution[gIdx]:
+                    s,t=pair;
+                    s.layerInfo.memout=0;
+                    if(t.layerInfo.layerType=="Convolution" or t.layerInfo.layerType=="Pooling"):
+                        s.layerInfo.memIn=0;
+                    elif(t.layerInfo.layerType=="Eltwise"):
+                        s.layerInfo.memInR=0;
+            
+            final_graph_list = []
+
+            for gIdx,g in enumerate(gs.graphs):
+                for r in mapping_solution[gIdx]:
+                    nodes=[]
+                    for layer in r:
+                        nodes.append(layer[1]) 
+                    subg =  g.subgraph(nodes) 
+                
+                    final_graph_list.append(subg)
+                    
+            roundInfoList, IPinfoList = self.genIPinfoLayerInfoList(final_graph_list, pipelineTable_solution_total)
+
+            print "find rowStep"
+            rowStep, lat_rowStepILP = validateILP2.exploitK_xPCombinationsValidation(roundInfoList, IPinfoList, BRAM_budget)
+            # latency2=validateILP2.exploitK_xPCombinationsValidation(roundInfoList, IPinfoList, BRAM_budget)
+            
+            
+            # if (lat_rowStepILP!=latency2):
+            #     print "Cross verification Failed!!!", lat_rowStepILP, latency2
+            # else:
+            #     print "Cross verification Success!!!", lat_rowStepILP, latency2
+            # print "AAAAA latency",lat_rowStepILP,lat_achieved
+
+
+
+            if lat_rowStepILP !=None and lat_rowStepILP < lat_achieved_total:
+                lat_achieved_total = lat_rowStepILP
                 latency_solution_total = latency_solution
                 mapping_solution_total = mapping_solution
+                depositPipelineTable_solution = pipelineTable_solution;
                 for g in pipelineTable_solution:
                     for (s, t) in pipelineTable_solution[g]:
                         pipelineTable_solution_total[(s.name, t.name)] = 1
                 numConvIPs_total = numConvIPs
                 numIPs_total = numIPs
-        #post processing
+                final_graph_list_total=final_graph_list
+
+
         if not mapping_solution_total:
             print "No feasible solutions"
             return
 
-        for g in mapping_solution_total:
-            for l in mapping_solution_total[g].nodes():
-                print "latency per layer", l.name, l.latency
+        # for g in mapping_solution_total:
+        #     for l in mapping_solution_total[g].nodes():
+        #         print "latency per layer", l.name, l.latency
 
         #########################
         #you get the round_solution_total
         #final_graph_list is a list, where each item is subgraph of the original graph, with the layers in the round.
         #Fill in the graph info based on the mapping/scheduling solution
-        final_graph_list = []
-        for g in graphs:
-            graphs.retriveOriginalGraph(g) #clean up the graph
-            for n in sol.nodes():
-                n.mappIP = #Has to be all filled in
-                n.layerInfo =  #Has to be all filled in
 
-        #generate the subgraph list
-        for g in roundSol:
-            for r in roundSol[g]:
-                nodes = foo(r, g) #Find all the nodes in the g, which is in r
-                subg = nx.DiGraph(graphs.subgraph(nodes)) #or g.subgraph(node)
-                final_graph_list.append(subg)
-###############################
+        print "mapping_solution_total"
 
-#        final_graph_list = reorderMapping(mapping_solution_total, hw_layers, pipelineTable_solution_total)
-        roundInfoList, IPinfoList = self.genIPinfoLayerInfoList(final_graph_list, pipelineTable_solution_total)
 
-        rowStep, latency = exploitK_xPCombinations(roundInfoList, IPinfoList, BRAM_budget)
+
         
-        self.codeGen(final_graph_list, latency, hw_layers, numConvIPs_total, numIPs_total, int(batchSize))
+        self.codeGen(final_graph_list_total, lat_achieved_total, hw_layers, numConvIPs_total, numIPs_total, int(batchSize))
         
         return lat_achieved_total
 
     def genIPinfoLayerInfoList(self, final_graph_list, pipelineTable_solution_total):
-
         IPinfoDict = dict() #key: The IP name, value: IP info
         IPinfoList = [] #the list of IP info
         layerIPDict = dict() #Key: layer name, value: mapped IP info
         #Generate IPinfoList
+
+        print "roundLayerInfo"
         for g in final_graph_list:
             for n in g.nodes():
                 IPinfoDict[n.mappedIP.name] = n.mappedIP.IPinfo
+                print n.name, n.mappedIP.name,
+            print ""
+
+
         idx = 0
         for n in IPinfoDict:
             IPinfoDict[n].IPidx = idx
@@ -274,7 +448,8 @@ class IPSel():
             pipelineTargetNodes[s] = t
 
         roundInfoList = []
-        print "layerIPDict", layerIPDict
+
+     
         for g in final_graph_list:
             roundInfoList_row = []
             for n in g.nodes():
