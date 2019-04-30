@@ -4,9 +4,13 @@ from gurobipy import *
 def roundScheduling(
     depencyPairSet, # a list of tuple [i,j] specifying depedency relationship, with 
     noStreamEle,
+    loneLayerDeps,
+    loneLayer,
+    loneLayerArray,
+    loneLayerlatencyList,
     layerType,
     layerArray,
-    layerPerIPlatencyList, 
+    layerPerIPlatencyList,
     ConvIPnum,
     PoolIPnum,
     EleIPnum,
@@ -16,9 +20,12 @@ def roundScheduling(
     m=Model("roundScheduling");
     m.setParam( 'OutputFlag', False )
     X_irn=[]
-    layerNum= len(layerPerIPlatencyList)   ;
+    layerNum= len(layerPerIPlatencyList);
+    loneLayerNum=len(loneLayer);
     M_r=[]
-#Add variable X_irn
+    MI_ir=[]
+    Y_ir=[]
+    #Add variable X_irn
     for i in range( layerNum):
         X_rn=[]
         for r in range(MaxRound):
@@ -30,11 +37,32 @@ def roundScheduling(
         X_irn.append(X_rn);
     m.update();
 
-    for r in range( MaxRound):
-        x=m.addVar(vtype=GRB.CONTINUOUS,name="M_"+str(r));
-        M_r.append(x);
 
-# all the layer can only be scheduled once with I ip
+    for i in range( loneLayerNum):
+        Y_r=[]
+        for r in range(MaxRound):
+            x=m.addVar(vtype=GRB.BINARY,name="Y_"+str(i)+"_"+str(r));
+            Y_r.append(x);
+        Y_ir.append(Y_r);
+    m.update()
+
+
+
+    for i in range(loneLayerNum):
+        MI_r=[]
+        for r in range(MaxRound):
+            x=m.addVar(vtype=GRB.INTEGER,name="MI_"+str(i)+"_"+str(r));
+            MI_r.append(x);
+        MI_ir.append()
+    m.update();
+
+    for r in range( MaxRound):
+        x=m.addVar(vtype=GRB.INTEGER,name="M_"+str(r));
+        M_r.append(x);
+    m.update();
+
+
+    # all the layer can only be scheduled once with I ip
     for layersChoice in X_irn:
         expr=LinExpr();
         for roundsChoice in layersChoice:
@@ -43,7 +71,20 @@ def roundScheduling(
         m.addConstr(expr == 1);  
     m.update();
 
+
+
 #layer dependency constraint
+    for pair in loneLayerDeps:
+        i,j = pair;
+        exprJ=LinExpr();
+        for r in range(MaxRound):
+            for n in range( len(X_irn[j][r]) ):
+                exprJ.addTerms(r,X_irn[j][r][n]);
+        for r in range(MaxRound):
+            m.addConstr(r*Y_ir[i][r] < exprJ);
+    m.update();
+
+
     for pair in depencyPairSet:
         i,j = pair;
         exprI=LinExpr();
@@ -100,6 +141,8 @@ def roundScheduling(
             m.addConstr(exprI + exprJ <=1);
     m.update();
 
+
+
     #Aconstraint of latency of each round
     for r in range(MaxRound):
         for i in range(layerNum):
@@ -109,6 +152,14 @@ def roundScheduling(
             m.addConstr(expr <= M_r[r]);
     expr=LinExpr();
     m.update();
+    
+
+    BC=100000000
+    for i in range(loneLayerNum):
+        expr=LinExpr();
+        for r in range(MaxRound):
+            expr.addTerms(1, MI_ir[i]);
+        m.addConstr( expr <=loneLayerLatencyList[i][r];) 
 
 
     for r in range(MaxRound):
