@@ -26,7 +26,7 @@ class graph:
         self.removeEdgeGroup= dict()
         self.shouldAddBackEdge = []
         self.noStreamEdge=set()
-
+        self.loneLayer=set()
         self.construct(fileName, explore_IP_types, hw_layers)
 
 
@@ -107,7 +107,15 @@ class graph:
                     l = l.replace(" ", "")[0:-1]
                     source,target= l.split(",")
                     self.noStreamEdge.add( (source,target) )
+            if l.find("--LoneLayer--") >= 0:      
+                for l in f:
+                    if l == "\n":
+                        break
+                    l = l.replace(" ", "")[0:-1]
+                    loneLayerName= l.split(",")
+                    self.loneLayer.add( loneLayerName )
         print self.noStreamEdge
+        print self.loneLayer
         f.close()
         
         #build Edges

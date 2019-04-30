@@ -5,7 +5,6 @@ def roundScheduling(
     depencyPairSet, # a list of tuple [i,j] specifying depedency relationship, with 
     noStreamEle,
     loneLayerDeps,
-    loneLayer,
     loneLayerArray,
     loneLayerlatencyList,
     layerType,
@@ -21,7 +20,7 @@ def roundScheduling(
     m.setParam( 'OutputFlag', False )
     X_irn=[]
     layerNum= len(layerPerIPlatencyList);
-    loneLayerNum=len(loneLayer);
+    loneLayerNum=len(loneLayerArray);
     M_r=[]
     MI_ir=[]
     Y_ir=[]

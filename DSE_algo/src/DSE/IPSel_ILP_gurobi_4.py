@@ -25,30 +25,51 @@ def generateILPInput(
     g,
     layerIpLatencyTable_ILP,
     IP_dict,
-    noStreamEdgeSet):
+    noStreamEdgeSet,
+    loneLayerSet):
 
     tempDictGroup={}
     h=g.copy();
     schedulingIndex=0;
+    loneLayerArray=[]
+
+    loneLayerLatency=[]
+
     layerArray=[]
     layerTypeArray=[]
     latencyPerIPTable=[]
     nodeListDict={}
+    schedulingLoneIndex=0;
+
     for nd in list(h.node()):
         if nd.name == "end" or nd.name == "begin":
             h.remove_node(nd);
+        elif  nd.name in g.loneLayers:
+            nodeListDict[nd.name]=nd;
+            loneLayerArray.append(nd);
+            tempDictGroup[nd]=schedulingLoneIndex;
+            loneLayerLatency.append(  layerIpLatencyTable_ILP[nd] )
+            schedulingLoneIndex+=1;
         else:
             nodeListDict[nd.name]=nd;
             tempDictGroup[nd]=schedulingIndex;
             layerArray.append(nd);
             layerTypeArray.append(nd.layerInfo.layerType);
-            latencyPerIPTable.append( layerIpLatencyTable_ILP[nd] )
+            latencyPerIPTable.append(  layerIpLatencyTable_ILP[nd] )
             schedulingIndex+=1;
-    
+
+
     depsTable=[]
+    loneLayerDepsTable=[]
     for edge in h.edges():
         s,t=edge
-        depsTable.append( (tempDictGroup[s],tempDictGroup[t]) );
+        if s.name in loneLayerSet:
+            loneLayerDepsTable.append( (tempDictGroup[s],tempDictGroup[t]) );
+        else:
+            depsTable.append( (tempDictGroup[s],tempDictGroup[t]) );
+    
+
+
     noStreamTable=[]
     for pair in noStreamEdgeSet :
         sName,tName = pair
@@ -73,7 +94,7 @@ def generateILPInput(
         EleNums=len(IP_dict["Eltwise"]) 
     else:
         EleNums=0;
-    return  depsTable,noStreamTable,layerTypeArray,layerArray,latencyPerIPTable,convNums,PoolNums,EleNums
+    return  depsTable,loneLayerDepsTable, loneLayerArray,loneLayerLatency, noStreamTable,layerTypeArray,layerArray,latencyPerIPTable,convNums,PoolNums,EleNums
 
 class IPSel():
     def __init__(self):
@@ -233,18 +254,24 @@ class IPSel():
                     
                     # print "Generating ILP input"
                     [depsTable,
+                    loneLayerDepsTable, 
+                    loneLayerArray,
+                    loneLayerLatency, 
                     noStreamTable,
                     layerTypeArray,
                     layerArray,
                     latencyPerIPTable,
                     convNums,
                     PoolNums,
-                    EleNums]=generateILPInput(g,layerIpLatencyTable_ILP,IP_dict,gs.noStreamEdge)
+                    EleNums]=generateILPInput(g,layerIpLatencyTable_ILP,IP_dict,gs.noStreamEdge,gs.loneLayer)
 
                     # print "Running ILP"
                     roundMapping,roundDict,lat=RawILP.roundScheduling(
                         depsTable, 
                         noStreamTable,
+                        loneLayerDepsTable,
+                        loneLayerArray,
+                        loneLayerLatency, 
                         layerTypeArray,
                         layerArray,
                         latencyPerIPTable, 
