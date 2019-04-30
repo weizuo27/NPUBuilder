@@ -112,7 +112,7 @@ class graph:
                     if l == "\n":
                         break
                     l = l.replace(" ", "")[0:-1]
-                    loneLayerName= l.split(",")
+                    loneLayerName= l
                     self.loneLayer.add( loneLayerName )
         print self.noStreamEdge
         print self.loneLayer

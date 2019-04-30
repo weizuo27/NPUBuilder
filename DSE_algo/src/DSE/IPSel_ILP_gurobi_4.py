@@ -44,7 +44,7 @@ def generateILPInput(
     for nd in list(h.node()):
         if nd.name == "end" or nd.name == "begin":
             h.remove_node(nd);
-        elif  nd.name in g.loneLayers:
+        elif  nd.name in loneLayerSet:
             nodeListDict[nd.name]=nd;
             loneLayerArray.append(nd);
             tempDictGroup[nd]=schedulingLoneIndex;
@@ -278,8 +278,8 @@ class IPSel():
                         convNums,
                         PoolNums,
                         EleNums,
-                        len(layerTypeArray)
-                    );
+                        len(layerTypeArray));
+                    
                     for i in roundMapping:
                         print "{",
                         for j in i:

@@ -6,7 +6,7 @@ def roundScheduling(
     noStreamEle,
     loneLayerDeps,
     loneLayerArray,
-    loneLayerlatencyList,
+    loneLayerLatencyList,
     layerType,
     layerArray,
     layerPerIPlatencyList,
@@ -52,7 +52,7 @@ def roundScheduling(
         for r in range(MaxRound):
             x=m.addVar(vtype=GRB.INTEGER,name="MI_"+str(i)+"_"+str(r));
             MI_r.append(x);
-        MI_ir.append()
+        MI_ir.append(MI_r)
     m.update();
 
     for r in range( MaxRound):
@@ -80,7 +80,9 @@ def roundScheduling(
             for n in range( len(X_irn[j][r]) ):
                 exprJ.addTerms(r,X_irn[j][r][n]);
         for r in range(MaxRound):
-            m.addConstr(r*Y_ir[i][r] < exprJ);
+            exprI=LinExpr();
+            exprI.addTerms(r,Y_ir[i][r])
+            m.addConstr(exprI+1 <= exprJ);
     m.update();
 
 
@@ -152,13 +154,21 @@ def roundScheduling(
     expr=LinExpr();
     m.update();
     
+  
 
     BC=100000000
     for i in range(loneLayerNum):
+        for r in range(MaxRound):
+            m.addConstr(-BC*Y_ir[i][r] <= MI_ir[i][r]);
+            m.addConstr(MI_ir[i][r]  <=  BC*Y_ir[i][r]);       
+            m.addConstr(MI_ir[i][r]  <=  BC*(1-Y_ir[i][r])+M_r[r]); 
+            m.addConstr(MI_ir[i][r]  >=  -BC*(1-Y_ir[i][r])+M_r[r]); 
+
+    for i in range(loneLayerNum):
         expr=LinExpr();
         for r in range(MaxRound):
-            expr.addTerms(1, MI_ir[i]);
-        m.addConstr( expr <=loneLayerLatencyList[i][r];) 
+            expr.addTerms(1, MI_ir[i][r]);
+        m.addConstr( expr >= loneLayerLatencyList[i][0][1]) 
 
 
     for r in range(MaxRound):
@@ -181,6 +191,19 @@ def roundScheduling(
                     roundDict[i]=roundIdx
         if layerMapping:
             roundMapping.append(layerMapping)
+            
+            print "indepedent latency"
+            for MI_r in MI_ir:
+                print "indepedent latency",
+                for MI in MI_r:
+                    print MI.X,
+                print ""
+            
+            print "[",
+            for i in layerMapping:
+                print i[2].name,
+            print "]",M_r[r].X
+
             roundIdx+=1;
             
     
