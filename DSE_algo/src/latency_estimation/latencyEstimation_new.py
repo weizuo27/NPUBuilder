@@ -564,7 +564,7 @@ def rawLatency( layerInfo, K_x_P ):
     conv_out_height  = layerInfo.out_height   
     conv_out_width   = layerInfo.out_width    
     conv_out_planes  = layerInfo.out_planes  
-    return conv_filter_height*conv_filter_width*conv_inp_planes*conv_out_planes*conv_out_height*conv_out_width/K_x_P/4*1.5;
+    return conv_filter_height*conv_filter_width*conv_inp_planes*conv_out_planes*conv_out_height*conv_out_width/K_x_P/4*1;
 
 def computeLatencyDSP(layerInfo, IPInfo):
     #the class definition is specified in Structure.py
@@ -574,7 +574,7 @@ def computeLatencyDSP(layerInfo, IPInfo):
     if(IPInfo.IPtype == "Convolution" or IPInfo.IPtype == "Convolution_g"):
         return rawLatency(layerInfo, IPInfo.K_x_P)
     elif(IPInfo.IPtype == "Pooling"): 
-        return layerInfo.out_height*layerInfo.out_width*layerInfo.filter_height*layerInfo.filter_width*layerInfo.out_planes/16
+        return layerInfo.out_height*layerInfo.out_width*layerInfo.filter_height*layerInfo.filter_width*layerInfo.out_planes/16*0.42
 
     elif(IPInfo.IPtype == "Eltwise"):
 	    return layerInfo.out_height*layerInfo.out_width*layerInfo.out_planes/16

@@ -182,6 +182,12 @@ def roundScheduling(
     roundMapping=[]
     roundDict={}
     roundIdx=0;
+    
+    print "indepedent latency", 
+    if loneLayerLatencyList:
+        print loneLayerLatencyList[0][0][1]
+    else:
+        print "[]"
     for r in range(MaxRound):
         layerMapping=[]
         for i in range(layerNum):
@@ -192,16 +198,11 @@ def roundScheduling(
         if layerMapping:
             roundMapping.append(layerMapping)
             
-            print "indepedent latency"
-            for MI_r in MI_ir:
-                print "indepedent latency",
-                for MI in MI_r:
-                    print MI.X,
-                print ""
+
             
             print "[",
             for i in layerMapping:
-                print i[2].name,
+                print i[1].name,
             print "]",M_r[r].X
 
             roundIdx+=1;
