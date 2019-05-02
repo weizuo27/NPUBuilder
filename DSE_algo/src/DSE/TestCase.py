@@ -199,6 +199,7 @@ def ipLatency(
     layerPerIPlatencyList,
     layerType
 ):
+
     for layerInRound in layerPartitionScheduling:
         typeDict={}
         for i in layerInRound:
@@ -259,6 +260,7 @@ def calibrateLatency(
         if loneLatencyDepslayer in rounds:
             LatencyTotal=max(LatencyTotal,loneLatency);
         LatencyTotal+=latencyTable[idx];
+    return LatencyTotal
 
 
 
@@ -298,14 +300,16 @@ def computeOptimalLatencyDSP(
         latencyPartition=float("inf")
         partionSchedulingListRecord=[]
 
+        
         for partionSchedulingList in partionSchedulingList2:
             latencyTable,latencyPartitionOrder,ipMapping=ipLatency(ipNumDict,partionSchedulingList,layerPerIPlatencyList,layerType);
 
-            if latencyTable==None: break
-
+            if latencyTable==None: 
+                break;
+ 
+ 
             latencyPartitionOrder=calibrateLatency(loneLatency,loneLatencyDepslayer,partionSchedulingList,latencyTable);
-
-            if(latencyPartition > latencyPartitionOrder ):
+            if ( latencyPartition > latencyPartitionOrder ):
                 latencyPartition=latencyPartitionOrder;
                 partionSchedulingListRecord=partionSchedulingList;
 

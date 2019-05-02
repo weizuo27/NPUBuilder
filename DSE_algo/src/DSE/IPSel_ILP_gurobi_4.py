@@ -280,7 +280,6 @@ class IPSel():
                         EleNums,
                         len(layerTypeArray));
 
-                    print loneLayerDepsTable
                     if loneLayerLatency:
                         loneLayerLatency=loneLayerLatency[0][0][1];
                         loneLayerLatencyDeps=loneLayerDepsTable[0][1];
@@ -304,23 +303,24 @@ class IPSel():
                     );
 
 
-                    # if (lat!=lat2):
-                    #     print "Cross verification Failed!!!", lat, lat2
-                    # else:
-                    #     print "Cross verification Success!!!", lat, lat2
-                    # for rounds in roundMapping:
-                    #     print "[",
-                    #     for item in rounds:
-                    #         print item[1].name,
-                    #     print "]",
-                    # print ""
-                    # for rounds in roundMapping2:
-                    #     print "[",
-                    #     for item in rounds:
-                    #         print item[1].name,
-                    #     print "]",
-                    # print ""
+                    if (lat!=lat2):
+                        print "Cross verification Failed!!!", lat, lat2
+                    else:
+                        print "Cross verification Success!!!", lat, lat2
+                    for rounds in roundMapping:
+                        print "[",
+                        for item in rounds:
+                            print item[1].name,
+                        print "]",
+                    print ""
+                    for rounds in roundMapping2:
+                        print "[",
+                        for item in rounds:
+                            print item[1].name,
+                        print "]",
+                    print ""
                         
+                    print "comparison end"
 
                     pipelineTable2={}
                     for i in depsTable:
