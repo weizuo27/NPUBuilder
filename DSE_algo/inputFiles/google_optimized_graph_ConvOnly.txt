@@ -18,6 +18,36 @@ inception_4e/1x1,inception_4e/3x3_reduce,inception_4e/5x5_reduce,inception_4e/3x
 inception_5a/1x1,inception_5a/3x3_reduce,inception_5a/5x5_reduce,inception_5a/3x3,inception_5a/5x5,inception_5a/pool_proj
 inception_5b/1x1,inception_5b/3x3_reduce,inception_5b/5x5_reduce,inception_5b/3x3,inception_5b/5x5,inception_5b/pool_proj
 
+
+# --------------------FakeDeps------------------------ #
+inception_3a/3x3,inception_3a/pool_proj
+inception_3a/5x5,inception_3a/pool_proj
+inception_3a/1x1,inception_3a/pool_proj
+inception_3b/3x3,inception_3b/pool_proj
+inception_3b/5x5,inception_3b/pool_proj
+inception_3b/1x1,inception_3b/pool_proj
+inception_4a/3x3,inception_4a/pool_proj
+inception_4a/5x5,inception_4a/pool_proj
+inception_4a/1x1,inception_4a/pool_proj
+inception_4b/3x3,inception_4b/pool_proj
+inception_4b/5x5,inception_4b/pool_proj
+inception_4b/1x1,inception_4b/pool_proj
+inception_4c/3x3,inception_4c/pool_proj
+inception_4c/5x5,inception_4c/pool_proj
+inception_4c/1x1,inception_4c/pool_proj
+inception_4d/3x3,inception_4d/pool_proj
+inception_4d/5x5,inception_4d/pool_proj
+inception_4d/1x1,inception_4d/pool_proj
+inception_4e/3x3,inception_4e/pool_proj
+inception_4e/5x5,inception_4e/pool_proj
+inception_4e/1x1,inception_4e/pool_proj
+inception_5a/3x3,inception_5a/pool_proj
+inception_5a/5x5,inception_5a/pool_proj
+inception_5a/1x1,inception_5a/pool_proj
+inception_5b/3x3,inception_5b/pool_proj
+inception_5b/5x5,inception_5b/pool_proj
+inception_5b/1x1,inception_5b/pool_proj
+
 # -------------------- Layers ------------------------ #
 [data:0] --> { conv1/7x7_s2 - Convolution: F = 64x3x7x7; S = 2; P = 3; D = 1; Group = 1; ReLU = 1; HasBias = 1; Weights = ; Bias = ; WDim = 64x3x7x7; BDim = 64;  } --> [conv1/7x7_s2:0] 
 Xilinx

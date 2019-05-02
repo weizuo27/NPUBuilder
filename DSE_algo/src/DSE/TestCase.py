@@ -9,7 +9,6 @@ def partition(collection):
     if len(collection) == 1:
         yield [ collection ]
         return
-
     first = collection[0]
     for smaller in partition(collection[1:]):
         # insert `first` in each of the subpartition's subsets
@@ -24,6 +23,7 @@ def partition(collection):
 def takeSecond(elem):
     return elem[1]
 
+
 def edgeToDepsTable(
     EdgeTable
 ):
@@ -37,10 +37,81 @@ def edgeToDepsTable(
     return DepsTable
 
 
+def partitionOrderExplore(
+    partitionOrderRecorder, # a list of ordered partition
+    partition, # rounds scheduled
+    partitionLeft, # rounds scheduled
+    DepsTable, 
+    NoStreamTable,
+    LayerDone
+    ):
+
+    if not partitionLeft:
+        partitionOrderRecorder.append(partition);
+        return True;
+
+    scheduled=0;
+
+    for rounds in partitionLeft:
+        depsFufilled=True;
+        for i in rounds:
+            layerInCurrentRound=set(rounds);
+            roundFufill=True;
+            for layer in rounds:
+                if layer not in DepsTable:
+                    continue
+                for depsLayer in  DepsTable[layer]:
+                    if( LayerDone[depsLayer]==True):
+                        continue
+                    if depsLayer not in layerInCurrentRound or (layer in NoStreamTable and  depsLayer in NoStreamTable[layer] ):
+                        roundFufill=False;
+                        break;
+                if roundFufill==False:
+                    break 
+            if roundFufill==False:
+                depsFufilled=False;
+                break;
+        if depsFufilled:
+            LayerDoneNext=LayerDone[:];
+            for i in rounds:
+                LayerDoneNext[i]=True;
+            PartitionNext=partition[:]
+            PartitionLeftNext=partitionLeft[:]
+            PartitionNext.append(rounds);
+            PartitionLeftNext.remove(rounds)
+            
+            partitionOrderExplore(
+            partitionOrderRecorder, # a list of ordered partition
+            PartitionNext, # rounds scheduled
+            PartitionLeftNext, # rounds scheduled
+            DepsTable, 
+            NoStreamTable,
+            LayerDoneNext
+            );
+        
+        
+
+    
 
 
+def checkPartitionLegal2(
+    partition,
+    DepsTable, # a dictionary with DepsTable[i] is a set of layerId that i depends on
+    NostreamTable, # a dictionary with NostreamTable[i] is a set of layerId that i cant be scheduled in same round with
+    layerNum,
+):
+    partitionOrderRecorder=[]
+    partitionScheduled=[]
+    layerDone=[False]*layerNum;
 
-
+    partitionOrderExplore(partitionOrderRecorder, # a list of ordered partition
+    partitionScheduled, # rounds scheduled
+    partition,
+    DepsTable, 
+    NostreamTable,
+    layerDone
+    )
+    return partitionOrderRecorder
 
 
 def checkPartitionLegal(
@@ -49,13 +120,11 @@ def checkPartitionLegal(
     NostreamTable, # a dictionary with NostreamTable[i] is a set of layerId that i cant be scheduled in same round with
     layerNum,
 ):
+
     pCopy=dict( zip(range(len(partition)),partition ));
-    
     partitionLegal=True;
     layerDone=[False]*layerNum;
     partionSchedulingList=[]
-    layerDone=[False]*layerNum;
-
     while(1):
         if( not pCopy ): break;
         roundScheduled=False
@@ -85,14 +154,13 @@ def checkPartitionLegal(
 
 
 
+
 def ipMapping(
     layerInRound,
     layerType,
     layerPerIPlatencyList,
-
 ):
     typeDict={}
-    
     for i in layerInRound:
         if layerType[i] in typeDict:
             typeDict[layerType[i]].append(i);
@@ -131,9 +199,7 @@ def ipLatency(
     layerPerIPlatencyList,
     layerType
 ):
-
     for layerInRound in layerPartitionScheduling:
-
         typeDict={}
         for i in layerInRound:
             if layerType[i] in typeDict:
@@ -142,10 +208,12 @@ def ipLatency(
                 typeDict[layerType[i]]=[i];
         for k,layerIdList in typeDict.items():
             if len(layerIdList)>ipNumDict[k]:
-                return None, None  
+                return None, None , None 
     
+
     ipMappingDict={}
     latencyTotal=0;
+    latencyTable=[];
     for layerInRound in layerPartitionScheduling:
         typeDict={}
         for i in layerInRound:
@@ -174,10 +242,23 @@ def ipLatency(
                 if layerId in ipMappingDict: print "Warning layerId", layerId, "already in ipMapping"
                 ipMappingDict[layerId]=depositipIdxPermute[permuteIdx];
         latencyTotal=latencyTotal+latencyRound;
-    return latencyTotal,ipMappingDict
+        latencyTable.append(latencyRound);
+    return latencyTable,latencyTotal,ipMappingDict
 
             
 
+
+def calibrateLatency(
+    loneLatency,
+    loneLatencyDepslayer,
+    partionSchedulingList,
+    latencyTable
+):
+    LatencyTotal=0;
+    for idx,rounds in enumerate(partionSchedulingList):
+        if loneLatencyDepslayer in rounds:
+            LatencyTotal=max(LatencyTotal,loneLatency);
+        LatencyTotal+=latencyTable[idx];
 
 
 
@@ -187,6 +268,8 @@ def ipLatency(
 def computeOptimalLatencyDSP(
     depencyPairSet, 
     noStreamEle,
+    loneLatency,
+    loneLatencyDepslayer,
     layerType,
     layerArray,
     layerPerIPlatencyList, 
@@ -205,13 +288,32 @@ def computeOptimalLatencyDSP(
     depositScheduling=None
     for n, p in enumerate(partition(LayerIds), 1):
         partionSchedulingList=checkPartitionLegal(p,DepsTable,NostreamTable,layerNum);
-        if(not partionSchedulingList ):continue;
-        latencyPartition,ipMapping=ipLatency(ipNumDict,partionSchedulingList,layerPerIPlatencyList,layerType);
+        partionSchedulingList2=checkPartitionLegal2(p,DepsTable,NostreamTable,layerNum);
 
+
+        if(  (not partionSchedulingList) !=  (not partionSchedulingList2) ): print "false detected"
+
+        if(not partionSchedulingList ):continue;
+
+        latencyPartition=float("inf")
+        partionSchedulingListRecord=[]
+
+        for partionSchedulingList in partionSchedulingList2:
+            latencyTable,latencyPartitionOrder,ipMapping=ipLatency(ipNumDict,partionSchedulingList,layerPerIPlatencyList,layerType);
+
+            if latencyTable==None: break
+
+            latencyPartitionOrder=calibrateLatency(loneLatency,loneLatencyDepslayer,partionSchedulingList,latencyTable);
+
+            if(latencyPartition > latencyPartitionOrder ):
+                latencyPartition=latencyPartitionOrder;
+                partionSchedulingListRecord=partionSchedulingList;
+
+        
         if latencyPartition and  latencyPartition<depositLatency:
             depositLatency=latencyPartition;
             depositIPmapping=ipMapping
-            depositScheduling=partionSchedulingList;
+            depositScheduling=partionSchedulingListRecord;
 
     if depositIPmapping is None:
         print " no feasible scheduling found in Corssverifcation"

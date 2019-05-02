@@ -279,25 +279,29 @@ class IPSel():
                         PoolNums,
                         EleNums,
                         len(layerTypeArray));
-                    
-                    for i in roundMapping:
-                        print "{",
-                        for j in i:
-                            print j[1].name,
-                        print "}",
-                    print ""
-                    # print "Running BRUTAL FORCE"
-                    # roundMapping2,roundDict2,lat2=TestCase.computeOptimalLatencyDSP(
-                    #     depsTable, 
-                    #     noStreamTable,
-                    #     layerTypeArray,
-                    #     layerArray,
-                    #     latencyPerIPTable, 
-                    #     convNums,
-                    #     PoolNums,
-                    #     EleNums,
-                    #     len(layerTypeArray)
-                    # );
+
+                    print loneLayerDepsTable
+                    if loneLayerLatency:
+                        loneLayerLatency=loneLayerLatency[0][0][1];
+                        loneLayerLatencyDeps=loneLayerDepsTable[0][1];
+                    else:
+                        loneLayerLatency=0;
+                        loneLayerLatencyDeps=0;
+                        
+                    print "Running BRUTAL FORCE"
+                    roundMapping2,roundDict2,lat2=TestCase.computeOptimalLatencyDSP(
+                        depsTable, 
+                        noStreamTable,
+                        loneLayerLatency,
+                        loneLayerLatencyDeps,
+                        layerTypeArray,
+                        layerArray,
+                        latencyPerIPTable, 
+                        convNums,
+                        PoolNums,
+                        EleNums,
+                        len(layerTypeArray)
+                    );
 
 
                     # if (lat!=lat2):
