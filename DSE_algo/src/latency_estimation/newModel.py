@@ -4,9 +4,121 @@ from gurobipy import *
 import rowStepILP
 import numpy
 
-def AlignSize(x, y):
-    ret = x if (x%y == 0) else ((x/y + 1)*y)
-    return ret
+def AlignSize(x, y): return -(-x//y)*y
+def CeilDiv(x,y): return  -(-x//y)
+
+
+
+#**********factor function ********/
+
+def straddleCount( planes, filterSize, FEEDING_BUFF_DEPTH,groupNum):
+    #* straddle = argmin K, s.t  alignedPlanes/2^K/4*fsize^2 <=FEEDING_BUFF_DEPTH/2-1
+    
+
+    numInpPlanes=AlignSize(planes,4);
+    if planes < 4 :
+        split=1
+    else:
+        split=groupNum;
+
+    if planes >= 4 and groupNum>1:
+        computeInPlane=numInpPlanes/2
+    else:
+        computeInPlane=numInpPlanes
+
+    planeCapacity= (FEEDING_BUFF_DEPTH/2-1)/(filterSize*filterSize);
+    straddleIndex=int.bit_length(  CeilDiv(computeInPlane,planeCapacity)  )-1;
+
+    straddleVal=1<<straddleIndex;
+    computePlanes=numInpPlanes/(straddleVal*split);
+    return straddleVal,computePlanes
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+#************ Latency Functions ******************************
+def memBurstReadLatency( burstNumber, burstLength, burstOverhead):
+    """
+    computes the function latency and bandwidth latency of a sequence of burstReads
+    return: totalCycle: the total cycle number such sequence of burst read takes
+            dataCycle: the total cycle number for data transfer such sequence of burst read takes ( it will be in conflict with other read)
+    input burstNumber: the number of burst read in the burst sequence
+    input burstLength: the length of each burst read
+    input burstOverhead: the cycle number between the time last burst read data is receive till the start of issurance of next burst read
+    """
+    burstBreaks=CeilDiv(burstLength,16);
+    acknowledgeCycle=2;
+    responseCycle=26;
+    dataCycle=(burstLength+burstBreaks*acknowledgeCycle)*burstNumber;
+    totalCycle=(burstOverhead+dataCycle+responseCycle)*burstNumber;
+    return totalCycle,dataCycle
+
+
+def readInputLatencyNormal(width,rowStep,stride,plane):
+    """
+    computes the function latency and bandwidth latency of a sequence of one input read
+    return: totalCycle: the total cycle number such sequence of burst read takes
+            dataCycle: the total cycle number for data transfer such sequence of burst read takes ( it will be in conflict with other read)
+    """
+    burstNumber=CeilDiv(plane,16);
+    burstLength=width*rowStep*stride;
+    burstOverhead=16; #* this is from model sample
+    return memBurstReadLatency( burstNumber, burstLength, burstOverhead);
+
+def readInputLatencyStart(filterHeight,padnum,width,rowStep,stride,plane):
+    """
+    computes the function latency and bandwidth latency of a sequence of first input read
+    return: totalCycle: the total cycle number such sequence of burst read takes
+            dataCycle: the total cycle number for data transfer such sequence of burst read takes ( it will be in conflict with other read)
+    """
+    burstNumber=CeilDiv(plane,16);
+    burstLength=(filterHeight+rowStep-1-padnum)*stride;
+    burstOverhead=16;
+    return memBurstReadLatency( burstNumber, burstLength, burstOverhead);
+
+
+def loadWeightLatency(NKPF, computeNum, onetime):
+    """
+    computes the function latency and bandwidth latency of a sequence of one weight load
+    return: totalCycle: the total cycle number such sequence of burst read takes
+            dataCycle: the total cycle number for data transfer such sequence of burst read takes ( it will be in conflict with other read)
+    """
+    if onetime:
+        return 3, 0;
+    burstNumber= 1;
+    burstLength=NKPF*computeNum; 
+    burstOverhead=10 #* this is from model sample
+    return memBurstReadLatency( burstNumber, burstLength, burstOverhead);
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
 logFile=None
 
 FEEDING_BUFF_DEPTH=1024
@@ -36,9 +148,8 @@ def computeWeightDepth(layerInfo, KER, PIX):
     computePlanes=alignedInputPlane/(straddle*groupNum)
     computePlanesAligned=AlignSize(computePlanes,4)
 
-    #find latProcResult and latLoadFeedingBuff latnecy
     latOsggBuff=PIX+8
-    latCompute16Ker=(fh * fw * (computePlanesAligned/4)+1)+PIX/2+20;
+    latCompute16Ker=(fh*fw*(computePlanesAligned/4)+1)+PIX/2+20;
 
     tmp = (PIX/16+1) if (PIX%16) else  (PIX/16)
 
@@ -60,9 +171,12 @@ def computeWeightDepth(layerInfo, KER, PIX):
 
 
 
+
+
 def computeLatencyConv (
     layerInfo,
-    IPinfo
+    IPinfo,
+    latencyInfo,
 ):
     """
     Function: computeLatency
@@ -85,7 +199,7 @@ def computeLatencyConv (
     @return latency cycle number
     """
     
-    conv_inp_height  = layerInfo.inp_height   
+    conv_inp_height  = layerInfo.inp_height  
     conv_inp_width   = layerInfo.inp_width    
     conv_out_height  = layerInfo.out_height   
     conv_out_width   = layerInfo.out_width    
@@ -98,42 +212,46 @@ def computeLatencyConv (
     groupNum= layerInfo.groupFlag+1      
     rowStep = layerInfo.rowStep
     layerID = layerInfo.layerID
-
     memIn= layerInfo.memIn
     memOut= layerInfo.memOut
-    
-    # oneTime= layerInfo.oneTime
-
     XI_KER_PROC=IPinfo.XI_KER_PROC
     XI_PIX_PROC=IPinfo.XI_PIX_PROC
     XI_WEIGHTBUFF_DEPTH=IPinfo.XI_WEIGHTBUFF_DEPTH
     int6bit=IPinfo.int6bit
 
 
+    #* intermediate variables
 
-    alignedInputPlane=AlignSize(conv_inp_planes,4);
     
-    k=int.bit_length( -(-alignedInputPlane*fh*fw/4)//((FEEDING_BUFF_DEPTH/2-1)) );
-    if(k<0):k=0;
-    straddle=1<<k;
-    computePlanes=alignedInputPlane/(straddle*groupNum)
-    computePlanesAligned=AlignSize(computePlanes,4)
-    computeNum = fh * fw * computePlanesAligned /4
-    
+    straddle,computePlanes= straddleCount(conv_inp_planes,fh,1024,groupNum);
+    computeNum = computePlanes*fh*fw
+
     latOsggBuff=XI_PIX_PROC+8
     latCompute16Ker=computeNum+XI_PIX_PROC/2+20;
-    tmp= -( (-XI_PIX_PROC)//16)
+    
+    tmp=CeilDiv(XI_PIX_PROC,16)
+
     if(layerID!=0):
-        latLoadFeedingBuff=computePlanesAligned/64*( fw*tmp*fh*16+13)+20;
+        latLoadFeedingBuff=computePlanes/64*( fw*tmp*fh*16+13)+20;
     else:
-        latLoadFeedingBuff=(computePlanesAligned/4*fh*( fw+conv_stride*(XI_PIX_PROC/2-1) )+6)*2;
+        latLoadFeedingBuff=(computePlanes/4*fh*( fw+conv_stride*(XI_PIX_PROC/2-1) )+6)*2;
 
 
     alignedOutputPlane = AlignSize(conv_out_planes,16)/groupNum
-    NKPF=min( alignedOutputPlane/XI_KER_PROC, (XI_WEIGHTBUFF_DEPTH -1)/ computeNum )
+
+
+    # NKPF=min( alignedOutputPlane/XI_KER_PROC, (XI_WEIGHTBUFF_DEPTH -1)/ computeNum )
+    NKPFtmp=(XI_WEIGHTBUFF_DEPTH -1)/ computeNum;
+
+    while( alignedOutputPlane%(NKPFtmp*XI_KER_PROC) ):
+        NKPFtmp-=1;    
+    NKPF=NKPFtmp;
+
+    
     latOsggBuff_fx=XI_PIX_PROC+8
     latProcResult_fe=latOsggBuff_fx+latCompute16Ker+(NKPF-1)*max(latOsggBuff_fx,latCompute16Ker)+10
     oneTime= (straddle==1) and (NKPF==alignedOutputPlane/XI_KER_PROC);
+   
    
     AXILATENCY = 1
     if oneTime:
@@ -141,9 +259,28 @@ def computeLatencyConv (
     else:
         latLoadWeight=latLoadKernelsEn_fz= (NKPF*computeNum/16*18)*AXILATENCY+10
 
-    pcLoopcnt= AlignSize( conv_out_width*rowStep,  XI_PIX_PROC)/XI_PIX_PROC
-    latProcWeight=latLoop=pcLoopcnt*( max(latProcResult_fe,latLoadFeedingBuff)+20)
-    latCompNumber=ProcInputLoopCount=math.ceil( float(alignedOutputPlane)/XI_KER_PROC/NKPF)*straddle
+    weightTotalCycle, weightDataCycle = loadWeightLatency(NKPF,computeNum,oneTime)
+    
+    #* showing weightCycle computed
+    latencyInfo.weightTotalCycle=weightTotalCycle;
+    latencyInfo.weightDataCycle=weightDataCycle;
+
+    
+    pcLoopcnt= CeilDiv( conv_out_width*rowStep,  XI_PIX_PROC)
+
+
+    latProcWeight=latLoop=pcLoopcnt*( max(latProcResult_fe,latLoadFeedingBuff)+20) #* need overhead here
+    
+    latencyInfo.latProcWeight=latProcWeight;
+    latencyInfo.latLoadFeedingBuff=latLoadFeedingBuff;
+
+    numProcWeight=ProcInputLoopCount=CeilDiv(alignedOutputPlane, XI_KER_PROC*NKPF)*straddle
+
+    latencyInfo.numProcWeight=numProcWeight;
+
+
+
+
     latProcInputBuff=ProcInputLoopCount*(max(latLoop,latLoadKernelsEn_fz)+4)+max(latLoadFeedingBuff,latLoadKernelsEn_fz);
     if(layerID==0):
         latReadLineBuffer=conv_inp_width*(fh+(rowStep-1)*conv_stride)+20;
