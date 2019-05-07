@@ -10,25 +10,19 @@ def CeilDiv(x,y): return  -(-x//y)
 
 
 #**********factor function ********/
-
 def straddleCount( planes, filterSize, FEEDING_BUFF_DEPTH,groupNum):
     #* straddle = argmin K, s.t  alignedPlanes/2^K/4*fsize^2 <=FEEDING_BUFF_DEPTH/2-1
-    
-
     numInpPlanes=AlignSize(planes,4);
     if planes < 4 :
         split=1
     else:
         split=groupNum;
-
     if planes >= 4 and groupNum>1:
         computeInPlane=numInpPlanes/2
     else:
         computeInPlane=numInpPlanes
-
     planeCapacity= (FEEDING_BUFF_DEPTH/2-1)/(filterSize*filterSize);
-    straddleIndex=int.bit_length(  CeilDiv(computeInPlane,planeCapacity)  )-1;
-
+    straddleIndex=int.bit_length(  CeilDiv(computeInPlane/4,planeCapacity)  )-1;
     straddleVal=1<<straddleIndex;
     computePlanes=numInpPlanes/(straddleVal*split);
     return straddleVal,computePlanes
@@ -63,7 +57,7 @@ def memBurstReadLatency( burstNumber, burstLength, burstOverhead):
     acknowledgeCycle=2;
     responseCycle=26;
     dataCycle=(burstLength+burstBreaks*acknowledgeCycle)*burstNumber;
-    totalCycle=(burstOverhead+dataCycle+responseCycle)*burstNumber;
+    totalCycle=(burstOverhead+responseCycle)*burstNumber+dataCycle;
     return totalCycle,dataCycle
 
 
@@ -85,23 +79,26 @@ def readInputLatencyStart(filterHeight,padnum,width,rowStep,stride,plane):
             dataCycle: the total cycle number for data transfer such sequence of burst read takes ( it will be in conflict with other read)
     """
     burstNumber=CeilDiv(plane,16);
-    burstLength=(filterHeight+rowStep-1-padnum)*stride;
+    burstLength=(filterHeight+rowStep-1-padnum)*stride*width;
     burstOverhead=16;
     return memBurstReadLatency( burstNumber, burstLength, burstOverhead);
 
 
-def loadWeightLatency(NKPF, computeNum, onetime):
+
+def loadWeightLatency(NKPF, computeNum):
     """
     computes the function latency and bandwidth latency of a sequence of one weight load
     return: totalCycle: the total cycle number such sequence of burst read takes
             dataCycle: the total cycle number for data transfer such sequence of burst read takes ( it will be in conflict with other read)
     """
-    if onetime:
-        return 3, 0;
     burstNumber= 1;
     burstLength=NKPF*computeNum; 
     burstOverhead=10 #* this is from model sample
     return memBurstReadLatency( burstNumber, burstLength, burstOverhead);
+
+
+
+
 
 
 
@@ -169,10 +166,6 @@ def computeWeightDepth(layerInfo, KER, PIX):
     return weightDepth
 
 
-
-
-
-
 def computeLatencyConv (
     layerInfo,
     IPinfo,
@@ -207,6 +200,7 @@ def computeLatencyConv (
     conv_inp_planes  = layerInfo.inp_planes   
     conv_stride      = layerInfo.stride       
     fh= layerInfo.filter_height
+   
     fw= layerInfo.filter_width 
     conv_pad  = layerInfo.pad          
     groupNum= layerInfo.groupFlag+1      
@@ -224,9 +218,9 @@ def computeLatencyConv (
 
     
     straddle,computePlanes= straddleCount(conv_inp_planes,fh,1024,groupNum);
-    computeNum = computePlanes*fh*fw
+    computeNum = computePlanes/4*fh*fw
 
-    latOsggBuff=XI_PIX_PROC+8
+    latOsggBuff=XI_PIX_PROC+4
     latCompute16Ker=computeNum+XI_PIX_PROC/2+20;
     
     tmp=CeilDiv(XI_PIX_PROC,16)
@@ -248,63 +242,74 @@ def computeLatencyConv (
     NKPF=NKPFtmp;
 
     
-    latOsggBuff_fx=XI_PIX_PROC+8
-    latProcResult_fe=latOsggBuff_fx+latCompute16Ker+(NKPF-1)*max(latOsggBuff_fx,latCompute16Ker)+10
+    latOsggBuff_fx=XI_PIX_PROC+4
+
+    print "latCompute16Ker",latCompute16Ker
+    print "latOsggBuff_fx",latOsggBuff_fx
+    latProcResult_fe=latOsggBuff_fx+latCompute16Ker+(NKPF-1)*max(latOsggBuff_fx,latCompute16Ker)
     oneTime= (straddle==1) and (NKPF==alignedOutputPlane/XI_KER_PROC);
-   
+    print "straddle",straddle
+    print "NKPF",NKPF,alignedOutputPlane
+    latencyInfo.oneTime=oneTime;
    
     AXILATENCY = 1
-    if oneTime:
-        latLoadWeight=latLoadKernelsEn_fz = 1
-    else:
-        latLoadWeight=latLoadKernelsEn_fz= (NKPF*computeNum/16*18)*AXILATENCY+10
 
-    weightTotalCycle, weightDataCycle = loadWeightLatency(NKPF,computeNum,oneTime)
+    weightTotalCycle, weightDataCycle = loadWeightLatency(NKPF,computeNum)
     
     #* showing weightCycle computed
+
     latencyInfo.weightTotalCycle=weightTotalCycle;
     latencyInfo.weightDataCycle=weightDataCycle;
 
     
     pcLoopcnt= CeilDiv( conv_out_width*rowStep,  XI_PIX_PROC)
 
-
+    print "latProcResult_fe",latProcResult_fe
     latProcWeight=latLoop=pcLoopcnt*( max(latProcResult_fe,latLoadFeedingBuff)+20) #* need overhead here
     
     latencyInfo.latProcWeight=latProcWeight;
     latencyInfo.latLoadFeedingBuff=latLoadFeedingBuff;
 
+
     numProcWeight=ProcInputLoopCount=CeilDiv(alignedOutputPlane, XI_KER_PROC*NKPF)*straddle
 
     latencyInfo.numProcWeight=numProcWeight;
+    
 
 
-
-
-    latProcInputBuff=ProcInputLoopCount*(max(latLoop,latLoadKernelsEn_fz)+4)+max(latLoadFeedingBuff,latLoadKernelsEn_fz);
     if(layerID==0):
-        latReadLineBuffer=conv_inp_width*(fh+(rowStep-1)*conv_stride)+20;
+        inputTotalCycle1st=inputDataCycle1st=inputDataCycle=inputTotalCycle=conv_inp_width*(fh+(rowStep-1)*conv_stride)+20;
     else:
-        latReadLineBuffer=rowStep*conv_stride*( -((-conv_inp_planes)//16) *(10+conv_inp_width*1.1)+10 )
-
-    if memIn != 0 :
-        preOverhead=(fh+rowStep-1-conv_pad)*conv_stride*( -((-conv_inp_planes)//16)*(10+conv_inp_width)+10)
-        latReadInputData= rowStep*conv_stride*(-((-conv_inp_planes)//16)*conv_inp_width)
-    else:
-        preOverhead=0
-        latReadInputData=0
-
-    FirstEndRows=fh+rowStep-1-conv_pad-1
-    latStoreOStagingBuff = rowStep*(conv_out_width+50)*(alignedOutputPlane/16)+10;
+        inputTotalCycle,inputDataCycle=readInputLatencyNormal(conv_inp_width,rowStep,conv_stride,conv_inp_planes);
+        inputTotalCycle1st,inputDataCycle1st=readInputLatencyStart(fh,conv_pad,conv_inp_width,rowStep,conv_stride,conv_inp_planes);
 
 
+    latencyInfo.preOverheadTotalCycle=inputTotalCycle1st
+    latencyInfo.preOVerheadDataCycle=inputDataCycle1st
+    latencyInfo.inputTotalCycle=inputTotalCycle;
+    latencyInfo.inputDataCycle=inputDataCycle;
+    latencyInfo.inputTotalCycle1st=inputTotalCycle1st;
+    latencyInfo.inputDataCycle1st=inputDataCycle1st;
+
+    print "filterHeight",fh,rowStep,conv_pad
+    latencyInfo.FirstEndRows=fh+rowStep*conv_stride-1-conv_pad
+    latencyInfo.DepsRows=rowStep*conv_stride
+
+
+    outputTotalCycle = rowStep*(conv_out_width+60)*(alignedOutputPlane/16)+10;
+    outputDataCycle =  rowStep*conv_out_width*(alignedOutputPlane/16)+10;
     if(memOut!=0):
-        postOverhead=rowStep*(conv_out_width+10)*(alignedOutputPlane/16)+10;
-        latWritOutputData= rowStep*conv_out_width*(alignedOutputPlane/16);
+        latencyInfo.postOverhead=outputTotalCycle;
+        latencyInfo.latWritOutputData= outputDataCycle;
+        latencyInfo.outputTotalCycle=outputTotalCycle;
+        latencyInfo.outputDataCycle=outputDataCycle
     else:
-        postOverhead=0
-        latWritOutputData=0
-    return  [latProcWeight, latLoadWeight, latCompNumber,  preOverhead,postOverhead, latReadInputData, latWritOutputData,FirstEndRows,conv_stride]
+        latencyInfo.postOverhead=0
+        latencyInfo.latWritOutputData=0
+        latencyInfo.outputTotalCycle=0
+        latencyInfo.outputDataCycle=0
+
+
 
 
 
@@ -314,6 +319,7 @@ def computeLatencyEle(
     layerInfo,
     IPinfo
 ):
+
     ele_out_height  = layerInfo.out_height   
     ele_out_width   = layerInfo.out_width    
     ele_out_planes  = layerInfo.out_planes  
@@ -364,27 +370,18 @@ def computeLatencyPool(
     pool_pad          =  layerInfo.pad 
     pool_out_height   =  layerInfo.out_height   
     pool_out_width    =  layerInfo.out_width    
-    pool_out_planes   =  layerInfo.out_planes  
-    
+    pool_out_planes   =  layerInfo.out_planes     
     rowStep= layerInfo.rowStep
     memIn= layerInfo.memIn
     memOut= layerInfo.memOut
-
-
     latProcWeight=pool_out_height*pool_out_planes/16*pool_filter_height*pool_filter_width
     latLoadWeight=pool_inp_width*pool_stride*pool_out_planes/16
     latCompNumber=rowStep
-
-
     FirstEndRows=pool_filter_height+(rowStep-1)*pool_stride-pool_pad-1
-
-
     if( memIn ):
         preOverhead= FirstEndRows*pool_inp_width*pool_out_planes/16
     else:
         preOverhead=0
-
-
     if( memOut):
         postOverhead=rowStep*pool_out_width*pool_out_planes/16
     else:
@@ -395,40 +392,214 @@ def computeLatencyPool(
     latWritOutputData=0
     return  [latProcWeight, latLoadWeight, latCompNumber,  preOverhead,postOverhead, latReadInputData, latWritOutputData,FirstEndRows,1]
 
+class convlayerInfo_t:
+    def __init__(self):
+        self.weightTotalCycle=None;
+        self.weightDataCycle=None;
+        self.latProcWeight=None;
+        self.latLoadFeedingBuff=None;
+        self.latProcInputBuff=None;
+        self.numProcWeight=None;
+        self.preOverheadTotalCycle=None;
+        self.preOVerheadDataCycle=None;
+        self.inputTotalCycle=None;
+        self.inputDataCycle=None;
+        self.inputTotalCycle1st=None;
+        self.inputDataCycle1st=None;
+        self.postOverhead=None;
+        self.latWritOutputData=None;
+        self.outputTotalCycle=None;
+        self.outputDataCycle=None;
+        self.FirstEndRows=None;
+        self.DepsRows=None;
+        self.oneTime=None;
+
 class layerLatencyInfo_t():
-
-
     def __init__(self, layerInfo, IPinfo, rowStep):
+        self.PreDataCycle=None
+        self.PreTotalCycle=None
+        self.RecurDataCycleFirst=None
+        self.RecurTotalCycleFirst=None
+        self.RecurDataCycleRecur=None
+        self.RecurTotalCycleRecur=None
+        self.PostDataCycle=None
+        self.PostTotalCycle=None
+        self.RowNum=None;
+        self.RowStep=None
+        self.DepsRowStepFirst=None
+        self.DepsRowStepRecur=None
+        self.Stride=None
 
-        self.layerType=IPinfo.IPtype
-        self.rowStep=None
-        self.latProcWeight=None
-        self.latLoadWeight=None
-        self.latLoadWeightCurrent=None,
-        self.latCompNumber=None
-        self.latPreOverhead=None
-        self.latReadInputData=None
-        self.latWritOutputData=None
-        self.height=None
-        self.width=None
-        self.stride=layerInfo.stride
-        self.currentStartRows=0
-        self.currentEndRows=0
-        self.currentSegmentLatency=0;
-        self.FirstEndRows=None #must initiate this before start
-        self.rowStep=rowStep
-        self.NrowStep=rowStep
-        self.height=layerInfo.out_height
-        self.currentStartRows=0;
-        self.currentSegmentLatency=0;
+    
         layerInfo.rowStep=rowStep
 
         if( IPinfo.IPtype== "Convolution"):
-            [self.latProcWeight, self.latLoadWeight, self.latCompNumber,  self.latPreOverhead, self.latPostOverhead, self.latReadInputData, self.latWritOutputData,self.FirstEndRows,self.stride]=computeLatencyConv(layerInfo,IPinfo)
-        if( IPinfo.IPtype== "Eltwise"):
-            [self.latProcWeight, self.latLoadWeight, self.latCompNumber,  self.latPreOverhead,  self.latPostOverhead, self.latReadInputData, self.latWritOutputData,self.FirstEndRows,self.stride]=computeLatencyEle(layerInfo,IPinfo)
-        if( IPinfo.IPtype== "Pooling"):
-            [self.latProcWeight, self.latLoadWeight, self.latCompNumber,  self.latPreOverhead,  self.latPostOverhead, self.latReadInputData, self.latWritOutputData,self.FirstEndRows,self.stride]=computeLatencyPool(layerInfo,IPinfo)
+            convLatencyInfo=convlayerInfo_t();
+            print ""
+            print "layerLatency",layerInfo.layerID
+            computeLatencyConv(layerInfo,IPinfo,convLatencyInfo);
+
+
+            print "weightTotalCycle,weightDataCycle,",(convLatencyInfo.weightTotalCycle,convLatencyInfo.weightDataCycle)
+            print "latProcWeight,",convLatencyInfo.latProcWeight
+            print "latLoadFeedingBuff,",convLatencyInfo.latLoadFeedingBuff
+            print "latProcInputBuff,",convLatencyInfo.latProcInputBuff
+            print "numProcWeight,",convLatencyInfo.numProcWeight
+            print "inputTotalCycle,inputDataCycle ,",(convLatencyInfo.inputTotalCycle,convLatencyInfo.inputDataCycle) 
+            print "inputTotalCycle1stinputDataCycle1st,",(convLatencyInfo.inputTotalCycle1st,convLatencyInfo.inputDataCycle1st)
+            print "postOverhead,",convLatencyInfo.postOverhead
+            print "latWritOutputData,",convLatencyInfo.latWritOutputData
+            print "outputTotalCycle,",convLatencyInfo.outputTotalCycle
+            print "outputDataCycle,",convLatencyInfo.outputDataCycle
+            print "FirstEndRows,",convLatencyInfo.FirstEndRows
+            print "DepsRows,",convLatencyInfo.DepsRows
+            print "oneTime,",convLatencyInfo.oneTime
+            print ""
+
+            self.RowNum=layerInfo.out_height;
+            self.RowStep=rowStep;
+
+            if(layerInfo.memIn):
+                self.PreDataCycle=convLatencyInfo.inputDataCycle1st;
+                self.PreTotalCycle=convLatencyInfo.inputTotalCycle1st;
+                readDataCycle=convLatencyInfo.inputDataCycle;
+                readTotalCycle=convLatencyInfo.inputTotalCycle;
+            else:
+                self.PreDataCycle=0;
+                self.PreTotalCycle=4;  
+                readDataCycle=0;
+                readTotalCycle=4;
+        
+            if layerInfo.memOut:
+                self.PostDataCycle=convLatencyInfo.outputDataCycle;
+                self.PostTotalCycle=convLatencyInfo.outputTotalCycle;
+                writeDataCycle=convLatencyInfo.outputDataCycle;
+                writeTotalCycle=convLatencyInfo.outputTotalCycle;
+            else:
+                self.PostDataCycle=0;
+                self.PostTotalCycle=4;
+                writeDataCycle=0;
+                writeTotalCycle=4;
+
+            weightDataCycleFirst=convLatencyInfo.weightDataCycle;
+            weightTotalCycleFirst=convLatencyInfo.weightTotalCycle;
+
+            weightDataCycleRecur= 0 if convLatencyInfo.oneTime else weightDataCycleFirst;
+            weightTotalCycleRecur= 0  if convLatencyInfo.oneTime else weightTotalCycleFirst;
+            print "convLatencyInfo.oneTime",convLatencyInfo.oneTime
+
+            numProcWeight=convLatencyInfo.numProcWeight
+            numWeightLoadFirst=1 if convLatencyInfo.oneTime else convLatencyInfo.numProcWeight;
+            numWeightLoadRecur= 0 if convLatencyInfo.oneTime else convLatencyInfo.numProcWeight;
+
+    
+            self.RecurDataCycleFirst=weightDataCycleFirst*numWeightLoadFirst+readDataCycle;
+            procIstagingTotalCycle=max(weightTotalCycleFirst,convLatencyInfo.latLoadFeedingBuff)+numProcWeight*max(weightDataCycleRecur, convLatencyInfo.latProcWeight);
+            self.RecurTotalCycleFirst=max(procIstagingTotalCycle,readTotalCycle,writeTotalCycle);
+
+
+            self.RecurDataCycleRecur=weightDataCycleRecur*numWeightLoadRecur+readDataCycle+writeDataCycle;
+            procIstagingTotalCycle=max(weightTotalCycleRecur,convLatencyInfo.latLoadFeedingBuff)+numProcWeight*max(weightDataCycleRecur, convLatencyInfo.latProcWeight);
+            self.RecurTotalCycleRecur=max(procIstagingTotalCycle,readTotalCycle, writeTotalCycle);
+
+            self.DepsRowStepFirst=convLatencyInfo.FirstEndRows
+            self.DepsRowStepRecur=convLatencyInfo.DepsRows
+            self.Stride=layerInfo.stride
+
+
+
+class layerSimStatus_t:
+    def __init__(self,rowStep):
+        self.currentStartRows=0;
+        self.NrowStep=rowStep;
+
+
+
+def computeLatencyPipe2(
+    latencyInfoList,
+    pipeInfoStage
+    ):
+    layerLat=latencyInfoList[:];
+    
+    currentStartRows=[0]*len(layerLat)
+    NrowStep=[]
+    for i in layerLat: NrowStep.append(i.RowStep)
+
+
+
+    firstOperatingLayerID=0;
+    lastOperatingLayerID=0;
+
+  
+    pipeInfoStage.append( (layerLat[0].PreDataCycle*4, layerLat[0].PreTotalCycle*4 ) );
+
+    while 1:
+        if( firstOperatingLayerID==lastOperatingLayerID and lastOperatingLayerID== len(layerLat) -1  and currentStartRows[lastOperatingLayerID]>=layerLat[lastOperatingLayerID].RowNum ):
+            pipeInfoStage.append( (layerLat[lastOperatingLayerID].PostDataCycle*4, layerLat[lastOperatingLayerID].PostTotalCycle*4)  )
+            break; 
+        stageDataCycle=0;
+        stageTotalCycle=0;
+
+        if ( firstOperatingLayerID<len(layerLat)-1 and currentStartRows[firstOperatingLayerID]>= layerLat[firstOperatingLayerID].RowNum):
+            firstOperatingLayerID=firstOperatingLayerID+1; 
+        if ( lastOperatingLayerID<len(layerLat)-1 and layerLat[lastOperatingLayerID+1].DepsRowStepFirst< currentStartRows[lastOperatingLayerID]):
+            lastOperatingLayerID=lastOperatingLayerID+1;
+            NrowStep[lastOperatingLayerID]=layerLat[lastOperatingLayerID].RowStep;
+
+        for i in range(lastOperatingLayerID,firstOperatingLayerID,-1):
+            NrowStep[i-1]=NrowStep[i]*layerLat[i].Stride;
+
+
+        for i in range(firstOperatingLayerID,lastOperatingLayerID+1):
+
+            remRow=min(NrowStep[i],layerLat[i].RowNum-currentStartRows[i])
+            rowStepFactor=float(remRow)/layerLat[i].RowStep;
+
+            if currentStartRows[i]==0:
+                stageDataCycle+=layerLat[i].RecurDataCycleFirst*rowStepFactor;
+                stageTotalCycle=max(stageTotalCycle, layerLat[i].RecurTotalCycleFirst*rowStepFactor  )
+            else:
+                stageDataCycle+=layerLat[lastOperatingLayerID].RecurDataCycleRecur*rowStepFactor;
+                stageTotalCycle=max(stageTotalCycle, layerLat[lastOperatingLayerID].RecurTotalCycleRecur*rowStepFactor)
+        for i in range(firstOperatingLayerID,lastOperatingLayerID+1):
+            currentStartRows[i]+=NrowStep[i]
+        pipeInfoStage.append((stageDataCycle*4,stageTotalCycle*4) )
+
+
+def computeLatencyParallel2(
+    pipeInfoStage):
+    currentTotalCycle={}
+    currentDataCycle={}
+    for i in range( len(pipeInfoStage)):
+        currentDataCycle[i]=pipeInfoStage[i][0][0]
+        currentTotalCycle[i]=pipeInfoStage[i][0][1]
+    latency=0
+
+    print pipeInfoStage
+    while 1:
+        if not currentTotalCycle:
+            break;
+        index=min(currentTotalCycle,key=currentTotalCycle.get)
+        totalCycle=float(currentTotalCycle[index])
+        dataCycle=0;
+        for k in currentTotalCycle:
+            dataCyleTemp=currentDataCycle[k]*totalCycle/currentTotalCycle[k];
+            currentDataCycle[k]-=dataCyleTemp;
+            currentTotalCycle[k]=totalCycle;
+            dataCycle+=dataCyleTemp;
+        latency+=max(dataCycle,totalCycle)
+    
+        if pipeInfoStage[index]:
+            currentDataCycle[index],currentTotalCycle[index]=pipeInfoStage[index].pop(0)
+        else:
+            del currentDataCycle[index]
+            del currentTotalCycle[index]
+    return latency
+            
+
+
+        
+
 
 
 def computeLatencyPipe(
@@ -438,17 +609,13 @@ def computeLatencyPipe(
 
     timeStamp=0;
     weightTotalCycle=0;
-
     timeStamp+=layers[0].latPreOverhead;
-
     layers[0].FirstEndRows=-1;
-
     firstOperatingLayerID=0;
     lastOperatingLayerID=0;
-
     segmentIdx=0;
-    while 1:
 
+    while 1:
         # compute by the rowstep timing range for the latest running stage
         if( firstOperatingLayerID==lastOperatingLayerID and lastOperatingLayerID== len(layersCopy) -1  and layersCopy[lastOperatingLayerID].currentStartRows>=layersCopy[lastOperatingLayerID].height ):
             timeStamp+=layersCopy[lastOperatingLayerID].latPostOverhead
@@ -547,9 +714,7 @@ def multiChainLatency(
     return totalLatency
     
 
-
 def KerPixCombSearch( K_x_P):
-
     if( K_x_P == 0 or  K_x_P==None): return [[0,0]];
     KerPix=[]
     K=8
@@ -635,53 +800,26 @@ def computeRoundIPindex(
             chainLatencList=[];
             runChain=[];
             startIdx=0;
-  
-
-            #processRunInfoChain
-            #Establish dictionary
-            # runInfoDict={}
-            # runInfoChain=[]
-            # for runInfo in roundInfoList[roundIdx]:
-            #     print runInfo.prevIPidx, runInfo.IPidx, runInfo.nextIPidx
-            #     runInfoDict[runInfo.IPidx]=runInfo;
-
-            # print runInfoDict.keys()
-
-            startIdx=0;
-
-            # while( startIdx < len(roundInfoList[roundIdx]) ):
-            #     runInfo=roundInfoList[roundIdx][startIdx]
-            #     if( runInfo.prevIPidx != None ):
-            #         startIdx+=1;
-            #         continue;
-            #     runInfoChain.append(runInfo);
-            #     del runInfoDict[runInfo.IPidx];
-
-            #     while (runInfo.nextIPidx !=None):
-            #         runInfo=runInfoDict[runInfo.nextIPidx];
-            #         runInfoChain.append(runInfo);
-            #         del runInfoDict[runInfo.IPidx];
-            # print runInfoDict
-
+            pipeStageInfoList=[]
             while( startIdx < len(roundInfoList[roundIdx]) ):
                 runInfo=roundInfoList[roundIdx][startIdx]
                 IPinfoInst=IPinfoList[runInfo.IPidx];
                 layerInfoInst=runInfo.layerInfo;
                 runChain.append([layerInfoInst,IPinfoInst]);
-                
+
                 if(runInfo.nextIPidx == None):
                     
                     layerLatencyInfoList=[]
+                    latencyInfoStage=[]
                     for i in range( len(runChain) ):
                         layerInfoInst,IPinfoInst=runChain[i];
                         x=layerLatencyInfo_t(layerInfoInst,IPinfoInst,rowStep);
-                        logFile.write(IPinfoInst.IPtype+","+str(IPinfoInst.IPidx)+","+str(x.latProcWeight)+","+str(x.latLoadWeight)+","+str(x.latCompNumber)+","+str(x.latPreOverhead)+","+str(x.latPostOverhead)+","+str(x.latReadInputData)+","+str(x.latWritOutputData)+","+str(x.FirstEndRows)+","+str(x.stride)+"\n");
                         layerLatencyInfoList.append(x)
-                    cycles,weigthCycles=computeLatencyPipe(layerLatencyInfoList);
-                    logFile.write("chainCycles: "+str(int(cycles) )+", weight Cycles: "+str(int(weigthCycles))+"\n")
-                    chainLatencList.append([cycles,weigthCycles]);
+                    computeLatencyPipe(layerLatencyInfoList,latencyInfoStage);
+                    pipeStageInfoList.append(latencyInfoStage);
                 startIdx=startIdx+1;
-            latency=multiChainLatency(chainLatencList);
+            latency=computeLatencyParallel2(pipeStageInfoList);
+
             
             roundILPInfo=roundILPInfo_t();
             roundILPInfo.roundIdx=roundIdx;
@@ -849,149 +987,7 @@ def exploitK_xPCombinations(
 
 
 
-    
 
-
-
-# IPlist=[];
-# x=IPinfo_t(K_x_P=512)
-# x.IPidx=0;
-# IPlist.append(x)
-# x=IPinfo_t(K_x_P=256)
-# x.IPidx=0;
-# IPlist.append(x)
-# x=IPinfo_t(K_x_P=128)
-# x.IPidx=0;
-# IPlist.append(x)
-# x=IPinfo_t(K_x_P=64)
-# x.IPidx=0;
-# IPlist.append(x)
-
-
-
-
-# KerPixList=[ [16,16],[0,0],[0,0],[16,32] ]
-
-# IPlist=[]
-# runList=[]
-
-# x=IPinfo_t()
-# x.IPidx=0;
-# x.IPtype="Convolution"
-# x.K_x_P=512
-# IPlist.append(x)
-
-# x=IPinfo_t()
-# x.IPidx=1;
-# x.IPtype="Eltwise"
-# IPlist.append(x)
-
-# x=IPinfo_t()
-# x.IPidx=2;
-# x.IPtype="Pooling"
-# IPlist.append(x)
-
-# x=IPinfo_t()
-# x.IPidx=3;
-# x.IPtype="Convolution"
-# x.K_x_P=256
-# IPlist.append(x)
-
-
-
-# y=layerInfo_t()
-# y.layerType="Convolution"
-# y.inp_height=28
-# y.inp_width=28
-# y.out_height=28
-# y.out_width=28
-# y.out_planes=512
-# y.inp_planes=1024
-# y.stride=1
-# y.filter_height=3
-# y.filter_width=3
-# y.pad=1
-# y.groupFlag=0
-# y.layerID=3
-# y.memIn=1
-# y.memInL=None
-# y.memInR=None
-# y.memOut=1
-# y.rowStep=None
-# z=runInfo_t()
-# z.IPidx=3;
-# z.layerInfo=y
-
-# runList.append(z)
-
-
-# y=layerInfo_t()
-# y.layerType="Convolution"
-# y.inp_height=28
-# y.inp_width=28
-# y.out_height=28
-# y.out_width=28
-# y.out_planes=1024
-# y.inp_planes=512
-# y.stride=1
-# y.filter_height=3
-# y.filter_width=3
-# y.pad=1
-# y.groupFlag=0
-# y.layerID=3
-# y.memIn=1
-# y.memInL=None
-# y.memInR=None
-# y.memOut=0
-
-# z=runInfo_t()
-# z.IPidx=0;
-# z.layerInfo=y
-# z.nextIPidx=1
-# runList.append(z)
-
-# x=IPinfo_t()
-# x.IPidx=0;
-# x.IPtype="Eltwise"
-# y=layerInfo_t()
-# y.layerType="Eltwise"
-# y.inp_height=28
-# y.inp_width=28
-# y.out_height=28
-# y.out_width=28
-# y.out_planes=1024
-# y.inp_planes=512
-# y.stride=1
-# y.filter_height=3
-# y.filter_width=3
-# y.pad=1
-# y.groupFlag=0
-# y.layerID=3
-# y.memIn=None
-# y.memInL=1
-# y.memInR=0
-# y.memOut=0
-
-# z=runInfo_t()
-# z.IPidx=1;
-# z.layerInfo=y
-# runList.append(z)
-
-# roundList=[]
-# roundList.append(runList)
-
-# # computeRoundIPindex(roundList,KerPixList,IPlist,1)
-
-
-
-    
-# exploitK_xPCombinations(roundList,IPlist, 1450)
-
-
-
-# for i,roundList_row in enumerate( roundList):
-#     for j,roundInfo in enumerate(roundList_row):
-#         print i,j,roundInfo.layerInfo.rowStep
 
 
     

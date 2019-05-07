@@ -90,7 +90,7 @@ class IPinfo_t():
             string += "IBRAM " + str(self.IBRAM)+"\n"
             string += "OBRAM " + str(self.OBRAM)+"\n"
             string += "WBRAM " + str(self.WBRAM)+"\n"
-            string += "OtherBRAM " + str(self.OtherBRAM)+"\n"
+            string += "OtherBRAM " + str(self.OtherBRAM)+"\n        out_width=None,"
             return string
     __repr__ = __str__
 
