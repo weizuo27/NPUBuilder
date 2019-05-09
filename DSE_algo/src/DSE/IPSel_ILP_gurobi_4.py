@@ -266,7 +266,7 @@ class IPSel():
                     EleNums]=generateILPInput(g,layerIpLatencyTable_ILP,IP_dict,gs.noStreamEdge,gs.loneLayer)
 
                     # print "Running ILP"
-                    roundMapping,roundDict,lat=RawILP.roundScheduling(
+                    roundMappingCandidates,roundDictCandidates,latCandidates=RawILP.roundScheduling(
                         depsTable, 
                         noStreamTable,
                         loneLayerDepsTable,
@@ -288,7 +288,7 @@ class IPSel():
                         loneLayerLatencyDeps=0;
                         
                     print "Running BRUTAL FORCE"
-                    roundMapping2,roundDict2,lat2=TestCase.computeOptimalLatencyDSP(
+                    depositTable,roundMapping2,roundDict2,lat2=TestCase.computeOptimalLatencyDSP(
                         depsTable, 
                         noStreamTable,
                         loneLayerLatency,
@@ -302,34 +302,23 @@ class IPSel():
                         len(layerTypeArray)
                     );
 
-
-                    if (lat!=lat2):
-                        print "Cross verification Failed!!!", lat, lat2
-                    else:
-                        print "Cross verification Success!!!", lat, lat2
-                    for rounds in roundMapping:
+                    for i,rounds in enumerate(roundMapping2):
                         print "[",
                         for item in rounds:
                             print item[1].name,
-                        print "]",
-                    print ""
-                    for rounds in roundMapping2:
-                        print "[",
-                        for item in rounds:
-                            print item[1].name,
-                        print "]",
+                           
+                        print "]", depositTable[i],
                     print ""
                         
-                    print "comparison end"
-
-                    pipelineTable2={}
-                    for i in depsTable:
-                        s,t = i;
-                        if( roundDict[s]==roundDict[t] ):
-                            pipelineTable2[(layerArray[s],layerArray[t])]=1;
+                    # print "comparison end"
+                    pipelineCandidates=[]
+                    for roundDict
+                        pipelineTable2={}
+                        for i in depsTable:
+                            s,t = i;
+                            if( roundDict[s]==roundDict[t] ):
+                                pipelineTable2[(layerArray[s],layerArray[t])]=1;
                             
-
-              
                     if lat == None:
                         valid = False
                         break                 
@@ -340,8 +329,8 @@ class IPSel():
                         valid = False
                         break
                     lat_left = lat_achieved - acc_lat
-                    mapping_solution_tmp[gIdx] = roundMapping
-                    latency_solution_tmp[gIdx] = lat
+                    mapping_solution_tmp[gIdx] = roundMappingCandidates[0]
+                    latency_solution_tmp[gIdx] = latCandidates[0]
                     pipelineTable_tmp[gIdx] = pipelineTable2
     
 
@@ -384,9 +373,7 @@ class IPSel():
                         s.layerInfo.memIn=0;
                     elif(t.layerInfo.layerType=="Eltwise"):
                         s.layerInfo.memInR=0;
-            
             final_graph_list = []
-
             for gIdx,g in enumerate(gs.graphs):
                 for r in mapping_solution[gIdx]:
                     nodes=[]
@@ -399,15 +386,17 @@ class IPSel():
             roundInfoList, IPinfoList = self.genIPinfoLayerInfoList(final_graph_list, pipelineTable_solution_total)
 
             print "find rowStep"
+
             rowStep, lat_rowStepILP = validateILP2.exploitK_xPCombinationsValidation(roundInfoList, IPinfoList, BRAM_budget)
+
+
             # latency2=validateILP2.exploitK_xPCombinationsValidation(roundInfoList, IPinfoList, BRAM_budget)
-            
-            
             # if (lat_rowStepILP!=latency2):
             #     print "Cross verification Failed!!!", lat_rowStepILP, latency2
             # else:
             #     print "Cross verification Success!!!", lat_rowStepILP, latency2
             # print "AAAAA latency",lat_rowStepILP,lat_achieved
+
 
 
 

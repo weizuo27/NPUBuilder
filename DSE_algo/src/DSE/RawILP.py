@@ -15,9 +15,12 @@ def roundScheduling(
     EleIPnum,
     MaxRound
 ):
+    candidateNum=20;
 
     m=Model("roundScheduling");
     m.setParam( 'OutputFlag', False )
+    m.setParam(GRB.Param.PoolSearchMode, 2)
+    m.setParam(GRB.Param.PoolSolutions, candidateNum)
     X_irn=[]
     layerNum= len(layerPerIPlatencyList);
     loneLayerNum=len(loneLayerArray);
@@ -34,6 +37,16 @@ def roundScheduling(
                 X_n.append(x);
             X_rn.append(X_n);
         X_irn.append(X_rn);
+    m.update();
+    
+    L_ri=[]
+    for r in range(MaxRound):
+        L_i=[]
+        for i in range( layerNum):
+
+            l=m.addVar(vtype=GRB.INTEGER,name="X_"+str(i)+"_"+str(r)+"_"+str(n));
+            L_i.append(l)
+        L_ri.append(L_i);
     m.update();
 
 
@@ -144,14 +157,19 @@ def roundScheduling(
 
 
 
+
     #Aconstraint of latency of each round
     for r in range(MaxRound):
         for i in range(layerNum):
             expr=LinExpr();
             for n in range( len( layerPerIPlatencyList[i] ) ):
-                expr.addTerms(layerPerIPlatencyList[i][n][1], X_irn[i][r][n]);
-            m.addConstr(expr <= M_r[r]);
-    expr=LinExpr();
+                expr.addTerms(int(layerPerIPlatencyList[i][n][1]), X_irn[i][r][n]);
+            m.addConstr( L_ri[r][i] == expr);
+    
+    for r in range(MaxRound):
+        m.addConstr(M_r[r] == max_(L_ri[r]) );
+
+
     m.update();
     
   
@@ -170,24 +188,42 @@ def roundScheduling(
             expr.addTerms(1, MI_ir[i][r]);
         m.addConstr( expr >= loneLayerLatencyList[i][0][1]) 
 
+    expr=LinExpr();
 
     for r in range(MaxRound):
         expr.add(M_r[r])
-    m.update();
+
     m.setObjective(expr,GRB.MINIMIZE);
+    m.update();
+
+    expr=LinExpr();
+    for r in range(MaxRound):
+        expr.addTerms(r,M_r[r])
+
+    m.setObjectiveN(expr=expr,index=1,priority=-1,abstol=10);
+
     m.update();
     m.write("out.lp")
     m.optimize();
 
     roundMapping=[]
     roundDict={}
-    roundIdx=0;
     
+    
+
     print "indepedent latency", 
     if loneLayerLatencyList:
         print loneLayerLatencyList[0][0][1]
     else:
         print "[]"
+
+
+
+    roundMappingCandidates=[]
+    roundDictCandidates=[]
+    latencyList=[]
+    candidateNum=min(m.SolCount, candidateNum)
+    roundIdx=0;
     for r in range(MaxRound):
         layerMapping=[]
         for i in range(layerNum):
@@ -196,39 +232,35 @@ def roundScheduling(
                     layerMapping.append( (roundIdx,layerArray[i],layerPerIPlatencyList[i][n][0]) );
                     roundDict[i]=roundIdx
         if layerMapping:
-            roundMapping.append(layerMapping)
-            
-
-            
-            print "[",
-            for i in layerMapping:
-                print i[1].name,
-            print "]",M_r[r].X
-
+            roundMapping.append(layerMapping)            
             roundIdx+=1;
-            
-    
+    roundMappingCandidates.append(roundMapping);
+    roundDictCandidates.append(roundDict)
+    latencyList.append(m.PoolObjVal)
 
-    return roundMapping,roundDict,m.objVal;
+    for candidateIdx in range(candidateNum):
+        m.setParam(GRB.Param.SolutionNumber, candidateIdx)
+        roundIdx=0;
+        for r in range(MaxRound):
+            layerMapping=[]
+            for i in range(layerNum):
+                for n,var in enumerate(X_irn[i][r]):
+                    if var.Xn:
+                        layerMapping.append( (roundIdx,layerArray[i],layerPerIPlatencyList[i][n][0]) );
+                        roundDict[i]=roundIdx
+            if layerMapping:
+                roundMapping.append(layerMapping)            
+                roundIdx+=1;
+        roundMappingCandidates.append(roundMapping);
+        roundDictCandidates.append(roundDict)
+        latencyList.append(m.PoolObjVal)
+
+    print m.objVal,latencyList
+    if MI_ir:
+        for r in range(MaxRound): 
+            print MI_ir[0][r].X,
+    print ""
+    return roundMappingCandidates,roundDictCandidates,latencyList;
 
         
             
-# depSet= [[0,1],[1,4],[2,3],[3,4]]
-# nostream=[[3,4]]
-
-# layerType=["Convolution","Convolution", "Pooling","Convolution","ELtwise"];
-
-
-
-# layerPerIPlatencyList=[ [338688,677376], [940800,1881600], [802816], [602112,1204224],[200704]];
-
-# roundScheduling(
-#     depencyPairSet=depSet, # a list of tuple specifying depedency relationship
-#     noStreamEle=nostream,
-#     layerType=layerType,
-#     layerPerIPlatencyList=layerPerIPlatencyList, #the layer need to be topologically sorted
-#     ConvIPnum=2,
-#     PoolIPnum=1,
-#     EleIPnum=1,
-#     MaxRound=5
-# );
