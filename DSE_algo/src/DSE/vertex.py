@@ -45,6 +45,8 @@ class blob(vertex):
         self.latency = 0
 
 class layer(vertex):
+    def __repr__(self):
+        return "vertex.layer-"+self.name
     def __init__(self, line, layerIdxTable):
         #All attributes are first initialized here
         vertex.__init__(self)
@@ -52,6 +54,7 @@ class layer(vertex):
         self.name, self.type = n_t.split("-")
         self.layerInfo = layerInfo_t()
         self.layerInfo.layerType = self.type
+        self.layerInfo.layerName = self.name
         self.mappedIP = None
         self.firstLayer = False
         self.output_params = None

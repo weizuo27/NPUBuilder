@@ -15,11 +15,17 @@ sys.path.append(dir_path + "/../SchedulerCodeGen");
 from genSwFiles import *
 sys.path.append(dir_path + "/../latency_estimation");
 from infoClass import runInfo_t
-from newModel import exploitK_xPCombinations
+
 import RawILP
 import TestCase
 import validateILP2
 
+def genMappingTotal( solutionChoice, mapping_solution,depositIPlist ):
+    print mapping_solution
+    print solutionChoice
+    for i in depositIPlist:
+        print i.IPinfo
+    return None
 
 def generateILPInput(
     g,
@@ -58,7 +64,6 @@ def generateILPInput(
             latencyPerIPTable.append(  layerIpLatencyTable_ILP[nd] )
             schedulingIndex+=1;
 
-
     depsTable=[]
     loneLayerDepsTable=[]
     for edge in h.edges():
@@ -68,8 +73,6 @@ def generateILPInput(
         else:
             depsTable.append( (tempDictGroup[s],tempDictGroup[t]) );
     
-
-
     noStreamTable=[]
     for pair in noStreamEdgeSet :
         sName,tName = pair
@@ -78,13 +81,7 @@ def generateILPInput(
             t=nodeListDict[tName];
             noStreamTable.append( (tempDictGroup[s],tempDictGroup[t]));
             depsTable.append( (tempDictGroup[s],tempDictGroup[t]) );
-    for edge in h.edges():
-        s,t=edge
-        print "[", s.name, t.name,"]",
-    print ""
-    
-
-        
+         
     convNums=len(IP_dict["Convolution"])
     if "Pooling" in  IP_dict:
         PoolNums=len(IP_dict["Pooling"])
@@ -95,13 +92,108 @@ def generateILPInput(
     else:
         EleNums=0;
     return  depsTable,loneLayerDepsTable, loneLayerArray,loneLayerLatency, noStreamTable,layerTypeArray,layerArray,latencyPerIPTable,convNums,PoolNums,EleNums
+def genipIdxDict_IP(IPlist,ipIdxDict_IP):
+    for ipIdx,IP in enumerate(IPlist):
+        print "IP",IP
+        ipIdxDict_IP[IP]=ipIdx;
+    return ipIdxDict_IP;
 
+def genIPInfoList(IPlist,IPinfoLIst):
+    for ipIdx,IP in enumerate(IPlist):
+        IPinfo= IP.IPinfo
+        IPinfoLIst.append(IPinfo)
+
+def genRoundInfo(roundMapping, ipIdxDict_IP, gs ):
+
+    roundNodeList=[] 
+
+    ipIdxDict_Layer={}
+
+
+
+    for ipMapping in roundMapping:
+        dummy,layerVertex,IPinst= ipMapping
+        roundNodeList.append(layerVertex); 
+        ipIdxDict_Layer[layerVertex]= ipIdxDict_IP[IPinst];
+
+
+    del roundMapping[:]
+
+    roundSubGraph= gs.subgraph(roundNodeList)
+    roundSubGraph=roundSubGraph.copy()
+
+    roundSubGraphList=list(roundSubGraph.nodes())
+
+    roundInfoList=[]
+
+
+    while roundSubGraphList:
+        idx=0
+        while list(roundSubGraph.predecessors(roundSubGraphList[idx])):  
+            idx+=1 # find one node without predecessor
+        currentNode=roundSubGraphList[idx];
+        nextList=list(roundSubGraph.successors(currentNode) );
+        prevIdx=None;
+        currentIdx=None;
+        nextIdx=None;
+
+        while  nextList:
+            assert( len( nextList)==1);
+
+            nextNode=nextList[0];
+            currentIdx=ipIdxDict_Layer[currentNode];
+            nextIdx=ipIdxDict_Layer[nextNode]
+            
+            runInfo = runInfo_t(currentNode.layerInfo, currentIdx, nextIdx, prevIdx)
+            runInfo.layerInfo.clearUnCertainItems()
+            roundMapping.append( (currentNode,currentIdx)  )
+
+
+            if runInfo.layerInfo.layerType == "Convolution" or runInfo.layerType == "Pooling":
+                runInfo.layerInfo.memIn=False if prevIdx!=None else 1;
+            elif runInfo.layerInfo.layerType == "Eltwise":
+                runInfo.layerInfo.memInR=False if prevIdx!=None else 1;
+            runInfo.layerInfo.memOut=False
+
+                
+            roundInfoList.append(runInfo);
+            roundSubGraph.remove_node(currentNode);
+            
+
+            prevIdx=currentIdx;
+            currentNode=nextNode;
+            nextList=list(roundSubGraph.successors(currentNode) );
+        
+        currentIdx=ipIdxDict_Layer[currentNode];
+        nextIdx=None
+        runInfo=runInfo_t(currentNode.layerInfo, currentIdx, nextIdx, prevIdx);
+        roundInfoList.append(runInfo);
+        roundSubGraph.remove_node(currentNode);
+        roundMapping.append((currentNode,currentIdx) )
+        roundSubGraphList=list(roundSubGraph.nodes())
+    return roundInfoList
+
+def genRowILPInput(groupMappingSolution, IPlist, groupRunInfoList, IPinfoLIst, graph):
+    
+    ipIdxDict_IP={}
+    genipIdxDict_IP(IPlist,ipIdxDict_IP)
+    for g,solutionPool in groupMappingSolution.items():
+        solutionList=[]
+        for s,solution in enumerate(solutionPool):
+            roundList=[]
+            for Round in solution:
+                roudRunInfoList=genRoundInfo( Round,ipIdxDict_IP,graph);
+                roundList.append(roudRunInfoList)
+            solutionList.append(roundList);
+        groupRunInfoList.append(solutionList)
+    genIPInfoList(IPlist,IPinfoLIst)
 class IPSel():
     def __init__(self):
         None
     def run(self,  DSP_budget, BRAM_budget, Lat_budget, numOtherIPs, app_fileName, IP_fileName, ESP, rowStep, batchSize, \
            manualSetingConvIPbound, convIPlb, convIPUb) :
         status = "Undecided" 
+
 
         #Hard code the hardware supported layers
         hw_layers = { 
@@ -127,6 +219,8 @@ class IPSel():
         numConvIPs_total =0
         numIPs_total = 0
 
+        IPList_total=[]
+        firstFlag=1
         while(1):
             numConvIPs += 1
             if(manualSetingConvIPbound):
@@ -134,7 +228,10 @@ class IPSel():
                     break
             numIPs = numConvIPs + numOtherIPs
             print "\n\nNumber of Convolution IP is ", numConvIPs, "\n\n"
-            gs = graph(app_fileName, explore_IP_types, hw_layers)
+            
+            if( firstFlag):
+                gs = graph(app_fileName, explore_IP_types, hw_layers)
+                firstFlag=0
             
             #if the numIPs is bigger than the group size, then should exit
             legalNumIPs = False
@@ -187,10 +284,9 @@ class IPSel():
             if len(allIPs) == 0:
                 print "Cannot fit in " + str(numIPs) +", exiting...\n"
                 break
-
             nums = 0
 
-
+            depositIPlist=[]
             for IPs in allIPs:
                 nums += 1
                 tmp = ""
@@ -221,6 +317,7 @@ class IPSel():
                         IP_dict[ip.type].append(ip)
 
                 #If some of the layers'type is not in the current IP selection, then continue
+
                 layerQueue = []
                 for g in gs.graphs:
                     if g not in gs.exploreLayerQueue:
@@ -238,6 +335,7 @@ class IPSel():
                 acc_lat = 0
 
                 #Generate the IP_table_per_layer and layerIPLatencyTable 
+
                 layerIPLatencyTable,layerIpLatencyTable_ILP = computeIPLatencyPerLayer(IP_dict, gs.exploreLayerQueue, hw_layers)
 
                 valid = True
@@ -247,12 +345,10 @@ class IPSel():
                 latency_solution_tmp = dict()
                 pipelineTable_tmp = dict()
                 depositPipelineTable_solution = dict()
-  
-
-                
+      
                 for gIdx,g in enumerate(gs.graphs):
-                    
                     # print "Generating ILP input"
+
                     [depsTable,
                     loneLayerDepsTable, 
                     loneLayerArray,
@@ -265,20 +361,19 @@ class IPSel():
                     PoolNums,
                     EleNums]=generateILPInput(g,layerIpLatencyTable_ILP,IP_dict,gs.noStreamEdge,gs.loneLayer)
 
-                    # print "Running ILP"
-                    roundMappingCandidates,roundDictCandidates,latCandidates=RawILP.roundScheduling(
-                        depsTable, 
-                        noStreamTable,
-                        loneLayerDepsTable,
-                        loneLayerArray,
-                        loneLayerLatency, 
-                        layerTypeArray,
-                        layerArray,
-                        latencyPerIPTable, 
-                        convNums,
-                        PoolNums,
-                        EleNums,
-                        len(layerTypeArray));
+                    roundMappingCandidates2,roundDictCandidates2,latCandidates2=RawILP.roundScheduling(
+                    depsTable, 
+                    noStreamTable,
+                    loneLayerDepsTable,
+                    loneLayerArray,
+                    loneLayerLatency, 
+                    layerTypeArray,
+                    layerArray,
+                    latencyPerIPTable, 
+                    convNums,
+                    PoolNums,
+                    EleNums,
+                    len(layerTypeArray));
 
                     if loneLayerLatency:
                         loneLayerLatency=loneLayerLatency[0][0][1];
@@ -287,8 +382,8 @@ class IPSel():
                         loneLayerLatency=0;
                         loneLayerLatencyDeps=0;
                         
-                    print "Running BRUTAL FORCE"
-                    depositTable,roundMapping2,roundDict2,lat2=TestCase.computeOptimalLatencyDSP(
+                    
+                    roundMappingCandidates,roundDictCandidates,latCandidates=TestCase.computeOptimalLatencyDSP(
                         depsTable, 
                         noStreamTable,
                         loneLayerLatency,
@@ -301,43 +396,51 @@ class IPSel():
                         EleNums,
                         len(layerTypeArray)
                     );
+                    print "Brutal FOrce",latCandidates2,lat_achieved
 
-                    for i,rounds in enumerate(roundMapping2):
-                        print "[",
-                        for item in rounds:
-                            print item[1].name,
-                           
-                        print "]", depositTable[i],
-                    print ""
-                        
-                    # print "comparison end"
-                    pipelineCandidates=[]
-                    for roundDict
-                        pipelineTable2={}
-                        for i in depsTable:
-                            s,t = i;
-                            if( roundDict[s]==roundDict[t] ):
-                                pipelineTable2[(layerArray[s],layerArray[t])]=1;
+                    for i in roundMappingCandidates2:
+                        for j in i:
+                            print j;
+                        print ""
+                    
+                    print "ILP",latCandidates,lat_achieved
+
+                    for i in roundMappingCandidates:
+                        for j in i:
+                            print j;
+                        print ""
+ 
+
+                    # pipelineCandidates=[]
+                    # for roundDict in roundDictCandidates:
+                    #     pipelineTable2={}
+                    #     for i in depsTable:
+                    #         s,t = i;
+                    #         if( roundDict[s]==roundDict[t] ):
+                    #             pipelineTable2[(layerArray[s],layerArray[t])]=1;
+                    #     pipelineCandidates.append(pipelineTable2)
                             
-                    if lat == None:
+                    print "latCandidates",latCandidates
+                    if not latCandidates :
                         valid = False
                         break                 
-                    acc_lat += lat
+                    acc_lat += min(latCandidates)
 
+                    
                     #If the current latency is worse than the achieved latency, then the current selection of IPs won't work
+                    
                     if acc_lat > lat_achieved:
                         valid = False
                         break
                     lat_left = lat_achieved - acc_lat
-                    mapping_solution_tmp[gIdx] = roundMappingCandidates[0]
-                    latency_solution_tmp[gIdx] = latCandidates[0]
-                    pipelineTable_tmp[gIdx] = pipelineTable2
-    
-
+                    mapping_solution_tmp[gIdx] = roundMappingCandidates
+                    latency_solution_tmp[gIdx] = latCandidates
+                   
                 if not valid:
                     print "cannot find valid latency, continue"
                     continue
                 lat_achieved = acc_lat
+                depositIPlist=list(IPs);
                 for k,v in mapping_solution_tmp.items():
                     mapping_solution[k] = v;
 
@@ -347,93 +450,99 @@ class IPSel():
                 for k,v in pipelineTable_tmp.items():
                     pipelineTable_solution[k] = v
 
-
-
-
             if not mapping_solution:
                 continue
+  
+            groupRunInfoList=[]; IPinfoList=[];
 
-            for gIdx,g in enumerate(gs.graphs):
-                for rounds in mapping_solution[gIdx]:
-                    for layer in rounds:
-                        print layer[1].name,
-                    print ""
+           
+            genRowILPInput(mapping_solution,depositIPlist,groupRunInfoList,IPinfoList,gs.G);
 
+            # print "mapping_solution"
 
-            for gIdx,g in enumerate(gs.graphs):
-                graph.retriveOriginalGraph(gs,g) #clean up the graph
-                for rounds in mapping_solution[gIdx]:
-                    for layer in rounds:
-                        n=layer[1];
-                        n.mappedIP=layer[2];
-                for pair in pipelineTable_solution[gIdx]:
-                    s,t=pair;
-                    s.layerInfo.memout=0;
-                    if(t.layerInfo.layerType=="Convolution" or t.layerInfo.layerType=="Pooling"):
-                        s.layerInfo.memIn=0;
-                    elif(t.layerInfo.layerType=="Eltwise"):
-                        s.layerInfo.memInR=0;
-            final_graph_list = []
-            for gIdx,g in enumerate(gs.graphs):
-                for r in mapping_solution[gIdx]:
-                    nodes=[]
-                    for layer in r:
-                        nodes.append(layer[1]) 
-                    subg =  g.subgraph(nodes) 
-                
-                    final_graph_list.append(subg)
-                    
-            roundInfoList, IPinfoList = self.genIPinfoLayerInfoList(final_graph_list, pipelineTable_solution_total)
+            # for k,v in mapping_solution.items():
+            #     print "Group IDX", k
+            #     print ""
+               
+            #     for i in v:
+            #         print "solution"
+            #         for j in i:
+            #             print j;
+            #         print ""
+            
+            solutionChoice,lat_rowStepILP=validateILP2.exploitK_xPCombinationsValidation(groupRunInfoList,IPinfoList,BRAM_budget)
+            print "lat_rowStepILP",lat_rowStepILP
 
-            print "find rowStep"
-
-            rowStep, lat_rowStepILP = validateILP2.exploitK_xPCombinationsValidation(roundInfoList, IPinfoList, BRAM_budget)
-
-
-            # latency2=validateILP2.exploitK_xPCombinationsValidation(roundInfoList, IPinfoList, BRAM_budget)
-            # if (lat_rowStepILP!=latency2):
-            #     print "Cross verification Failed!!!", lat_rowStepILP, latency2
-            # else:
-            #     print "Cross verification Success!!!", lat_rowStepILP, latency2
-            # print "AAAAA latency",lat_rowStepILP,lat_achieved
-
-
-
+            # 1. deposit mapping_total= genMappingTotal( solutionChoice, MappingChoice )
+            # 2. deposit 
 
             if lat_rowStepILP !=None and lat_rowStepILP < lat_achieved_total:
                 lat_achieved_total = lat_rowStepILP
-                latency_solution_total = latency_solution
-                mapping_solution_total = mapping_solution
-                depositPipelineTable_solution = pipelineTable_solution;
-                for g in pipelineTable_solution:
-                    for (s, t) in pipelineTable_solution[g]:
-                        pipelineTable_solution_total[(s.name, t.name)] = 1
+                solutionChoice_total = solutionChoice
+                mapping_solution_total=mapping_solution
+                groupRunInfoList_total=groupRunInfoList
+                IPList_total = depositIPlist
                 numConvIPs_total = numConvIPs
                 numIPs_total = numIPs
-                final_graph_list_total=final_graph_list
+            
 
 
         if not mapping_solution_total:
             print "No feasible solutions"
             return
 
-        # for g in mapping_solution_total:
-        #     for l in mapping_solution_total[g].nodes():
-        #         print "latency per layer", l.name, l.latency
 
-        #########################
-        #you get the round_solution_total
-        #final_graph_list is a list, where each item is subgraph of the original graph, with the layers in the round.
-        #Fill in the graph info based on the mapping/scheduling solution
+        #gen final_graph
+        # print groupRunInfoList_total
+        # for k,v in mapping_solution_total.items():
+        #     print v
 
-        print "mapping_solution_total"
+        for groupIdx,choice in enumerate(solutionChoice_total):
+            chosenIdx,rowStepList=choice
+            solution=mapping_solution_total[groupIdx][chosenIdx]
+            mapping_solution_total[groupIdx]=solution
+            for RoundIdx,Round in enumerate(solution): 
+                rowStep=rowStepList[RoundIdx]
+
+                for layeridx,layer in enumerate(Round):
+                    layerVertex=layer[0]
+                    layerIPidx=layer[1]
+                    layerVertex.mappedIP=IPList_total[layerIPidx];
+                    layerVertex.layerInfo=groupRunInfoList_total[groupIdx][chosenIdx][RoundIdx][layeridx]
+                    layerVertex.layerInfo.rowStep=rowStep;
+                
 
 
-
+    
         
-        self.codeGen(final_graph_list_total, lat_achieved_total, hw_layers, numConvIPs_total, numIPs_total, int(batchSize))
+        
+        final_graph_list = []
+
+        for gIdx,g in enumerate(gs.graphs):
+            for r in mapping_solution_total[gIdx]:
+                nodes=[]
+                print "ROund:",
+                for layer in r:
+                    nodes.append(layer[0]) 
+                    print layer[0],
+                print ""
+                subg =  gs.G.subgraph(nodes) 
+                final_graph_list.append(subg)
+        
+        self.codeGen(final_graph_list, lat_achieved_total, hw_layers, numConvIPs_total, numIPs_total, int(batchSize))
         
         return lat_achieved_total
+
+    # def genRoundInfo(self, graph, roundMappingList, IPInfoList):
+    #     roundSubGraph=[]
+    #     for node in r
+
+ 
+
+    
+
+
+        
 
     def genIPinfoLayerInfoList(self, final_graph_list, pipelineTable_solution_total):
         IPinfoDict = dict() #key: The IP name, value: IP info
@@ -447,8 +556,6 @@ class IPSel():
                 IPinfoDict[n.mappedIP.name] = n.mappedIP.IPinfo
                 print n.name, n.mappedIP.name,
             print ""
-
-
         idx = 0
         for n in IPinfoDict:
             IPinfoDict[n].IPidx = idx
@@ -466,9 +573,7 @@ class IPSel():
         for (s, t) in pipelineTable_solution_total:
             pipelineSourceNodes[t] = s
             pipelineTargetNodes[s] = t
-
         roundInfoList = []
-
      
         for g in final_graph_list:
             roundInfoList_row = []
@@ -493,38 +598,14 @@ class IPSel():
     def codeGen(self,final_graph_list, lat_achieved, hw_layers,  numConvIPs, numIPs, batchSize):
         print "\n\n #####################################################################"
         print "Final latency_achieved", lat_achieved, "number of IPs are ", numIPs, "number of convIPs are ", numConvIPs
-#        print "each round latency is as follows",
-#        def comp(item):
-#            for n in item.nodes:
-#                if n.type in hw_layers:
-#                    return n.ID
-#
-#        latency_list = []
 
-#        for g in latency_solution:
-#            latency_list.append(g)
-#        latency_list.sort(key=comp)
-#        for g in latency_list:
-#            print "round contain"
-#            for n in g.nodes:
-#                print n.name,
-#            print ", total latency is ", latency_solution[g], "\n"
 
-        #layerPipeInfo
-        #pipeInfoTable = genPipeInfo(mapping_solution, hw_layers)
-        #After the is done, re-order the mapping
-#        final_graph_list = reorderMapping(mapping_solution, hw_layers) 
-
-#        for g in final_graph_list:
-#            print gs.printNodesMapping(hw_layers, g)
-
-        #CodeGen process
         outHwDir = "./outputFiles/hw"
         outSwDir = "./outputFiles/sw"
         os.system("mkdir -p " + outHwDir)
         os.system("mkdir -p " + outSwDir)
 
-        #Gen HW
+
         IP_g = createIPGraph(final_graph_list, hw_layers)
         expandGraph(IP_g)
         muxSelTable = assignMuxSelTable(IP_g)
@@ -609,11 +690,6 @@ class IPSel():
             layerQueueOut += layerQueueIn[layer_type]
 
 def reorderMapping(mapping_solution, hw_layers, pipelineNameTable):
-    #For the solution, for each IP collect the mapping, 
-    #reassign using the best order
-
-    #This function is so messy !!! :( 
-
     graph_list = []
     for g in mapping_solution:
         for n in list(g.nodes):
@@ -621,8 +697,6 @@ def reorderMapping(mapping_solution, hw_layers, pipelineNameTable):
                 g.remove_node(n)
 
     assignOriginalNodeMapping(mapping_solution, hw_layers)
-
-    #Collect the set of IPs for each IP ID
     IPs = dict()
     layerInfoDict = dict()
     IPsIdx =  dict()

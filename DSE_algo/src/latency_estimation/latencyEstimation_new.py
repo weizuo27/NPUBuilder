@@ -574,7 +574,7 @@ def computeLatencyDSP(layerInfo, IPInfo):
     if(IPInfo.IPtype == "Convolution" or IPInfo.IPtype == "Convolution_g"):
         return rawLatency(layerInfo, IPInfo.K_x_P)
     elif(IPInfo.IPtype == "Pooling"): 
-        return layerInfo.out_height*layerInfo.out_width*layerInfo.filter_height*layerInfo.filter_width*layerInfo.out_planes/16*0.42
+        return layerInfo.out_height*layerInfo.out_width*layerInfo.filter_height*layerInfo.filter_width*layerInfo.out_planes/16*0.46
 
     elif(IPInfo.IPtype == "Eltwise"):
 	    return layerInfo.out_height*layerInfo.out_width*layerInfo.out_planes/16

@@ -44,7 +44,7 @@ def roundScheduling(
         L_i=[]
         for i in range( layerNum):
 
-            l=m.addVar(vtype=GRB.INTEGER,name="X_"+str(i)+"_"+str(r)+"_"+str(n));
+            l=m.addVar(vtype=GRB.INTEGER,name="L_"+str(i)+"_"+str(r));
             L_i.append(l)
         L_ri.append(L_i);
     m.update();
@@ -206,24 +206,13 @@ def roundScheduling(
     m.write("out.lp")
     m.optimize();
 
-    roundMapping=[]
-    roundDict={}
-    
-    
-
-    print "indepedent latency", 
-    if loneLayerLatencyList:
-        print loneLayerLatencyList[0][0][1]
-    else:
-        print "[]"
-
-
-
     roundMappingCandidates=[]
     roundDictCandidates=[]
     latencyList=[]
     candidateNum=min(m.SolCount, candidateNum)
     roundIdx=0;
+    roundDict={}
+    roundMapping=[]
     for r in range(MaxRound):
         layerMapping=[]
         for i in range(layerNum):
@@ -234,13 +223,17 @@ def roundScheduling(
         if layerMapping:
             roundMapping.append(layerMapping)            
             roundIdx+=1;
+
     roundMappingCandidates.append(roundMapping);
     roundDictCandidates.append(roundDict)
     latencyList.append(m.PoolObjVal)
 
+    
     for candidateIdx in range(candidateNum):
         m.setParam(GRB.Param.SolutionNumber, candidateIdx)
         roundIdx=0;
+        roundDict={}
+        roundMapping=[]
         for r in range(MaxRound):
             layerMapping=[]
             for i in range(layerNum):
@@ -251,15 +244,11 @@ def roundScheduling(
             if layerMapping:
                 roundMapping.append(layerMapping)            
                 roundIdx+=1;
+
         roundMappingCandidates.append(roundMapping);
         roundDictCandidates.append(roundDict)
         latencyList.append(m.PoolObjVal)
-
-    print m.objVal,latencyList
-    if MI_ir:
-        for r in range(MaxRound): 
-            print MI_ir[0][r].X,
-    print ""
+        
     return roundMappingCandidates,roundDictCandidates,latencyList;
 
         

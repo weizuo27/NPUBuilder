@@ -285,9 +285,11 @@ def computeOptimalLatencyDSP(
     NostreamTable=edgeToDepsTable(noStreamEle);
     layerNum=len(layerType)
     LayerIds=range(layerNum );
-    depositLatency=float("inf")
-    depositIPmapping=None
-    depositScheduling=None
+
+    depositLatency=[float("inf")]*15
+    depositIPmapping=[None]*15
+    depositScheduling=[None]*15
+
     for n, p in enumerate(partition(LayerIds), 1):
         partionSchedulingList=checkPartitionLegal(p,DepsTable,NostreamTable,layerNum);
         partionSchedulingList2=checkPartitionLegal2(p,DepsTable,NostreamTable,layerNum);
@@ -299,7 +301,7 @@ def computeOptimalLatencyDSP(
 
         latencyPartition=float("inf")
         partionSchedulingListRecord=[]
-
+        latencyTableRecord=[]
         
         for partionSchedulingList in partionSchedulingList2:
             latencyTable,latencyPartitionOrder,ipMapping=ipLatency(ipNumDict,partionSchedulingList,layerPerIPlatencyList,layerType);
@@ -307,34 +309,46 @@ def computeOptimalLatencyDSP(
             if latencyTable==None: 
                 break;
  
- 
+
             latencyPartitionOrder=calibrateLatency(loneLatency,loneLatencyDepslayer,partionSchedulingList,latencyTable);
             if ( latencyPartition > latencyPartitionOrder ):
                 latencyPartition=latencyPartitionOrder;
                 partionSchedulingListRecord=partionSchedulingList;
-
+                latencyTableRecord=latencyTable;
         
-        if latencyPartition and  latencyPartition<depositLatency:
-            depositLatency=latencyPartition;
-            depositIPmapping=ipMapping
-            depositScheduling=partionSchedulingListRecord;
+        if latencyPartition and  latencyPartition<max(depositLatency):
+            replaceIndex=depositLatency.index(max(depositLatency))
+            depositLatency[replaceIndex]=latencyPartition;
+            depositIPmapping[replaceIndex]=ipMapping
+            depositScheduling[replaceIndex]=partionSchedulingListRecord;
+  
 
     if depositIPmapping is None:
         print " no feasible scheduling found in Corssverifcation"
-        return None,None,None;
-
-    roundDict={}
-    roundMapping=[]       
+        return None,None,None,None;
     
-    for roundIdx,rounds in enumerate(depositScheduling):
-        layerMapping=[]
-        for layerIdx in rounds:
-            IPIdx=depositIPmapping[layerIdx]
-            roundDict[layerIdx]=roundIdx;
-            layerMapping.append( (roundIdx,layerArray[layerIdx],layerPerIPlatencyList[layerIdx][IPIdx][0]) );
-        roundMapping.append(layerMapping);
+    depositLatencyGround=[]
+    depositSchedulingGround=[]
+    for sIdx,solution in enumerate(depositScheduling):
+        if solution !=None:
+            depositSchedulingGround.append(solution)
+            depositLatencyGround.append(depositLatency[sIdx])
 
-    return roundMapping,roundDict,depositLatency;
+    
+    roundMapping=[]
+    for s,solutionPool in enumerate(depositSchedulingGround):
+        solutionMapping=[]  
+        roundDict={} 
+        for roundIdx,rounds in enumerate(solutionPool):
+            layerMapping=[]
+            for layerIdx in rounds:
+                IPIdx=depositIPmapping[s][layerIdx]
+                roundDict[layerIdx]=roundIdx;
+                layerMapping.append( (roundIdx,layerArray[layerIdx],layerPerIPlatencyList[layerIdx][IPIdx][0]) );
+            solutionMapping.append(layerMapping);
+        roundMapping.append(solutionMapping);
+
+    return roundMapping,roundDict,depositLatencyGround;
 
 
 

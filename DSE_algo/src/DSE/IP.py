@@ -16,6 +16,9 @@ class IP():
         orig_name: String. The original name of the IP. Since IP later can
         be renamed, we would like to record the original name also
     """
+    def __repr__(self):   
+        return "IP-"+self.name
+
     def __init__(self, name, type, resource_list, 
             #The following are chaiDNN conv specific configs
             paramList, numIPs, firstLayer = False):

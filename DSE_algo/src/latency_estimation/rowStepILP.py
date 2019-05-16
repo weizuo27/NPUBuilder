@@ -101,13 +101,11 @@ def rowStepILP(
             if OB_nij[n][i][idx]>OB[n]: 
                 OB[n]=OB_nij[n][i][idx]; 
                 OutIdx[n]=[i,idx];
-    
-   
 
     m.write("file.lp")
     return rowStepChoice,InIdx,OutIdx,m.objVal
 
-
+    
 
 
 

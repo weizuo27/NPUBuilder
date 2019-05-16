@@ -1,11 +1,14 @@
+import copy
+
 class layerInfo_t():
     def __init__(self, layerType=None, inp_height=None,
         inp_width=None, out_height=None, out_width=None,
         out_planes=None, inp_planes=None, stride=None,
         filter_height=None, filter_width=None, pad=None,
         groupFlag=None, layerID=None, memIn=True,
-        memInL=True, memInR=True, memOut=True, rowStep=None):
+        memInL=True, memInR=True, memOut=True, rowStep=None, layerName=None):
         self.layerType=layerType
+        self.layerName=layerName
         self.inp_height=inp_height
         self.inp_width=inp_width
         self.out_height=out_height
@@ -23,6 +26,7 @@ class layerInfo_t():
         self.memInR=memInR
         self.memOut=memOut
         self.rowStep=rowStep
+
     def clearUnCertainItems(self):
         self.memInL = True
         self.memInR = True
@@ -51,7 +55,8 @@ class layerInfo_t():
         "memOut : " + str(self.memOut) + "\n" +\
         "rowStep : " + str(self.rowStep) + "\n"
         return ret_str
-    __repr__ = __str__
+    def __repr__(self):
+        return self.layerName
     
 class IPinfo_t():
     def __init__(self,
@@ -69,13 +74,17 @@ class IPinfo_t():
             self.XI_PIX_PROC=XI_PIX_PROC
             self.XI_WEIGHTBUFF_DEPTH=XI_WEIGHTBUFF_DEPTH
             self.XI_INDEPTH=XI_INDEPTH
+            self.inputPortIdx=1;
             self.XI_OUTDEPTH=XI_OUTDEPTH
+            self.outputPortIdx=0;
             self.int6bit=int6bit
             self.BRAM=BRAM
             self.IBRAM=IBRAM
             self.OBRAM=OBRAM
             self.WBRAM=WBRAM
             self.OtherBRAM=OtherBRAM
+
+            
     def __str__(self):
             string = ""
             string += "IPtype " + str(self.IPtype)+"\n"
@@ -85,6 +94,7 @@ class IPinfo_t():
             string += "XI_PIX_PROC " + str(self.XI_PIX_PROC)+"\n"
             string += "XI_WEIGHTBUFF_DEPTH " + str(self.XI_WEIGHTBUFF_DEPTH)+"\n"
             string += "XI_INDEPTH " + str(self.XI_INDEPTH)+"\n"
+            string += "XI_OUTDEPTH " + str(self.XI_OUTDEPTH)+"\n"
             string += "int6bit " + str(self.int6bit)+"\n"
             string += "BRAM " + str(self.BRAM)+"\n"
             string += "IBRAM " + str(self.IBRAM)+"\n"
@@ -104,19 +114,20 @@ class runInfo_t():
         nextIPidx=None, #if it is involved in a one chain pipeline, then specify next IPidx
         prevIPidx=None #if it is involved in a one chain pipeline, then specify prev IPidx
         ):
-        self.layerInfo=layerInfo
+        self.layerInfo=copy.deepcopy(layerInfo)
         self.IPidx=IPidx
         self.nextIPidx=nextIPidx
         self.prevIPidx=prevIPidx
 
     def __str__(self):
         string = ""
-        string += "layerInfo: " + str(self.layerInfo)+"\n"
-        string += "IPidx: " + str(self.IPidx)+"\n"
-        string += "nextIPidx: " + str(self.nextIPidx)+"\n"
+        string += "layerInfo: " + str(self.layerInfo)+";"
+        string += "IPidx: " + str(self.IPidx)+";"
+        string += "nextIPidx: " + str(self.nextIPidx)+";"
         string += "prevIPidx: " + str(self.prevIPidx)+"\n"
         return string
-    __repr__ = __str__
+    def __repr__(self):
+        return self.layerInfo.layerName+"-"+str(self.IPidx)
 
 
 class roundILPInfo_t():
