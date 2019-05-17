@@ -277,7 +277,7 @@ def computeLatencyEle(
 
 def computeLatencyPool(
     layerInfo,
-    IPinfo
+    latencyInfo
 ):
     pool_stride       =  layerInfo.stride      
     pool_filter_height=  layerInfo.filter_height
@@ -287,27 +287,37 @@ def computeLatencyPool(
     pool_pad          =  layerInfo.pad 
     pool_out_height   =  layerInfo.out_height   
     pool_out_width    =  layerInfo.out_width    
-    pool_out_planes   =  layerInfo.out_planes     
+    pool_out_planes   =  layerInfo.out_planes    
+
     rowStep= layerInfo.rowStep
     memIn= layerInfo.memIn
     memOut= layerInfo.memOut
-    latProcWeight=pool_out_height*pool_out_planes/16*pool_filter_height*pool_filter_width
-    latLoadWeight=pool_inp_width*pool_stride*pool_out_planes/16
+
+
+    ComputePoolingCycle= (pool_out_width*(pool_out_planes/16*(pool_filter_height*pool_filter_width+5)+10) )*rowStep;
+    
+    latencyInfo.ComputePoolingCycle=ComputePoolingCycle
+ 
     latCompNumber=rowStep
-    FirstEndRows=pool_filter_height+(rowStep-1)*pool_stride-pool_pad-1
-    if( memIn ):
-        preOverhead= FirstEndRows*pool_inp_width*pool_out_planes/16
-    else:
-        preOverhead=0
-    if( memOut):
-        postOverhead=rowStep*pool_out_width*pool_out_planes/16
-    else:
-        postOverhead=0
+
+    latencyInfo.FirstEndRows=pool_filter_height+(rowStep-1)*pool_stride-pool_pad-1
 
 
-    latReadInputData=0
-    latWritOutputData=0
-    return  [latProcWeight, latLoadWeight, latCompNumber,  preOverhead,postOverhead, latReadInputData, latWritOutputData,FirstEndRows,1]
+    latencyInfo.inputTotalCycle1st,latencyInfo.inputDataCycle1st= memBurstReadLatency( CeilDiv(pool_out_planes,16),latencyInfo.FirstEndRows*pool_inp_width,16)
+
+    
+    latencyInfo.inputTotalCycle,latencyInfo.inputDataCycle= memBurstReadLatency( rowStep/2.0*CeilDiv(pool_out_planes,16),2*pool_stride*pool_inp_width,16)
+    latencyInfo.outputTotalCycle, latencyInfo.outputDataCycle=  memBurstReadLatency( rowStep/2.0*CeilDiv(pool_out_planes,16),2*pool_out_width,16)
+    
+
+    latencyInfo.LastRowStep=lastRowStep=        pool_out_height%rowStep if pool_out_height%rowStep else rowStep
+    latencyInfo.lastStartOutRow=   pool_out_height - rowStep
+    latencyInfo.DepsRows=rowStep*pool_stride
+
+    latencyInfo.inputTotalCycleLast,latencyInfo.inputDataCycleLast= memBurstReadLatency( lastRowStep/2.0*CeilDiv(pool_out_planes,16),2*pool_stride*pool_inp_width,16)
+    latencyInfo.outputTotalCycleLast,latencyInfo.outputDataCycleLast= memBurstReadLatency( lastRowStep/2.0*CeilDiv(pool_out_planes,16),2*pool_out_width,16)
+
+
 
 class convlayerInfo_t:
     def __init__(self):
@@ -317,16 +327,15 @@ class convlayerInfo_t:
         self.latLoadFeedingBuff=None;
         self.latProcInputBuff=None;
         self.numProcWeight=None;
-        self.preOverheadTotalCycle=None;
-        self.preOVerheadDataCycle=None;
+
         self.inputTotalCycle=None;
         self.inputDataCycle=None;
         self.inputTotalCycle1st=None;
         self.inputDataCycle1st=None;
         self.inputTotalCycleLast=None;
         self.inputDataCycleLast=None;
-        self.postOverhead=None;
-        self.latWritOutputData=None;
+
+
         self.outputTotalCycle=None;
         self.outputDataCycle=None;
         self.outputTotalCycleLast=None;
@@ -336,6 +345,47 @@ class convlayerInfo_t:
         self.LastRowStep=None;
         self.lastStartOutRow=None;
         self.oneTime=None;
+
+class poolLatencyInfo_t:
+    def __init__(self):
+        self.ComputePoolingCycle=None;
+        self.inputTotalCycle=None;
+        self.inputDataCycle=None;
+        self.inputTotalCycle1st=None;
+        self.inputDataCycle1st=None;
+        self.inputTotalCycleLast=None;
+        self.inputDataCycleLast=None;
+        self.outputTotalCycle=None;
+        self.outputDataCycle=None;
+        self.outputTotalCycleLast=None;
+        self.outputDataCycleLast=None;
+        self.FirstEndRows=None;
+        self.DepsRows=None;
+        self.LastRowStep=None;
+        self.lastStartOutRow=None;
+        self.oneTime=None;
+    def __str__(self):
+
+        string="ComputePoolingCycle "+str(self.ComputePoolingCycle)+"\n"
+        string+="inputTotalCycle "+str(self.inputTotalCycle)+"\n"
+        string+="inputDataCycle "+str(self.inputDataCycle)+"\n"
+        string+="inputTotalCycle1st "+str(self.inputTotalCycle1st)+"\n"
+        string+="inputDataCycle1st "+str(self.inputDataCycle1st)+"\n"
+        string+="inputTotalCycleLast "+str(self.inputTotalCycleLast)+"\n"
+        string+="inputDataCycleLast "+str(self.inputDataCycleLast)+"\n"
+        string+="outputTotalCycle "+str(self.outputTotalCycle)+"\n"
+        string+="outputDataCycle "+str(self.outputDataCycle)+"\n"
+        string+="outputTotalCycleLast "+str(self.outputTotalCycleLast)+"\n"
+        string+="outputDataCycleLast "+str(self.outputDataCycleLast)+"\n"
+        string+="FirstEndRows "+str(self.FirstEndRows)+"\n"
+        string+="DepsRows "+str(self.DepsRows)+"\n"
+        string+="LastRowStep "+str(self.LastRowStep)+"\n"
+        string+="lastStartOutRow "+str(self.lastStartOutRow)+"\n"
+        string+="oneTime "+str(self.oneTime)+"\n"
+
+        return string
+
+
 
 class layerLatencyInfo_t():
     def __init__(self, layerInfo, IPinfo, rowStep):
@@ -518,50 +568,83 @@ class layerLatencyInfo_t():
             self.Stride=1
 
         elif( IPinfo.IPtype== "Pooling"):
-            ele_out_height  = layerInfo.out_height   
-            ele_out_width   = layerInfo.out_width    
-            ele_out_planes  = layerInfo.out_planes  
-            rowStep = layerInfo.rowStep
-            memInL  = layerInfo.memInL
-            memInR  = layerInfo.memInR
-            memOut  = layerInfo.memOut
-
-            burstNumber=rowStep*CeilDiv(ele_out_planes,16)
-            burstLength=ele_out_width
-            dataCycle,TotalCycle=memBurstReadLatency( burstNumber, burstLength, 16)
+            poolLatencyInfo= poolLatencyInfo_t();
+            
+            
+            computeLatencyPool(layerInfo,poolLatencyInfo);
         
-            self.PreDataCycle0=memInL*dataCycle
-            self.PreDataCycle1=memInR*dataCycle
-            self.PreTotalCycle=TotalCycle
+            memIn=layerInfo.memIn
+            memOut=layerInfo.memOut
 
-            self.RecurDataCycleFirst0=memInL*dataCycle
-            self.RecurDataCycleFirst1=memInR*dataCycle+memOut*dataCycle
-            self.RecurTotalCycleFirst=TotalCycle
-
-            self.RecurDataCycleMid0=memInL*dataCycle
-            self.RecurDataCycleMid1=memInR*dataCycle+memOut*dataCycle
-            self.RecurTotalCycleMid=TotalCycle
+           
 
 
-            self.RecurDataCycleSecondLast0=memInL*dataCycle
-            self.RecurDataCycleSecondLast1=memInR*dataCycle+memOut*dataCycle
-            self.RecurTotalCycleSecondLast=TotalCycle
+            
+            self.PreDataCycle0=memIn*poolLatencyInfo.inputDataCycle1st
+     
+            self.PreDataCycle1=0
+            
+            self.PreTotalCycle=memIn*poolLatencyInfo.inputTotalCycle1st
+          
 
-            self.RecurDataCycleLast0=memInL*dataCycle
-            self.RecurDataCycleLast1=memInR*dataCycle+memOut*dataCycle
-            self.RecurTotalCycleLast=TotalCycle
+
+            self.RecurDataCycleFirst0=memIn*poolLatencyInfo.inputDataCycle
+            self.RecurDataCycleFirst1=0
+            self.RecurTotalCycleFirst=max(poolLatencyInfo.ComputePoolingCycle,poolLatencyInfo.inputDataCycle)
+
+            self.RecurDataCycleMid0=memIn*poolLatencyInfo.inputDataCycle
+            self.RecurDataCycleMid1=memIn*poolLatencyInfo.outputDataCycle
+            self.RecurTotalCycleMid=max(poolLatencyInfo.ComputePoolingCycle,poolLatencyInfo.inputTotalCycle,poolLatencyInfo.outputTotalCycle)
+
+
+            self.RecurDataCycleSecondLast0=memIn*poolLatencyInfo.inputDataCycleLast
+            self.RecurDataCycleSecondLast1=memIn*poolLatencyInfo.outputDataCycle
+            self.RecurTotalCycleSecondLast=max(poolLatencyInfo.ComputePoolingCycle,poolLatencyInfo.inputTotalCycle,poolLatencyInfo.outputTotalCycle)
+
+
+            self.RecurDataCycleLast0=0
+            self.RecurDataCycleLast1=memIn*poolLatencyInfo.outputDataCycle
+            self.RecurTotalCycleLast=max(poolLatencyInfo.ComputePoolingCycle,poolLatencyInfo.outputTotalCycle)
+
 
             self.PostDataCycle0=0
-            self.PostDataCycle1=memOut*dataCycle
-            self.PostTotalCycle=TotalCycle
+            self.PostDataCycle1=memIn*poolLatencyInfo.outputDataCycleLast
+            self.PostTotalCycle=memIn*poolLatencyInfo.outputTotalCycleLast
 
-            self.RowNum=ele_out_height
+            self.RowNum=layerInfo.out_height 
             self.RowStep=rowStep
-            self.DepsRowStepFirst=1
-            self.DepsRowStepRecur=rowStep
-            self.LastStartRow=ele_out_height-rowStep
-            self.SecondLastStartRow=ele_out_height-rowStep*2;
+            self.DepsRowStepFirst=poolLatencyInfo.FirstEndRows
+            self.DepsRowStepRecur=poolLatencyInfo.DepsRows
+            self.LastStartRow=poolLatencyInfo.lastStartOutRow
+            self.SecondLastStartRow=poolLatencyInfo.lastStartOutRow-rowStep;
             self.Stride=1
+    def __str__(self):
+        string="PreDataCycle0 "+str(self.PreDataCycle0)+"\n";
+        string+="PreDataCycle1 "+str(self.PreDataCycle1)+"\n";
+        string+="PreTotalCycle "+str(self.PreTotalCycle)+"\n";
+        string+="RecurDataCycleFirst0 "+str(self.RecurDataCycleFirst0)+"\n";
+        string+="RecurDataCycleFirst1 "+str(self.RecurDataCycleFirst1)+"\n";
+        string+="RecurTotalCycleFirst "+str(self.RecurTotalCycleFirst)+"\n";
+        string+="RecurDataCycleMid0 "+str(self.RecurDataCycleMid0)+"\n";
+        string+="RecurDataCycleMid1 "+str(self.RecurDataCycleMid1)+"\n";
+        string+="RecurTotalCycleMid "+str(self.RecurTotalCycleMid)+"\n";
+        string+="RecurDataCycleSecondLast0 "+str(self.RecurDataCycleSecondLast0)+"\n";
+        string+="RecurDataCycleSecondLast1 "+str(self.RecurDataCycleSecondLast1)+"\n";
+        string+="RecurTotalCycleSecondLast "+str(self.RecurTotalCycleSecondLast)+"\n";
+        string+="RecurDataCycleLast0 "+str(self.RecurDataCycleLast0)+"\n";
+        string+="RecurDataCycleLast1 "+str(self.RecurDataCycleLast1)+"\n";
+        string+="RecurTotalCycleLast "+str(self.RecurTotalCycleLast)+"\n";
+        string+="PostDataCycle0 "+str(self.PostDataCycle0)+"\n";
+        string+="PostDataCycle1 "+str(self.PostDataCycle1)+"\n";
+        string+="PostTotalCycle "+str(self.PostTotalCycle)+"\n";
+        string+="RowNum "+str(self.RowNum)+"\n";
+        string+="RowStep "+str(self.RowStep)+"\n";
+        string+="DepsRowStepFirst "+str(self.DepsRowStepFirst)+"\n";
+        string+="DepsRowStepRecur "+str(self.DepsRowStepRecur)+"\n";
+        string+="LastStartRow "+str(self.LastStartRow)+"\n";
+        string+="SecondLastStartRow "+str(self.SecondLastStartRow)+"\n";
+        string+="Stride "+str(self.Stride)+"\n";
+        return string
 
 
 
@@ -676,7 +759,8 @@ def computeLatencyParallel2(
         for k in currentTotalCycle:
             if currentTotalCycle[k]==0:
                 if pipeInfoStage[k]:
-                    currentDataCycle0[k],currentDataCycle1[k],currentTotalCycle[k]=pipeInfoStage[k].pop(0)
+                    while (currentTotalCycle[k]==0):
+                        currentDataCycle0[k],currentDataCycle1[k],currentTotalCycle[k]=pipeInfoStage[k].pop(0)
                 else:
                     deleteList.append(k)
         for k in deleteList:

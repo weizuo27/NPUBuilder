@@ -26,6 +26,7 @@ def updateCombineCounter(counter,counterNum ):
     return False
 
 def computeRequiredIODepth(layerInfo, rowStep):
+
     conv_out_planes     =   layerInfo.out_planes   
     conv_inp_planes     =   layerInfo.inp_planes  
     conv_stride         =   layerInfo.stride 
@@ -34,15 +35,20 @@ def computeRequiredIODepth(layerInfo, rowStep):
     conv_out_width      =   layerInfo.out_width
     conv_filter_height  =   layerInfo.filter_height
 
+   
+
     IN_D=1<< int.bit_length( conv_inp_width* (-(-conv_inp_planes//64))*(conv_filter_height+(rowStep*2-1)*conv_stride) );
+
+
     IN_D=max(IN_D,1024)
-    
+    if IN_D >1024:
+        print layerInfo.layerName,"R:",rowStep,"[",conv_inp_height,conv_inp_width,conv_inp_planes,"]",IN_D
     OUT_D= AlignSize( int( conv_out_width*CeilDiv(conv_out_planes,32)*rowStep ) , 1024)
     return [IN_D,OUT_D]
     
 def computeIOBram(IN_D,OUT_D):
-    inBrams = 2*math.ceil(IN_D/1024.0) * 8 * 2 * math.ceil(32.0/18)
-    outBrams = 2*math.ceil(OUT_D/1024.0) * 8 * math.ceil(72.0/18) * 2
+    inBrams = 2*CeilDiv(IN_D,1024) * 8 * 2 * math.ceil(32.0/18)
+    outBrams = 2*CeilDiv(OUT_D,1024) * 8 * math.ceil(72.0/18) * 2
     return [inBrams, outBrams]
 
 def computeIODepth(inBrams,outBrams):
@@ -128,6 +134,7 @@ def generateRunInfo(
         if( IPinfo.IPtype=="Convolution"):
             Ker, Pix=KerPixList[i]
             constBramIP=constantBramConv(weightDepthList[i],Ker, Pix);
+            print "Convolution Const BRAM",constBramIP;
             constBram+=constBramIP
             IPinfoList[i].XI_WEIGHTBUFF_DEPTH=weightDepthList[i];
             IPinfoList[i].XI_KER_PROC=Ker;
@@ -135,6 +142,7 @@ def generateRunInfo(
             # logFile.write("Convolution,"+str(Ker)+","+str(Pix)+","+str(weightDepthList[i])+","+str(constBramIP)+"\n")
         elif( IPinfo.IPtype=="Pooling"):
             constBram+=constantBramPool();
+            print "Pooling Const BRAM",constantBramPool();
             IPinfo.BRAM=constantBramPool();
             # logFile.write("Pooling,"+str(constantBramPool())+"\n")
         elif( IPinfo.IPtype=="Eltwise"):
@@ -165,7 +173,7 @@ def generateRunInfo(
 
 
                     latency=int(newModel.computeRoundLatency(roundInfoList[roundIdx], IPinfoList,rowStep) );                        
-                        
+                
     
                     
                     roundILPInfo=roundILPInfo_t();
@@ -322,6 +330,7 @@ def brutalSearchSolution(
     IBRAMTABLE=[None]*3;
     OBRAMTABLE=[None]*3;
 
+    
     for i in range(3):
         IBRAMTABLE[i],OBRAMTABLE[i]=computeIOBram(IDEPTHTABLE[i],ODEPTHTABLE[i])
     IDEPTHcounterNum=[3]*ConvIPNum;
@@ -347,6 +356,7 @@ def brutalSearchSolution(
         while 1:
             for i in range(ConvIPNum):
                 OBRAM[i]=OBRAMTABLE[ ODEPTHcounter[i]];
+            # print budget,OBRAM,IBRAM
             if sum(OBRAM)+sum(IBRAM) > budget:
                 if updateCombineCounter(ODEPTHcounter,ODEPTHcounterNum ): break;
                 continue
@@ -608,7 +618,15 @@ def exploitK_xPCombinationsValidation(
                 else: continue;
 
             IB_gsrkn,OB_gsrkn,L_gsrk,ConvIPNum=generateILPinput(groupILPInfoList);
+            
             #iterate through all the IO depth combinations, find the best rowstep solution:
+
+            for g,solutionPool in  enumerate(IB_gsrkn):
+                for s,solution in enumerate(solutionPool):
+                    for r,Round in enumerate(solution):
+                        print (g,s,r),Round[0],OB_gsrkn[g][s][r][0],sum(Round[0])+sum(OB_gsrkn[g][s][r][0]),BRAMBudget-constBram
+                    print ""
+
 
             IBrst2,OBrst2,solutionChoice2,ILPlatency2=brutalSearchSolution(IB_gsrkn,OB_gsrkn, L_gsrk, BRAMBudget-constBram, ConvIPNum);
             IBrst,OBrst,solutionChoice,ILPlatency= RowStepILP.RowStepILP(IB_gsrkn,OB_gsrkn, L_gsrk, BRAMBudget-constBram, ConvIPNum);
