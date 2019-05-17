@@ -1,9 +1,7 @@
 MEMIN 2
     ap_uint<128> *
     ap_uint<128> *
-MEMOUT 2
-    ap_uint<128> *
-    ap_uint<128> *
+MEMOUT 0
 STREAMIN 2
     ap_uint<128>
     ap_uint<128>

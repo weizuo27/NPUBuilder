@@ -47,7 +47,7 @@ class IP():
         elif self.type == "Pooling":
             self.csvUneceNums = 6
         elif self.type == "Eltwise":
-            self.csvUneceNums = 5
+            self.csvUneceNums = 4
         if 1:
             self.CSVparameterListUnNece = self.csvUneceNums * [0]
             if(self.csvUneceNums > 0):

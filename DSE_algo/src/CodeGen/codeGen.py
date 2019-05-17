@@ -286,6 +286,12 @@ def genWrapper(g, n):
             portName =n.name + "il"+str(i)
             n.args.append(portName)
             topArg.append(memIns[i] + " " + portName)
+    #add mem-out left
+    #FIXME: Assume mem-in mem-out have the same number of ports
+        for i in range(len(memIns)):
+            portName =n.name + "ol"+str(i)
+            n.args.append(portName)
+            topArg.append(memIns[i] + " " + portName)
     #MEM IN
 #    if n.type == "Convolution_g":
 #        times = 2

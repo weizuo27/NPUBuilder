@@ -42,7 +42,8 @@ def CSVconfigNece(n, ip_inst):
     elif ip_inst.type == "Eltwise":
         if(not ip_inst.necessaryHasSet):
             RIn = int(ip_inst.memInFlag)
-            Out = int(ip_inst.memOutFlag)
+            #Out = int(ip_inst.memOutFlag)
+            Out = int(True)
             LIn = int(True)
             ipName = ip_inst.name.split("_")[0]
             ip_inst.CSVparameterListNecessary += [LIn, RIn, Out, ipName]
@@ -102,13 +103,14 @@ def CSVconfigUnNece(n, ip_inst, s, t, idle, layerIdxTable,poolingTypeTable, muxS
         ip_inst.idle = int(idle)
         ip_inst.CSVparameterListUnNece[0] = int(idle)
         #FIXME: We currently do not allow ELE to have stream in.
-#        if n == t:
-#            ip_inst.CSVparameterListUnNece[1] = 1 #in
+        if n == t:
+            ip_inst.CSVparameterListUnNece[1] = 1 #in
         if n == s:
-            ip_inst.CSVparameterListUnNece[3] = 1 #out
+            ip_inst.CSVparameterListUnNece[2] = 1 #out
         layerIdx = layerIdxTable[n.name]
-        ip_inst.CSVparameterListUnNece[4] = layerIdx
+        ip_inst.CSVparameterListUnNece[3] = layerIdx
         ip_inst.layerID = int(layerIdx)
+
     else:
         assert 0, "Unsupported IP type" #Should not come here
 
