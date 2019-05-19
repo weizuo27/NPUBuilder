@@ -34,21 +34,30 @@ def computeRequiredIODepth(layerInfo, rowStep):
     conv_inp_width      =   layerInfo.inp_width
     conv_out_width      =   layerInfo.out_width
     conv_filter_height  =   layerInfo.filter_height
+    layerID = layerInfo.layerID
 
    
-
-    IN_D=1<< int.bit_length( conv_inp_width* (-(-conv_inp_planes//64))*(conv_filter_height+(rowStep*2-1)*conv_stride) );
-
+    if(layerID!=0):
+        IN_D=1<< int.bit_length( conv_inp_width* (-(-conv_inp_planes//64))*(conv_filter_height+(rowStep*2-1)*conv_stride) );
+    else:
+        IN_D=1024
 
     IN_D=max(IN_D,1024)
-    if IN_D >1024:
-        print layerInfo.layerName,"R:",rowStep,"[",conv_inp_height,conv_inp_width,conv_inp_planes,"]",IN_D
+    if IN_D >1024 and rowStep < 2:
+        print layerInfo.layerName,"RI:",rowStep,"[",conv_inp_height,conv_inp_width,conv_inp_planes,"]",IN_D
+
+
     OUT_D= AlignSize( int( conv_out_width*CeilDiv(conv_out_planes,32)*rowStep ) , 1024)
+    
+    if OUT_D >1024 and rowStep < 2:
+        print layerInfo.layerName,"RO:",rowStep,"[",conv_out_height,conv_out_width,conv_out_planes,"]",OUT_D
+    
     return [IN_D,OUT_D]
     
 def computeIOBram(IN_D,OUT_D):
     inBrams = 2*CeilDiv(IN_D,1024) * 8 * 2 * math.ceil(32.0/18)
     outBrams = 2*CeilDiv(OUT_D,1024) * 8 * math.ceil(72.0/18) * 2
+    # print  [inBrams, outBrams]
     return [inBrams, outBrams]
 
 def computeIODepth(inBrams,outBrams):
@@ -134,7 +143,6 @@ def generateRunInfo(
         if( IPinfo.IPtype=="Convolution"):
             Ker, Pix=KerPixList[i]
             constBramIP=constantBramConv(weightDepthList[i],Ker, Pix);
-            print "Convolution Const BRAM",constBramIP;
             constBram+=constBramIP
             IPinfoList[i].XI_WEIGHTBUFF_DEPTH=weightDepthList[i];
             IPinfoList[i].XI_KER_PROC=Ker;
@@ -142,7 +150,6 @@ def generateRunInfo(
             # logFile.write("Convolution,"+str(Ker)+","+str(Pix)+","+str(weightDepthList[i])+","+str(constBramIP)+"\n")
         elif( IPinfo.IPtype=="Pooling"):
             constBram+=constantBramPool();
-            print "Pooling Const BRAM",constantBramPool();
             IPinfo.BRAM=constantBramPool();
             # logFile.write("Pooling,"+str(constantBramPool())+"\n")
         elif( IPinfo.IPtype=="Eltwise"):
@@ -157,7 +164,7 @@ def generateRunInfo(
 
     groupILPinfoList=[]
 
-    IOBRAM={}
+    
     for g,groupSolutionPool in enumerate(groupInfoList):
         solutionPoolRoundInfoList=[]
         for s,roundInfoList in enumerate(groupSolutionPool):
@@ -165,6 +172,11 @@ def generateRunInfo(
             for roundIdx in range(len(roundInfoList)):
                 roundILPInfoList_row=[];
                 for rowStep in range(1,7):
+                    IOBRAM={}
+                    IN_D=None;
+                    OUT_D=None;
+                    inBrams=None;
+                    outBrams=None;
                     for runInfo in roundInfoList[roundIdx]:
                         if( IPinfoList[runInfo.IPidx].IPtype=="Convolution"):
                             IN_D,OUT_D = computeRequiredIODepth( runInfo.layerInfo, rowStep)
@@ -333,6 +345,7 @@ def brutalSearchSolution(
     
     for i in range(3):
         IBRAMTABLE[i],OBRAMTABLE[i]=computeIOBram(IDEPTHTABLE[i],ODEPTHTABLE[i])
+    print  IBRAMTABLE,OBRAMTABLE
     IDEPTHcounterNum=[3]*ConvIPNum;
     ODEPTHcounterNum=[3]*ConvIPNum;
     ODEPTHcounter=[0]*ConvIPNum;
@@ -367,32 +380,51 @@ def brutalSearchSolution(
                 groupValid=False;
                 depositSolutionLatency=float("inf")
                 depositSolutionChoice=None
+               
                 for s,L_rk in enumerate(L_srk):
                     SolutionValid=True;
                     SolutionLatency=0;
                     rowStepTable=[]
+                    solutionFailRound=[]
                     for r,L_k in enumerate(L_rk):
                         RoundLatency=float("inf")
                         for k,L in enumerate(L_k):
                             RowStepValid=True
                             for n in range(ConvIPNum):
                                 if IB_gsrkn[g][s][r][k][n] > IBRAM[n] or OB_gsrkn[g][s][r][k][n] > OBRAM[n]: 
+                                    # print (g,s,r,k,n),IBRAM[n], OBRAM[n], IB_gsrkn[g][s][r][k][n], OB_gsrkn[g][s][r][k][n]
                                     RowStepValid=False;
                                     break;
                             if RowStepValid and L<RoundLatency:
                                 RoundLatency=L
                                 rowStep=k
                         if RoundLatency==float("inf"):
+                            solutionFailRound.append([ IBRAM, OBRAM, IB_gsrkn[g][s][r], OB_gsrkn[g][s][r], (g,s,r) ] )
                             SolutionValid=False;
                             break;
                         else:
                             SolutionLatency+=RoundLatency;
                             rowStepTable.append(rowStep);
+
                     if SolutionValid and SolutionLatency<depositSolutionLatency:
                         depositSolutionLatency=SolutionLatency;
                         depositSolutionChoice=(s,rowStepTable);
                         groupValid=True
+
                 if groupValid == False:
+                    print "failing group ID", g, 
+                    for i in solutionFailRound:
+                        print i[4]
+                        print i[0]
+                        print ""
+                        for j in i[2]:
+                            print j
+                        print ""
+                        print i[1]
+                        print ""
+                        for j in i[3]:
+                            print j
+                        print ""
                     break;
                 else:
                     TotalLatency+=depositSolutionLatency;
@@ -621,11 +653,11 @@ def exploitK_xPCombinationsValidation(
             
             #iterate through all the IO depth combinations, find the best rowstep solution:
 
-            for g,solutionPool in  enumerate(IB_gsrkn):
-                for s,solution in enumerate(solutionPool):
-                    for r,Round in enumerate(solution):
-                        print (g,s,r),Round[0],OB_gsrkn[g][s][r][0],sum(Round[0])+sum(OB_gsrkn[g][s][r][0]),BRAMBudget-constBram
-                    print ""
+            # for g,solutionPool in  enumerate(IB_gsrkn):
+            #     for s,solution in enumerate(solutionPool):
+            #         for r,Round in enumerate(solution):
+            #             print (g,s,r),Round[0],OB_gsrkn[g][s][r][0],sum(Round[0])+sum(OB_gsrkn[g][s][r][0]),BRAMBudget-constBram
+            #         print ""
 
 
             IBrst2,OBrst2,solutionChoice2,ILPlatency2=brutalSearchSolution(IB_gsrkn,OB_gsrkn, L_gsrk, BRAMBudget-constBram, ConvIPNum);

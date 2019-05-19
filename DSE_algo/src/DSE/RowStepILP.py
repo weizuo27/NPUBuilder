@@ -164,7 +164,7 @@ def RowStepILP(
                 for r,x_r in enumerate( X_gsrk[g][s] ):
                     for k,x_k in enumerate(x_r):
                         if x_k.X == 1:
-                            rowStepList.append(k);
+                            rowStepList.append(k+1);
                 solutionChoice.append( (s,rowStepList) )
 
         if count != 1:

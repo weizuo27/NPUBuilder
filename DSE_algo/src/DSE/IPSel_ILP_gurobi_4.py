@@ -148,14 +148,15 @@ def genRoundInfo(roundMapping, ipIdxDict_IP, gs ):
             runInfo.layerInfo.clearUnCertainItems()
             roundMapping.append( (currentNode,currentIdx)  )
 
-
-            if runInfo.layerInfo.layerType == "Convolution" or runInfo.layerType == "Pooling":
+            
+            if runInfo.layerInfo.layerType == "Convolution" or runInfo.layerInfo.layerType == "Pooling":
                 runInfo.layerInfo.memIn=False if prevIdx!=None else 1;
             elif runInfo.layerInfo.layerType == "Eltwise":
                 runInfo.layerInfo.memInR=False if prevIdx!=None else 1;
             runInfo.layerInfo.memOut=False
 
-                
+            
+                            
             roundInfoList.append(runInfo);
             roundSubGraph.remove_node(currentNode);
             
@@ -361,19 +362,19 @@ class IPSel():
                     PoolNums,
                     EleNums]=generateILPInput(g,layerIpLatencyTable_ILP,IP_dict,gs.noStreamEdge,gs.loneLayer)
 
-                    roundMappingCandidates2,roundDictCandidates2,latCandidates2=RawILP.roundScheduling(
-                    depsTable, 
-                    noStreamTable,
-                    loneLayerDepsTable,
-                    loneLayerArray,
-                    loneLayerLatency, 
-                    layerTypeArray,
-                    layerArray,
-                    latencyPerIPTable, 
-                    convNums,
-                    PoolNums,
-                    EleNums,
-                    len(layerTypeArray));
+                    # roundMappingCandidates2,roundDictCandidates2,latCandidates2=RawILP.roundScheduling(
+                    # depsTable, 
+                    # noStreamTable,
+                    # loneLayerDepsTable,
+                    # loneLayerArray,
+                    # loneLayerLatency, 
+                    # layerTypeArray,
+                    # layerArray,
+                    # latencyPerIPTable, 
+                    # convNums,
+                    # PoolNums,
+                    # EleNums,
+                    # len(layerTypeArray));
 
                     if loneLayerLatency:
                         loneLayerLatency=loneLayerLatency[0][0][1];
@@ -382,7 +383,11 @@ class IPSel():
                         loneLayerLatency=0;
                         loneLayerLatencyDeps=0;
                         
-                    
+                    # raw_input()
+
+                    import time
+                    print "Start search"
+                    start = time.time()
                     roundMappingCandidates,roundDictCandidates,latCandidates=TestCase.computeOptimalLatencyDSP(
                         depsTable, 
                         noStreamTable,
@@ -396,12 +401,15 @@ class IPSel():
                         EleNums,
                         len(layerTypeArray)
                     );
-                    print "Brutal FOrce",latCandidates2,lat_achieved
+                    end = time.time()
+                    print "time",end - start
+                    # raw_input()
+                    # print "Brutal FOrce",latCandidates2,lat_achieved
 
-                    for i in roundMappingCandidates2:
-                        for j in i:
-                            print j;
-                        print ""
+                    # for i in roundMappingCandidates2:
+                    #     for j in i:
+                    #         print j;
+                    #     print ""
                     
                     print "ILP",latCandidates,lat_achieved
 
