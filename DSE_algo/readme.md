@@ -1,5 +1,6 @@
-1. Installing:
-    1.  Install Gurobi following this link. 
+1. Pre-requirment
+    1. Install Gurobi following this link. https://www.gurobi.com/documentation/8.1/quickstart_mac/installing_the_anaconda_py.html
+    2. Python 2.7
 1. Input files need to be prepared to run the flow:
     go to folder ./inputFiles
     1. IP_config_w_DSP (The list of IPs to select among and their DSP consumptions configurations)
@@ -24,21 +25,21 @@
 3. The output of the flow:
     go to folder outputFiles. It has two parts(folders): hw and sw, which is coresponding to the generated file for hardware design and software design
     1. hw: (will add explaination later). Can copy to the correct folder (the folders need to be created)
-        callOrder.csv : The IP calling order for each round. E.g., there are 3 IPs used to compose the NPU, the order of each round may be different.
-        dnn_wrapper.cpp : The wrapper cpp file which is used for the 
-        ipNameList : The list of IPs used in the NPU
-        ippackGen.sh : This should be the shell script to generate each IP, but since currently the interface is changing, it may not work.
-        pipeSystem.cpp : The top level NPU CPP file
-        pipeSystem.h : The headerfile for the NPU
-        round.csv : The IP configuration of each round
+        * callOrder.csv : The IP calling order for each round. E.g., there are 3 IPs used to compose the NPU, the order of each round may be different.
+        * dnn_wrapper.cpp : The wrapper cpp file which is used for the 
+        * ipNameList : The list of IPs used in the NPU
+        * ippackGen.sh : This should be the shell script to generate each IP, but since currently the interface is changing, it may not work.
+        * pipeSystem.cpp : The top level NPU CPP file
+        * pipeSystem.h : The headerfile for the NPU
+        * round.csv : The IP configuration of each round
 
-        pipeSystemTemp : This is used for sw generation, not used for design.
+        * pipeSystemTemp : This is used for sw generation, not used for design.
 
     2. sw, software reused many of the software functions from ChaiDNN, so copy the software from ChaiDNN, then replace the following files with generate files(Following the folder orgnization of the CHaiDNN)
-        csvParser.cpp : Copy to scheduler folder
-        csvParser.hpp : Copy to scheduler folder
-        utils_wei.cpp : Copy to scheduler folder
-        utils_wei.hpp : Copy to scheduler folder
-        xi_scheduler.cpp : Copy to scheduler folder (replace the original xi_scheduler.cpp)
-        xi_kernels.cpp : Copy to folder "common"
-        xi_kernels.h :  Copy to folder "common"
+        * csvParser.cpp : Copy to scheduler folder
+        * csvParser.hpp : Copy to scheduler folder
+        * utils_wei.cpp : Copy to scheduler folder
+        * utils_wei.hpp : Copy to scheduler folder
+        * xi_scheduler.cpp : Copy to scheduler folder (replace the original xi_scheduler.cpp)
+        * xi_kernels.cpp : Copy to folder "common"
+        * xi_kernels.h :  Copy to folder "common"
