@@ -17,12 +17,6 @@ res5a_branch1,res5a_branch2a,res5a_branch2b,res5a_branch2c,conv_eltwise13
 res5b_branch2a,res5b_branch2b,res5b_branch2c,conv_eltwise14,res5c_branch2a,res5c_branch2b,res5c_branch2c,conv_eltwise15
 pool5
 
-# -------------------- RemoveEdge ------------------------ #
-res2a_branch1
-res3a_branch1
-res4a_branch1
-res5a_branch1
-
 # -------------------NoStreamEdge------------------------ #
 res2a_branch1,conv_eltwise0
 pool1,res2a_branch1

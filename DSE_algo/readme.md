@@ -5,8 +5,14 @@
     1. IP_config_w_DSP (The list of IPs to select among and their DSP consumptions configurations)
     2. layerIDMapping(The layer ID of each layer for a network. I have given example for four networks, named as "layerIDMappingXXNet", can copy them as "layerIDMapping")
     3. PoolingTyping(The pooling type of each pooling layer for a network. I have given example for four networks, named as "PoolingTypingXXNet", can copy as "PoolingTyping")
-    .4 input NN graph (The graph structure of the networks. I have given the graph for the four networks, named as "xxNet_optimized_graph.txt)
-        Note: To generate this graph file for other networks, it need to be written in a specific format.
+    4. input NN graph (The graph structure of the networks. I have given the graph for the four networks, named as "xxNet_optimized_graph.txt)
+        Note: To generate this graph file for other networks, it need to be written in a specific format. Each group of information is separated using #-----xxx-----#
+        1. Necessary groups:
+            1. LayerGroups: Which layers are considered to be in one group. The DSE of piplining happens only in that group. This helps to solve the scalability issue.
+            2. Layers: This describes the basic structure of NN graph. Following the example (e.g.,  vggNet), it should be easy to understand
+            3. Blobs: The in/out tensor of each layer, and the dimension. dim order: NCHW
+        2. Optional groups:
+            1.NoStreamEdges: To give some control to the user, user can define which layers cannot have pipeline port.
 
 2. To run the flow (example)
     1. python top_4.py 1800 2190 294080 448160 10000 10000000000000 ./inputFiles/res_optimized_graph.txt  ./inputFiles/IP_config_w_DSP 2 2 0 2 1 2 2
@@ -28,7 +34,7 @@
 
         pipeSystemTemp : This is used for sw generation, not used for design.
 
-    2. sw (Following the folder orgnization of the CHaiDNN)
+    2. sw, software reused many of the software functions from ChaiDNN, so copy the software from ChaiDNN, then replace the following files with generate files(Following the folder orgnization of the CHaiDNN)
         csvParser.cpp : Copy to scheduler folder
         csvParser.hpp : Copy to scheduler folder
         utils_wei.cpp : Copy to scheduler folder
