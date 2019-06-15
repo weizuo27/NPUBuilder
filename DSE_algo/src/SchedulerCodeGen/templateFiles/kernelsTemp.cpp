@@ -182,8 +182,9 @@ void ConvolutionForward(
 }
 
 #if 1//0//(IO_TYPE==16)
-int PoolWrapper(GMEM_MAXPOOLTYPE *poolin, GMEM_MAXPOOLTYPE *poolout, GMEM_MAXPOOLTYPE *poolin1, GMEM_MAXPOOLTYPE *poolout1, GMEM_MAXPOOLTYPE *wts, int *scalar_pool_args);
+int PoolWrapper(GMEM_MAXPOOLTYPE *poolin,  GMEM_MAXPOOLTYPE *poolin1, GMEM_MAXPOOLTYPE *poolout,GMEM_MAXPOOLTYPE *poolout1, int *scalar_pool_args);
 #else
+#this branch is CHAIDNN original, while the above branch not. It should not reach here, but in case it is reached, we need to modify the argument order. It is INCORRECT.
 int PoolWrapper(GMEM_MAXPOOLTYPE *poolin, GMEM_MAXPOOLTYPE *poolout, GMEM_MAXPOOLTYPE *poolin1, GMEM_MAXPOOLTYPE *poolout1, int *scalar_pool_args);
 #endif
 
@@ -195,12 +196,9 @@ void PoolForward(
 )
 {
 #if __POOL_ENABLE__
-// 	PoolWrapper((GMEM_MAXPOOLTYPE *)pool_in, (GMEM_MAXPOOLTYPE *)pool_in1,
-// 			(GMEM_MAXPOOLTYPE *)pool_out, (GMEM_MAXPOOLTYPE *)pool_out1,
-// #if 1//0//(IO_TYPE==16)
-// 			(GMEM_MAXPOOLTYPE*) wts,
-// #endif
-// 			scalar_pool_args);
+    PoolWrapper((GMEM_MAXPOOLTYPE *)pool_in, (GMEM_MAXPOOLTYPE *)pool_in1,
+            (GMEM_MAXPOOLTYPE *)pool_out, (GMEM_MAXPOOLTYPE *)pool_out1,
+                       scalar_pool_args);
 #endif
 }
 

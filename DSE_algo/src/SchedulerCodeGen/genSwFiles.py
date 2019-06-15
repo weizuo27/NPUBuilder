@@ -82,7 +82,7 @@ def genXkernelCPP(functionArgs, outDir):
             f_w.write("\tvoid* "+str(functionArgs[idx][1])+"\n")
             f_w.write("){\n")
             f_w.write("\tlong long int start =sds_clock_counter();\n\
-    long long int frequency = sds_clock_frequency();\n")
+                    long long int frequency = sds_clock_frequency();\n")
             f_w.write("\tConvolutionPipeWrapper(\n")
             idx = 0
             for t, v in functionArgs:
@@ -93,7 +93,8 @@ def genXkernelCPP(functionArgs, outDir):
 
             f_w.write("\t\t("+str(functionArgs[idx][0])+") "+str(functionArgs[idx][1])+"\n")
             f_w.write(");\n")
-            f_w.write("\tsds_wait(1);\n")
+            #Comment out if there are other layers run in parallel (e.g., pooling)
+            #f_w.write("\tsds_wait(1);\n")
             f_w.write("\tlong long int end =sds_clock_counter();\n"\
                     "\tfloat mid_time = (((double)(end - start)/(double)frequency*1000));\n"\
                     "\tstd::cout<<\"hardware layer time:\"<<mid_time<<endl;\n")
