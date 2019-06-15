@@ -16,6 +16,8 @@ limitations under the License.
 #include "xi_scheduler.hpp"
 #include "csvParser.hpp"
 #include "utils_wei.hpp"
+#include "../include/hw_settings.h"
+
 
 #define OUTPUTSIZEBYTE 9216
 char output1_gold[OUTPUTSIZEBYTE*2];
@@ -77,63 +79,127 @@ void save_file
     fclose(fd);
 }
 
+void setPoolingArgs( int *args, int *prev_args,bool idle,  bool bypass,
+        bool stream_in, bool stream_out){
+    if(idle){
+        args[21] = 1;
+        args[22] = 0;
+        return;
+    }
+    if(bypass){
+        args[21] = 1;
+        args[22] = prev_args[2] * prev_args[3] * prev_args[62]/16;
+        return;
+    } 
+    short in_h         = args[0];
+    short in_w              = args[1];
+    short out_h             = args[2];
+    short out_w             = args[3];
+    short n_planes          = args[4];
+    short ps_h                  = args[5];
+    short ps_w                  = args[6];
+    short pwin_h            = args[7];
+    short pwin_w            = args[8];
+    unsigned char avg_pool  = args[9];
+    unsigned char pad           = args[10];
+    unsigned char one_by_diviser    = args[11];
+    unsigned char conv3ds   = args[12];
+    unsigned char relu              = args[13];
+    unsigned char outshift  = args[14];
+
+    int rowStep = 1;
+    int initialReadRows = pwin_h+(rowStep-1)*ps_h-pad;
+    unsigned int inDDRPlaneStep= in_h*in_w;
+    unsigned int outDDRPlaneStep= out_w*out_h;
+
+    args[15] = rowStep;
+    args[16] = initialReadRows;
+    args[17] = inDDRPlaneStep;
+    args[18] = outDDRPlaneStep;
+
+    args[19] = stream_in;
+    args[20] = stream_out;
+    args[21] = 0;
+}
+
+ void convertAvgPoolArgs(
+         int* convArgs,
+         int* poolArgs
+         )
+{
+    poolArgs[0]     = convArgs[0];
+    poolArgs[1]     = convArgs[1];
+    poolArgs[2]     = convArgs[2];
+    poolArgs[3]     = convArgs[3];
+    poolArgs[4]     = convArgs[50];
+    poolArgs[5]     = convArgs[53];
+    poolArgs[6]     = convArgs[53];
+    poolArgs[7]     = convArgs[47];
+    poolArgs[8]     = convArgs[48];
+    poolArgs[9]     =  0 ;
+    poolArgs[10]    = convArgs[52];
+    poolArgs[11]    = (1<<convArgs[57])/(poolArgs[7]*poolArgs[8]);
+    poolArgs[12]    = 1;
+    poolArgs[13]    = convArgs[54];
+    poolArgs[14]    = convArgs[57];
+}
 
 //# Checks Dependence of a layer
 bool chkDeps(std::vector<bool> &layerDone, std::vector<layerID> &previous)
 {
-	bool retFlag = true;
-	uint16_t nProds = previous.size();
+    bool retFlag = true;
+    uint16_t nProds = previous.size();
 #if ENABLE_CONSOLE_TEXT
-	std::cout << "[DEBUG] Previous ID : " << previous[0].seqidx << std::endl;
+    std::cout << "[DEBUG] Previous ID : " << previous[0].seqidx << std::endl;
 #endif
-	if(previous[0].seqidx == -1)
-		return true;
-	for(uint16_t prod = 0; prod < nProds; ++prod)
-		retFlag &= layerDone[previous[prod].seqidx];
-	return retFlag;
+    if(previous[0].seqidx == -1)
+        return true;
+    for(uint16_t prod = 0; prod < nProds; ++prod)
+        retFlag &= layerDone[previous[prod].seqidx];
+    return retFlag;
 }
 
 //# Scheduler for all the layers/tasks in the network in optimal way
 //# to the PL or PS
 void xiExec(void *handle, vector<void *> input, vector<void *> output)
 {
-	if(handle == NULL)
-	{
-		fprintf(stderr, "Failed to read handle\n");
-	}
-	
-	chaihandle_t *chaihandle_info = (chaihandle*)handle;
-	std::vector<xChangeLayer> *hwQueue = chaihandle_info->JobQueue;
-	
+    if(handle == NULL)
+    {
+        fprintf(stderr, "Failed to read handle\n");
+    }
+
+    chaihandle_t *chaihandle_info = (chaihandle*)handle;
+    std::vector<xChangeLayer> *hwQueue = chaihandle_info->JobQueue;
+
     //# Number of layers to be scheduled
     uint16_t totalLayers = hwQueue[0].size();
-    
-	//# Number of layers to be scheduled
-	if(totalLayers <= 0)
-	{
-		std::cerr << "\n[ERROR] Invalid Queue size !" << std::endl;
-		return;
-	}
 
-	/* Assigning user's input and output pointers to scheduler jobqueue */
-	if((hwQueue[0][0].kernType == CONV))// && (layer1_or_not == 1))
-	{
-		hwQueue[0][0].in_ptrs[2] = (IO_DATA_TYPE *)input[0];
-	}
-	else
-	{
-		for(int i = 0; i < input.size(); i++)
-		{
-			hwQueue[0][0].in_ptrs[i] = (IO_DATA_TYPE *)input[i];
-		}
-	}
+    //# Number of layers to be scheduled
+    if(totalLayers <= 0)
+    {
+        std::cerr << "\n[ERROR] Invalid Queue size !" << std::endl;
+        return;
+    }
 
-	//# Last layer index
-	uint16_t lastLayerIdx = totalLayers - 1;
+    /* Assigning user's input and output pointers to scheduler jobqueue */
+    if((hwQueue[0][0].kernType == CONV))// && (layer1_or_not == 1))
+    {
+        hwQueue[0][0].in_ptrs[2] = (IO_DATA_TYPE *)input[0];
+    }
+    else
+    {
+        for(int i = 0; i < input.size(); i++)
+        {
+            hwQueue[0][0].in_ptrs[i] = (IO_DATA_TYPE *)input[i];
+        }
+    }
 
-	for(int i = 0; i < output.size(); i++)
-	{
-		hwQueue[0][lastLayerIdx].out_ptrs[i] = output[i];
+    //# Last layer index
+    uint16_t lastLayerIdx = totalLayers - 1;
+
+    for(int i = 0; i < output.size(); i++)
+    {
+        hwQueue[0][lastLayerIdx].out_ptrs[i] = output[i];
 	}
 
 
@@ -156,6 +222,28 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 	for(uint16_t idx = 0; idx < totalLayers; ++idx)
 	{
 		kernel_type_e layerType = hwQueue[0][idx].kernType;
+                        //* XINHENG TO CHANGE
+         //* if type is Conv and from the opcode we can know that  it is a avgpooling.
+                if(idx==70)
+                {
+                        int params[128];
+                        for(int i=0;i<128;i++)
+                        {
+                                params[i]=( (INT_TYPE *)hwQueue[0][idx].params )[i];
+                        }
+                        int poolParams[32];
+                        convertAvgPoolArgs(params,poolParams);
+ 
+                        for(int i=0;i<32;i++)
+                        {
+                                ( (INT_TYPE *)hwQueue[0][idx].params )[i]=poolParams[i];
+                        }
+ 
+                        layerType= POOL;
+                }
+ 
+                if(layerType== POOL)
+                        setPoolingArgs((INT_TYPE*)hwQueue[0][idx].params,NULL,0,0,0,0);
 		switch (layerType) 
 		{
         case CONV: convSeq.push_back(idx); break;
@@ -180,6 +268,9 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 	uint16_t tPermuteLayers = permuteSeq.size();
 	uint16_t tNmsLayers		= nmsSeq.size();
 	uint16_t tCropLayers	= cropSeq.size();
+ #if NEEDED_POOL
+    uint16_t tPoolLayers    = poolSeq.size();
+#endif
 
 	uint16_t txCustomLayers	= xcustomSeq.size();
 	uint16_t txPackLayers	= xpackSeq.size();
@@ -205,10 +296,16 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 			xcustomCnt[1] = {0},
 			xpackCnt[1]   = {0},
 			eltwaddCnt[1] = {0},
+#if NEEDED_POOL
+            poolCnt[1] = {0},
+#endif
             pipeCnt[1] = {0};
 
 	//# In-use flags
     bool pipeInUse      = false;
+#if NEEDED_POOL
+    bool poolInUse          = false;
+#endif
 	bool fcInUse 		= false;
 	bool softmaxInUse 	= false;
 	bool nmsInUse 		= false;
@@ -224,6 +321,9 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 
 	//# Image IDs for different layers
     int pipeImgId,
+#if NEEDED_POOL
+        poolImgId,
+#endif
 	deconvImgId, fcImgId,
 	softmaxImgId, normImgId, permuteImgId, nmsImgId,
 	cropImgId,xcustomImgId,xpackImgId,eltwaddImgId;
@@ -258,6 +358,9 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 
 	//# Check flags for all individual layers done
     bool allPipeDone,
+#if NEEDED_POOL
+         allPoolDone,
+#endif
 	allFCDone, allSoftMaxDone,
 	allPermuteDone, allNmsDone, allNormDone,
 	allCropDone,allxCustomDone,allxPackDone,allEltwaddDone;
@@ -281,11 +384,19 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
     std::vector<std::vector<void*> > argsToFunction;
     std::vector< std::vector<int> > pipeLayerIds;
 
+#if NEEDED_POOL
+    if(convSeq.size() + deconvSeq.size() != 0){
+#else
     if(convSeq.size() + poolSeq.size() + deconvSeq.size() != 0){
+#endif
     //ParsePipeConvCSV
         tPipeLayers = ParsePipeCSV(newArgs, argsToFunction, hwQueue, pipeLayerIds);
     }
     cout<< "tPipeLayers " << tPipeLayers << endl;
+
+    //Start timer
+    long long int totalStart =sds_clock_counter();
+    vector<long long int> timeStamp;
 
 #if ENABLE_SCHEDULER
 	//# Scheduler Entry Point ################################################
@@ -296,6 +407,9 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 		std::cout << "[DEBUG] while(1)" << std::endl;
 #endif
         if((pipeInUse == false) && tPipeLayers){
+#if ENABLE_CONSOLE_TEXT
+            std::cout << "[DEBUG] pipeInuse == false " << std::endl;
+#endif
             allPipeDone = (pipeCnt[0] == tPipeLayers) ? true : false;
             bool depsDone = true;
             int whichPipe = pipeCnt[0];
@@ -323,6 +437,45 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
                         pipeInUse = true; 
             }
         } //NEEDED_PIPE
+
+#if NEEDED_POOL
+        if((poolInUse == false) && tPoolLayers)
+        {
+#if ENABLE_CONSOLE_TEXT
+            std::cout << "[DEBUG] poolInUse == false " << std::endl;
+#endif
+
+            for(ImgId = 0; ImgId < NUM_IMG; ++ImgId)
+            {
+                allPoolDone = (poolCnt[ImgId] == tPoolLayers) ? true : false;
+                uint16_t whichPool = poolSeq[poolCnt[ImgId]];
+                if(!allPoolDone && (chkDeps(layerDone[ImgId], hwQueue[ImgId][whichPool].previous)))
+                {
+#if LAYERWISE_PERFORMANCE
+                    hwQueue[ImgId][whichPool].startclk = sds_clock_counter();
+#endif
+                    //# Call Pool wrapper
+                    PoolForward(
+                            (SHORT_TYPE*)hwQueue[ImgId][whichPool].in_ptrs[0], (SHORT_TYPE*)hwQueue[ImgId][whichPool].out_ptrs[0],
+                            (SHORT_TYPE*)hwQueue[ImgId][whichPool].in_ptrs[1], (SHORT_TYPE*)hwQueue[ImgId][whichPool].out_ptrs[1],
+                            (INT_TYPE*)hwQueue[ImgId][whichPool].params
+                            );
+                    poolImgId = ImgId;
+                    poolInUse = true;
+
+
+
+#if ENABLE_CONSOLE_TEXT
+                    std::cout << "[DEBUG] poolForward : " << poolImgId << std::endl;
+#endif
+                    break;
+                }
+            }
+#if ENABLE_CONSOLE_TEXT
+            std::cout << "quit Pool " << std::endl;
+#endif
+        }
+#endif//NEEDED_POOL
 
 #if NEEDED_FC
         if((fcInUse == false) && tFCLayers)
@@ -521,18 +674,57 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 //#ifdef __SDSOC
 //			sds_wait(1);
 //#endif
-			pipeInUse = false;
-            int whichPipe = pipeCnt[0];
-            std::vector<int> layers = pipeLayerIds[whichPipe];
-            std::vector<int>::iterator itrr = layers.begin();
-            for(; itrr != layers.end(); ++itrr){
-                layerDone[pipeImgId][*itrr] = true;
+            if(sds_try_wait(1)){
+                pipeInUse = false;
+                int whichPipe = pipeCnt[0];
+                std::vector<int> layers = pipeLayerIds[whichPipe];
+                std::vector<int>::iterator itrr = layers.begin();
+                for(; itrr != layers.end(); ++itrr){
+                    layerDone[pipeImgId][*itrr] = true;
+                }
+                pipeCnt[pipeImgId]++;
             }
-            pipeCnt[pipeImgId]++;
 		}  //NEEDED_PIPE
 
+#if NEEDED_POOL
+        if(poolInUse == true)
+        {
+
+            if(sds_try_wait(2))
+            {
+
+                unsigned long long int end=sds_clock_counter();
+                timeStamp.push_back(end);
+
+#if ENABLE_CONSOLE_TEXT
+                std::cout << "[DEBUG] poolForward : Done : Image : " << poolImgId << " Layer : " << poolCnt[poolImgId] << std::endl;
+#endif
+#if ENABLE_ERROR_CHECKS
+                if(poolImgId == 0)
+                {
+                    int poolErr = errorCheck(hwQueue[poolImgId][poolSeq[poolCnt[poolImgId]]]);
+                    if(poolErr)
+                        std::cout << "\n[ERROR] Pool Layer : " << poolSeq[poolCnt[poolImgId]] << " Image : " << poolImgId << " Fail !" << std::endl;
+                    else
+                        std::cout << "\n[ERROR] Pool Layer : " << poolSeq[poolCnt[poolImgId]] << " Image : " << poolImgId << " Pass !" << std::endl;
+                }
+#endif
+
+#if LAYERWISE_PERFORMANCE
+                hwQueue[poolImgId][poolSeq[poolCnt[poolImgId]]].endclk = sds_clock_counter();
+#endif
+
+                layerDone[poolImgId][poolSeq[poolCnt[poolImgId]]] = true;
+                poolCnt[poolImgId]++;
+                poolInUse = false;
+            }
+        }
+
+
+#endif//NEEDED_POOL
+
 #if NEEDED_FC
-		if(fcInUse == true)
+        if(fcInUse == true)
 		{
 #ifdef __SDSOC
 			if(1)//sds_try_wait(3))
@@ -839,8 +1031,24 @@ void xiExec(void *handle, vector<void *> input, vector<void *> output)
 		if(ImageDoneCount == totalImages)
 			break;
 
-	}//# while(1) ############################################################
+	}//# while(1) ############################################################ 
+    long long int freQ = sds_clock_frequency();
+    float pipetime=0;
+    float pipeStart,pipeEnd;
 
+    bool pipeflag=0;
+    float pooltime=0;
+    float poolStart,poolEnd;
+    bool poolflag=0;
+    for(int i=0;i<timeStamp.size();i++)
+    {
+
+        float mid_time = (((double)(timeStamp[i] - totalStart)/(double)freQ*1000));
+
+        std::cout.width(0);
+
+        std::cout<< "timeStamp"<<mid_time <<std::endl;
+    }
 
 #endif//ENABLE_SCHEDULER
 
