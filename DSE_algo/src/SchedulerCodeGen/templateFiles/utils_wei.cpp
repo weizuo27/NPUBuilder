@@ -83,8 +83,16 @@ void setArgs(
             }
             else{
                 int weightlen = params[i+7];
+                //    newArg = (int*)sds_alloc_non_cacheable(weightlen * sizeof(char));
+                //    load_file<char>(("weights/weight_"+tostring(layerId)+"_"+tostring(i+1)).c_str(), (void*)newArg, weightlen);
                 newArg = (int*)sds_alloc_non_cacheable(weightlen * sizeof(char));
                 load_file<char>(("weights/weight_"+tostring(layerId)+"_"+tostring(i+1)).c_str(), (void*)newArg, weightlen);
+                for(int cnt=0;cnt<weightlen;cnt++)
+                {
+                    ((char*) (hwQueue[imageId][layerId].wts_ptrs[i]))[cnt]= ((char*) newArg)[cnt];
+                }
+                sds_free(newArg);
+                newArg=((int*) (hwQueue[imageId][layerId].wts_ptrs[i]));
             }
             newArgs.push_back((void*)newArg);
             argumentstoFunction.push_back(newArg);
