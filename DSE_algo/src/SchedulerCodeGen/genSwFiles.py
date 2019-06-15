@@ -112,3 +112,9 @@ def copyUtilsCSV(outDir):
     os.system(cmd)
     cmd = "cp " + dir_path+"/templateFiles/utils_wei.hpp " + outDir
     os.system(cmd)
+    cmd = "cp " + dir_path+"/templateFiles/xi_buf_mgmt.cpp " + outDir
+    os.system(cmd)
+    cmd = "cp " + dir_path+"/templateFiles/xi_scheduler.hpp " + outDir
+    os.system(cmd)
+    cmd = "cp " + dir_path+"/templateFiles/xtract_opt.cpp " + outDir
+    os.system(cmd)
