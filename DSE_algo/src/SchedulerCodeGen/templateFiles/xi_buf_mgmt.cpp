@@ -245,7 +245,7 @@ void xiConstBufCreate(
 				n_size = convWeightsSize(out_depth, in_depth, kernel_h, kernel_w, group);
                 //Xinheng: enlarged the n_size so the bias can fit in.
 				//n_size = n_size / WEIGHT_PORTS;
-				n_size = n_size / WEIGHT_PORTS*4;
+				n_size = n_size / WEIGHT_PORTS*8;
 				//cout << "wts_size : " << n_size << endl;
 
 				for(int l = 0; l < WEIGHT_PORTS; l++)

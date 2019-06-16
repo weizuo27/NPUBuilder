@@ -191,7 +191,6 @@ int PoolWrapper(GMEM_MAXPOOLTYPE *poolin, GMEM_MAXPOOLTYPE *poolout, GMEM_MAXPOO
 void PoolForward(
 		SHORT_TYPE *pool_in, SHORT_TYPE *pool_out,
 		SHORT_TYPE *pool_in1, SHORT_TYPE *pool_out1,
-		CHAR_TYPE * wts,
 		int *scalar_pool_args
 )
 {
