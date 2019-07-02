@@ -190,8 +190,8 @@ class ConvIP():
         self._channels_out_tile_size_last = channels_out_tile_size_last
         self._channels_out_tile_number = channels_out_tile_number
 
-        self._weight_one_time_flag =
-        (self._channel_in_tile_number == 1 and self._channels_out_tile_number == 1)
+        self._weight_one_time_flag = (
+            self._channel_in_tile_number == 1 and self._channels_out_tile_number == 1)
 
     def _update_remain_latency_by_real(self, task_remain_latency_dict, task_data_density_dict, real_latency_threashold):
         accumulate_task_latency = 0
@@ -229,6 +229,16 @@ class ConvIP():
             total_density = total_density - task_data_density_dict[key]
 
     def _get_AXI_racing_latency_by_task(self, task_remain_latency_dict, task_data_density_dict, task_key):
+        """
+        This function shall run AXI racing model until the AXI data task specified by task_key is over.
+        task_remain_latency_dict: the dictionary that specify the remaining latency of each task, the function shall
+                                update the remain latency of each task after the call.
+
+        task_data_density_dict: the dictionay recording the data density through the latency. The data density is computed by
+                                data ammount divided by total task latency.
+
+        Return: the time between the starting of the remaining task and end of the specified task [task_key]
+        """
 
         accumulate_task_latency = 0
         real_latency = 0
@@ -266,7 +276,7 @@ class ConvIP():
         """
         latency_key_read: a string deciding whether to use first/normal/last read input latency information
         latency_key_write: a string deciding whether to use first/normal/last write input latency information
-        last_procweight_flag: whether to normal/last procweight rowstep flag 
+        last_procweight_flag: whether to normal/last procweight rowstep flag
         """
         if latency_key_read == 'ReadInputNormal':
             read_total_cycle = self._latency_dict['ReadInputNormal_Total']
@@ -321,7 +331,7 @@ class ConvIP():
         # compute first weight_load segment
         accumulate_real_latency = 0
         first_weight_load_latency = self._get_AXI_racing_latency_by_task(
-            task_data_density_latency, task_data_density, 'weight')
+            task_data_density, task_data_density, 'weight')
         accumulate_real_latency += first_weight_load_latency
 
         if first_weight_load_latency < proc_weight_overhead:
@@ -339,7 +349,7 @@ class ConvIP():
                     task_remain_latency_dict['weight'] = self._latency_dict['LoadKern_Total']
 
                 weight_latency = self._get_AXI_racing_latency_by_task(
-                    task_data_density_latency, task_data_density, 'weight')
+                    task_data_density, task_data_density, 'weight')
                 accumulate_real_latency += weight_latency
 
                 if output_tile_index < self._channels_out_tile_number - 1:
@@ -360,20 +370,53 @@ class ConvIP():
         max_key = max(task_remain_latency_dict,
                       key=lambda k: task_remain_latency_dict[k])
         left_over_communicate_latency = self._get_AXI_racing_latency_by_task(
-            task_data_density_latency, task_data_density, max_key)
+            task_data_density, task_data_density, max_key)
 
-    
+        accumulate_real_latency += left_over_communicate_latency
+        return accumulate_real_latency
 
     def get_ProcIstg_latency(self):
 
-        
-        
-        # Overhead = loadInput first
-        # First Istage
+        stage_type_table = {
+            1: {'NoOutput': ('None', 'None', True)},
 
-        # Normal Istage
-        # Last Istage
-        # Overhead
+            2: {'NoOutput': ('ReadInputLast', 'None', False),
+                'NoInput': ('None', 'WriteOutputNormal', True)},
+
+            3: {'NoOutput': ('ReadInputNormal', 'None', False),
+                'LastInput': ('ReadInputLast', 'WriteOutputNormal', False),
+                'NoInput': ('None', 'WriteOutputNormal', True)},
+
+            4: {'NoOutput': ('ReadInputNormal', 'None', False),
+                'NormalInput': ('ReadInputNormal', 'WriteOutputNormal', False),
+                'LastInput': ('ReadInputLast', 'WriteOutputNormal', False),
+                'NoInput': ('None', 'WriteOutputNormal', True)},
+        }
+
+        # start compute 4 stages of latency: NoOuput, NormalInput, LastInput, NoInput
+        row_step_index = self._row_step_number if self._row_step_number < 4 else 4
+
+        stage_latency_dict = {}
+        for stage_tag in ['NoOuput', 'NormalInput', 'LastInput', 'NoInput']:
+            if stage_tag in stage_type_table[row_step_index]:
+                input_flag, output_flag, last_weight_flag = stage_type_table[
+                    row_step_index][stage_tag]
+                stage_latency_dict[stage_tag] = self._get_istg_latency(
+                    input_flag, output_flag, last_weight_flag)
+            else:
+                stage_latency_dict[stage_tag] = 0
+
+            self._latency_dict['Istage{}Latency'.format(
+                stage_tag)] = stage_latency_dict[stage_tag]
+
+        self._latency_dict['IstageReadOverhead'] = self._latency_dict['ReadInputFirst_Total']
+        self._latency_dict['IstageWriteOverhead'] = self._latency_dict['WriteOutputLast_Total']
+        self._latency_dict['TotalLatency'] = self._latency_dict['IstageReadOverhead']\
+            + self._latency_dict['IstageNoOuputLatency']\
+            + self._latency_dict['IstageNormalInputLatency'] * (self._row_step_number - 3)\
+            + self._latency_dict['IstageLastInputLatency']\
+            + self._latency_dict['IstageNoInputLatency']\
+            + self._latency_dict['WriteOutputLast_Total']\
 
     def get_LoadFeedingBuffer_latency(self):
 
@@ -648,6 +691,7 @@ if __name__ == "__main__":
             test_IP.get_ProcWeight_latency()
             test_IP.get_ReadInput_latency()
             test_IP.get_WriteOutput_latency()
+            test_IP.get_ProcIstg_latency()
             if(i == 0):
                 test_IP.write_latency_title_tab(csv_file)
             test_IP.write_latency_data_tab(csv_file)
