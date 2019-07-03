@@ -1,7 +1,7 @@
 import os.path
 import struct
 import sys
-
+import pprint
 VALIDATE = 1
 
 
@@ -37,10 +37,12 @@ class ConvIP():
         self._output_buffer_depth = output_buffer_depth
         self._weight_buffer_depth = weight_buffer_depth
 
+        
         # latency dictionary
         self._latency_dict = {}
         # constant setting
         self._feeding_buffer_size = 1024
+        self._overall_overhead = 2500
 
         # hardware time constant
         self.CLK_PERIOD = 4.0
@@ -49,8 +51,13 @@ class ConvIP():
         self.LOADFEEDINGBUFFER_OVERHEAD = 10
 
         # axi constant
-        self.AXI_ACK_CYCLE = 3
+        self.AXI_ACK_CYCLE = 3.5
         self.AXI_RESPONSE_CYCLE = 26
+        self.AXI_ACK_CYCLE_WRITE = 7
+        self.AXI_RESPONSE_CYCLE_WRITE = 20
+
+        # FIXME: debugging purpose variable, need to be deleted
+        self._first_read_flag = True
 
     def load_layer(self, conv_layer_info):
         self.Layer = conv_layer_info
@@ -78,6 +85,28 @@ class ConvIP():
             burst_number + data_cycle
 
         return total_cycle, data_cycle
+
+    def _mem_burst_write_latency(self, burst_number, burst_length, burst_overhead):
+        """
+        computes the function latency and bandwidth latency of a sequence of burstReads
+        return: totalCycle: the total cycle number such sequence of burst read takes
+                dataCycle: the total cycle number for data transfer such sequence of burst read takes ( it will be in conflict with other read)
+        input burstNumber: the number of burst read in the burst sequence
+        input burstLength: the length of each burst read
+        input burstOverhead: the cycle number between the time last burst read data is receive till the start of issurance of next burst read
+        """
+        if(burst_length == 0):
+            return 0, 0
+        burst_breaks = _ceil_div(burst_length, 16)
+
+        data_cycle = (burst_length+burst_breaks *
+                      self.AXI_ACK_CYCLE_WRITE)*burst_number
+
+        total_cycle = (burst_overhead + self.AXI_RESPONSE_CYCLE_WRITE) * \
+            burst_number + data_cycle
+
+        return total_cycle, data_cycle
+
 
     def clean_latency_info(self):
         # attributes from get_channels_in_tile_size
@@ -174,6 +203,7 @@ class ConvIP():
                 "Invalid Ker factor of {}\n".format(self._ker_factor))
 
         # FIXME: delete this line after the design is calibracated
+        self._pseudo_max_nkpf = max_nkpf
         if (max_nkpf % 2 and max_nkpf != 1):
             max_nkpf = max_nkpf - 1
 
@@ -193,27 +223,28 @@ class ConvIP():
         self._weight_one_time_flag = (
             self._channel_in_tile_number == 1 and self._channels_out_tile_number == 1)
 
-    def _update_remain_latency_by_real(self, task_remain_latency_dict, task_data_density_dict, real_latency_threashold):
+    def _update_remain_latency_by_real(self, task_remain_latency_dict, task_data_density_dict, real_latency_threashold, task_real_time_dict):
         accumulate_task_latency = 0
         remain_real_latency = real_latency_threashold
         total_density = sum(task_data_density_dict.values())
         pass_threshold_flag = False
 
-        for key in sorted(task_remain_latency_dict, key=task_remain_latency_dict.get):
+        for key,value in sorted(task_remain_latency_dict.items(), key=lambda kv: kv[1]):
 
-            if task_remain_latency_dict[key] == 0:
+            if task_remain_latency_dict[key] == 0 or task_data_density_dict[key] == 0:
                 total_density = total_density - task_data_density_dict[key]
                 continue
             if pass_threshold_flag:
                 if accumulate_task_latency > task_remain_latency_dict[key]:
                     AssertionError("accumulate_task_latency error")
-                remain_time_latency_dict[key] -= accumulate_task_latency
+                task_remain_latency_dict[key] -= accumulate_task_latency
+                task_real_time_dict[key] += real_latency_threashold
                 continue
 
             consumed_task_latency = task_remain_latency_dict[key] - \
                 accumulate_task_latency
 
-            consumed_real_latency = consumed_task_latency / \
+            consumed_real_latency = consumed_task_latency * total_density / \
                 max(total_density, 1)
 
             if remain_real_latency < consumed_real_latency:
@@ -226,9 +257,10 @@ class ConvIP():
                 remain_real_latency -= consumed_real_latency
 
             task_remain_latency_dict[key] -= accumulate_task_latency
+            task_real_time_dict[key] += real_latency_threashold - remain_real_latency
             total_density = total_density - task_data_density_dict[key]
 
-    def _get_AXI_racing_latency_by_task(self, task_remain_latency_dict, task_data_density_dict, task_key):
+    def _get_AXI_racing_latency_by_task(self, task_remain_latency_dict, task_data_density_dict, task_key, task_real_time_dict):
         """
         This function shall run AXI racing model until the AXI data task specified by task_key is over.
         task_remain_latency_dict: the dictionary that specify the remaining latency of each task, the function shall
@@ -239,40 +271,51 @@ class ConvIP():
 
         Return: the time between the starting of the remaining task and end of the specified task [task_key]
         """
-
+        print(task_remain_latency_dict)
         accumulate_task_latency = 0
         real_latency = 0
         total_density = sum(task_data_density_dict.values())
         pass_threshold_flag = False
 
-        for key in sorted(task_remain_latency_dict, key=task_remain_latency_dict.get):
+        remaining_task_number = len(task_data_density_dict)
 
-            if task_remain_latency_dict[key] == 0:
+        for key,value in sorted(task_remain_latency_dict.items(), key=lambda kv: kv[1]):
+       
+            if task_remain_latency_dict[key] == 0 or task_data_density_dict[key] == 0:
+                
                 total_density = total_density - task_data_density_dict[key]
+                if key == task_key:
+                    pass_threshold_flag = True;
                 continue
             if pass_threshold_flag:
                 if accumulate_task_latency > task_remain_latency_dict[key]:
                     AssertionError("accumulate_task_latency error")
-                remain_time_latency_dict[key] -= accumulate_task_latency
+                task_remain_latency_dict[key] -= accumulate_task_latency
+                task_real_time_dict[key] = real_latency
                 continue
 
             consumed_task_latency = task_remain_latency_dict[key] - \
                 accumulate_task_latency
 
-            consumed_real_latency = consumed_task_latency / \
-                max(total_density, 1)
+            consumed_real_latency = consumed_task_latency * total_density / \
+                min(total_density, 1)
 
+            remaining_task_number -= 1
             if key == task_key:
                 pass_threshold_flag = True
 
             accumulate_task_latency = task_remain_latency_dict[key]
-            remain_real_latency += consumed_real_latency
+            real_latency += consumed_real_latency
+            
 
             task_remain_latency_dict[key] -= accumulate_task_latency
+            task_real_time_dict[key] += real_latency
+
             total_density = total_density - task_data_density_dict[key]
+        
         return real_latency
 
-    def _get_istg_latency(self, latency_key_read, latency_key_write, last_procweight_flag):
+    def _get_istg_latency(self, latency_key_read, latency_key_write, last_procweight_flag, first_row_step_flag):
         """
         latency_key_read: a string deciding whether to use first/normal/last read input latency information
         latency_key_write: a string deciding whether to use first/normal/last write input latency information
@@ -282,10 +325,10 @@ class ConvIP():
             read_total_cycle = self._latency_dict['ReadInputNormal_Total']
             read_data_cycle = self._latency_dict['ReadInputNormal_Data']
         elif latency_key_read == 'ReadInputLast':
-            read_total_cycle = self._latency_dict['ReadInputLast']
-            read_data_cycle = self._latency_dict['ReadInputLast']
+            read_total_cycle = self._latency_dict['ReadInputLast_Total']
+            read_data_cycle = self._latency_dict['ReadInputLast_Data']
         elif latency_key_read == "None":
-            read_total_cycle = 0
+            read_total_cycle = 1
             read_data_cycle = 0
         else:
             AssertionError(
@@ -295,19 +338,20 @@ class ConvIP():
             write_total_cycle = self._latency_dict['WriteOutputNormal_Total']
             write_data_cycle = self._latency_dict['WriteOutputNormal_Data']
         elif latency_key_write == "None":
-            write_total_cycle = 0
+            write_total_cycle = 1
             write_data_cycle = 0
         else:
             AssertionError(
                 "_get_istg_latency gets invalid latency_key_write as" + latency_key_write)
 
-        proc_weight_overhead = self._latency_dict['ProcWeight_Overhead']
+        proc_weight_overhead = self._latency_dict['ProcWeightOverhead']
+
 
         if last_procweight_flag == True:
             proc_weight_latency_normal_nkpf = self._latency_dict['ProcWeightLastRowStep']
             proc_weight_latency_last_nkpf = self._latency_dict['ProcWeightLast']
         else:
-            proc_weight_latency_normal_nkpf = self._latency_dict['ProcWeightLast']
+            proc_weight_latency_normal_nkpf = self._latency_dict['ProcWeightNormal']
             proc_weight_latency_last_nkpf = self._latency_dict['ProcWeightLastNkpf']
 
         data_time_stamp = 0
@@ -315,32 +359,51 @@ class ConvIP():
 
         task_remain_latency_dict = {}
         task_data_density = {}
+        task_real_time_dict = {}
 
-        task_remain_latency_dict['weight'] = self._latency_dict['LoadKern_Total']
-        task_data_density['weight'] = self._latency_dict['LoadKern_Data'] / \
-            self._latency_dict['LoadKern_Total']
+        task_real_time_dict['weight'] = 0
+        if(self._weight_one_time_flag and not first_row_step_flag):
+            task_remain_latency_dict['weight'] = 0
+            task_data_density['weight'] = 0
+        else:
+            task_remain_latency_dict['weight'] = self._latency_dict['LoadKern_Total']
+            task_data_density['weight'] = self._latency_dict['LoadKern_Data'] / \
+                self._latency_dict['LoadKern_Total']
+
 
         task_remain_latency_dict['readinput'] = read_total_cycle
+        task_real_time_dict['readinput'] = 0
         task_data_density['readinput'] = read_data_cycle / \
-            read_total_cycle
-
+            read_total_cycle if read_total_cycle else 0
+        
         task_remain_latency_dict['writeoutput'] = write_total_cycle
+        task_real_time_dict['writeoutput'] = 0
         task_data_density['writeoutput'] = write_data_cycle / \
-            write_total_cycle
-
+            write_total_cycle if write_total_cycle else 0
+        print("ticle on")
         # compute first weight_load segment
+        if(first_row_step_flag):
+            print(self.Layer._layer_id, task_remain_latency_dict)
+
         accumulate_real_latency = 0
         first_weight_load_latency = self._get_AXI_racing_latency_by_task(
-            task_data_density, task_data_density, 'weight')
+            task_remain_latency_dict, task_data_density, 'weight', task_real_time_dict)
         accumulate_real_latency += first_weight_load_latency
+
+        print( "Overhead_weight",self.Layer._layer_id , accumulate_real_latency)
+        if first_row_step_flag :
+            self._latency_dict['FirstWeightOverhead'] = accumulate_real_latency
+
+  
 
         if first_weight_load_latency < proc_weight_overhead:
             real_latency = proc_weight_overhead - first_weight_load_latency
             self._update_remain_latency_by_real(
-                task_remain_latency_dict, task_data_density, real_latency)
+                task_remain_latency_dict, task_data_density, real_latency, task_real_time_dict)
             accumulate_real_latency += real_latency
 
         # compute all the procweight calls
+        print( "Overhead_total",self.Layer._layer_id , accumulate_real_latency)
         for input_tile_index in range(self._channel_in_tile_number):
             for output_tile_index in range(self._channels_out_tile_number):
                 if output_tile_index == self._channels_out_tile_number - 1 and input_tile_index == self._channel_in_tile_number - 1:
@@ -349,60 +412,74 @@ class ConvIP():
                     task_remain_latency_dict['weight'] = self._latency_dict['LoadKern_Total']
 
                 weight_latency = self._get_AXI_racing_latency_by_task(
-                    task_data_density, task_data_density, 'weight')
+                    task_remain_latency_dict, task_data_density, 'weight', task_real_time_dict)
+
                 accumulate_real_latency += weight_latency
 
+                
                 if output_tile_index < self._channels_out_tile_number - 1:
                     proc_weight_latency = proc_weight_latency_normal_nkpf
                 else:
                     proc_weight_latency = proc_weight_latency_last_nkpf
+                print( "Iter_weight",self.Layer._layer_id , accumulate_real_latency)
 
-                if weight_latency < proc_weight_overhead:
-                    real_latency = proc_weight_overhead - proc_weight_latency
+                if weight_latency < proc_weight_latency:
+                    real_latency = proc_weight_latency - weight_latency
                     self._update_remain_latency_by_real(
-                        task_remain_latency_dict, task_data_density, real_latency)
+                        task_remain_latency_dict, task_data_density, real_latency, task_real_time_dict)
                     accumulate_real_latency += real_latency
+                print( "Iter_total",self.Layer._layer_id ,proc_weight_latency, accumulate_real_latency)
 
         proc_weight_latency = proc_weight_latency_last_nkpf
         accumulate_real_latency += proc_weight_latency
+
+        print( "Last_total",self.Layer._layer_id ,proc_weight_latency_last_nkpf, accumulate_real_latency)
+        
         self._update_remain_latency_by_real(
-            task_remain_latency_dict, task_data_density, proc_weight_latency)
+            task_remain_latency_dict, task_data_density, proc_weight_latency, task_real_time_dict)
         max_key = max(task_remain_latency_dict,
                       key=lambda k: task_remain_latency_dict[k])
-        left_over_communicate_latency = self._get_AXI_racing_latency_by_task(
-            task_data_density, task_data_density, max_key)
 
+        print(task_remain_latency_dict)
+        left_over_communicate_latency = self._get_AXI_racing_latency_by_task(
+            task_remain_latency_dict, task_data_density, max_key, task_real_time_dict)
+
+        if(self._first_read_flag == True):
+            self._latency_dict['FirstReadLatency'] = task_real_time_dict['readinput']
+            self._first_read_flag = False
         accumulate_real_latency += left_over_communicate_latency
+
+        print( "Last_leftover",self.Layer._layer_id ,left_over_communicate_latency, accumulate_real_latency)
         return accumulate_real_latency
 
     def get_ProcIstg_latency(self):
 
         stage_type_table = {
-            1: {'NoOutput': ('None', 'None', True)},
+            1: {'NoInput': ('None', 'None', True, True)},
 
-            2: {'NoOutput': ('ReadInputLast', 'None', False),
-                'NoInput': ('None', 'WriteOutputNormal', True)},
+            2: {'NoOutput': ('ReadInputLast', 'None', False, True),
+                'NoInput': ('None', 'WriteOutputNormal', True, False)},
 
-            3: {'NoOutput': ('ReadInputNormal', 'None', False),
-                'LastInput': ('ReadInputLast', 'WriteOutputNormal', False),
-                'NoInput': ('None', 'WriteOutputNormal', True)},
+            3: {'NoOutput': ('ReadInputNormal', 'None', False, True),
+                'LastInput': ('ReadInputLast', 'WriteOutputNormal', False, False),
+                'NoInput': ('None', 'WriteOutputNormal', True, False)},
 
-            4: {'NoOutput': ('ReadInputNormal', 'None', False),
-                'NormalInput': ('ReadInputNormal', 'WriteOutputNormal', False),
-                'LastInput': ('ReadInputLast', 'WriteOutputNormal', False),
-                'NoInput': ('None', 'WriteOutputNormal', True)},
+            4: {'NoOutput': ('ReadInputNormal', 'None', False, True),
+                'NormalInput': ('ReadInputNormal', 'WriteOutputNormal', False, False),
+                'LastInput': ('ReadInputLast', 'WriteOutputNormal', False, False),
+                'NoInput': ('None', 'WriteOutputNormal', True, False)},
         }
 
         # start compute 4 stages of latency: NoOuput, NormalInput, LastInput, NoInput
         row_step_index = self._row_step_number if self._row_step_number < 4 else 4
 
         stage_latency_dict = {}
-        for stage_tag in ['NoOuput', 'NormalInput', 'LastInput', 'NoInput']:
+        for stage_tag in ['NoOutput', 'NormalInput', 'LastInput', 'NoInput']:
             if stage_tag in stage_type_table[row_step_index]:
-                input_flag, output_flag, last_weight_flag = stage_type_table[
+                input_flag, output_flag, last_weight_flag, fist_row_step_flag = stage_type_table[
                     row_step_index][stage_tag]
                 stage_latency_dict[stage_tag] = self._get_istg_latency(
-                    input_flag, output_flag, last_weight_flag)
+                    input_flag, output_flag, last_weight_flag, fist_row_step_flag)
             else:
                 stage_latency_dict[stage_tag] = 0
 
@@ -412,11 +489,11 @@ class ConvIP():
         self._latency_dict['IstageReadOverhead'] = self._latency_dict['ReadInputFirst_Total']
         self._latency_dict['IstageWriteOverhead'] = self._latency_dict['WriteOutputLast_Total']
         self._latency_dict['TotalLatency'] = self._latency_dict['IstageReadOverhead']\
-            + self._latency_dict['IstageNoOuputLatency']\
+            + self._latency_dict['IstageNoOutputLatency']\
             + self._latency_dict['IstageNormalInputLatency'] * (self._row_step_number - 3)\
             + self._latency_dict['IstageLastInputLatency']\
             + self._latency_dict['IstageNoInputLatency']\
-            + self._latency_dict['WriteOutputLast_Total']\
+            + self._latency_dict['WriteOutputLast_Total'] + self._overall_overhead
 
     def get_LoadFeedingBuffer_latency(self):
 
@@ -490,16 +567,16 @@ class ConvIP():
         if output_height % row_step:
             output_height_last = output_height % row_step
         else:
-            output_height_last = output_height_normal
+            output_height_last = row_step
 
-        total_cycle, data_cycle = self._mem_burst_read_latency(
-            burst_number, output_height_normal*output_width, 10)
+        total_cycle, data_cycle = self._mem_burst_write_latency(
+            burst_number, row_step*output_width, 10)
         self._latency_dict['WriteOutputNormal_Data'] = data_cycle * \
             self.CLK_PERIOD
         self._latency_dict['WriteOutputNormal_Total'] = total_cycle * \
             self.CLK_PERIOD
 
-        total_cycle, data_cycle = self._mem_burst_read_latency(
+        total_cycle, data_cycle = self._mem_burst_write_latency(
             burst_number, output_height_last*output_width, 10)
         self._latency_dict['WriteOutputLast_Data'] = data_cycle * \
             self.CLK_PERIOD
@@ -534,7 +611,8 @@ class ConvIP():
                 input_height_last = 0
 
         burst_number = _ceil_div(input_depth, 32)
-
+        print("burst_number",self.Layer._layer_id, burst_number)
+        print(self.Layer._layer_id,input_height_normal, input_height_last);
         total_cycle, data_cycle = self._mem_burst_read_latency(
             burst_number, input_height_first*input_width, 10)
         self._latency_dict['ReadInputFirst_Data'] = data_cycle * \
@@ -542,12 +620,14 @@ class ConvIP():
         self._latency_dict['ReadInputFirst_Total'] = total_cycle * \
             self.CLK_PERIOD
 
+
         total_cycle, data_cycle = self._mem_burst_read_latency(
             burst_number, input_height_normal*input_width, 10)
         self._latency_dict['ReadInputNormal_Data'] = data_cycle * \
             self.CLK_PERIOD
         self._latency_dict['ReadInputNormal_Total'] = total_cycle * \
             self.CLK_PERIOD
+
 
         total_cycle, data_cycle = self._mem_burst_read_latency(
             burst_number, input_height_last*input_width, 10)
@@ -566,8 +646,10 @@ class ConvIP():
                 "Invalid Ker factor of {}\n".format(self._ker_factor))
 
         kernel_load_count = self._channel_in_tile_size / 4 * \
-            self._window_size_square * self._channels_out_tile_size / depth_per_nkpf
+            self._window_size_square * self._pseudo_max_nkpf 
+            #self._channels_out_tile_size / depth_per_nkpf
 
+        print("wts_count:{},{}\n".format(self.Layer._layer_id, kernel_load_count))
         total_cycle, data_cycle = self._mem_burst_read_latency(
             1, kernel_load_count, 10)
 
@@ -602,27 +684,28 @@ class ConvIP():
         self._latency_dict['ProcWeightNormal'] = (pixel_factor_iters *
                                                   max(ProcResult_latency, LoadFeedingBuffer_latency))
 
+        print("ProcResult_latency_last",self.Layer._layer_id, LoadFeedingBuffer_latency,ProcResult_latency_last, pixel_factor_iters )
         self._latency_dict['ProcWeightLastNkpf'] = ((pixel_factor_iters-1)*max(
             LoadFeedingBuffer_latency, ProcResult_latency_last)+ProcResult_latency_last)
 
-        self._latency_dict['ProcWeightLastRowstep'] = (pixel_factor_iters_last *
+        self._latency_dict['ProcWeightLastRowStep'] = (pixel_factor_iters_last *
                                                        max(ProcResult_latency, LoadFeedingBuffer_latency))
 
         self._latency_dict['ProcWeightLast'] = ((pixel_factor_iters_last-1)*max(
             LoadFeedingBuffer_latency, ProcResult_latency_last)+ProcResult_latency_last)
 
-        self._latency_dict['ProcWeight_overhead'] = (
+        self._latency_dict['ProcWeightOverhead'] = (
             self._latency_dict['LoadFeedingBuffer'])
 
     def write_latency_data_tab(self, file_pointer):
         file_pointer.write("{}".format(self.Layer._layer_id))
-        for key, value in self._latency_dict.items():
+        for key,value in sorted(self._latency_dict.items(), key=lambda kv: kv[0]):
             file_pointer.write(",{},".format(value))
         file_pointer.write("\n")
 
     def write_latency_title_tab(self, file_pointer):
         file_pointer.write("layerID")
-        for key, value in self._latency_dict.items():
+        for key,value in sorted(self._latency_dict.items(), key=lambda kv: kv[0]):
             file_pointer.write(",{},".format(key))
         file_pointer.write("\n")
 
@@ -692,6 +775,10 @@ if __name__ == "__main__":
             test_IP.get_ReadInput_latency()
             test_IP.get_WriteOutput_latency()
             test_IP.get_ProcIstg_latency()
+
+            print('items number', len(test_IP._latency_dict) )
+            pp = pprint.PrettyPrinter(indent = 4 )
+            pp.pprint(test_IP._latency_dict)
             if(i == 0):
                 test_IP.write_latency_title_tab(csv_file)
             test_IP.write_latency_data_tab(csv_file)
