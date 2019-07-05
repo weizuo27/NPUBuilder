@@ -444,200 +444,200 @@ class layerLatencyInfo_t():
         self.Stride=test_IP.getStride()
     
         layerInfo.rowStep=rowStep
-
-        if( IPinfo.IPtype== "Convolution"):
-            convLatencyInfo=convlayerInfo_t();
-            computeLatencyConv(layerInfo,IPinfo,convLatencyInfo);
-            self.RowNum=layerInfo.out_height;
-            self.RowStep=rowStep;
-
-            if(layerInfo.memIn):
-                if IPinfo.inputPortIdx==0:
-                    self.PreDataCycle0=convLatencyInfo.inputDataCycle1st;
-                    self.PreDataCycle1=0;
-                    readDataCycle0=convLatencyInfo.inputDataCycle;
-                    readDataCycle1=0
-                    readDataCycleLast0=convLatencyInfo.inputTotalDataLast
-                    readDataCycleLast1=0;
-                else:
-                    self.PreDataCycle0=0;
-                    self.PreDataCycle1=convLatencyInfo.inputDataCycle1st;
-                    readDataCycle0=0
-                    readDataCycle1=convLatencyInfo.inputDataCycle;
-                    readDataCycleLast0=0;
-                    readDataCycleLast1=convLatencyInfo.inputDataCycleLast
-
-                self.PreTotalCycle=convLatencyInfo.inputTotalCycle1st
-                readTotalCycle=convLatencyInfo.inputTotalCycle
-                readTotalCycleLast=convLatencyInfo.inputTotalCycleLast
-
-            else:
-                self.PreDataCycle0=0;
-                self.PreDataCycle1=0;
-                self.PreTotalCycle=4;  
-                readDataCycle0=0;
-                readDataCycle1=0;
-                readDataCycleLast0=0;
-                readDataCycleLast1=0;
-                readTotalCycle=4;
-                readTotalCycleLast=4;
-    
-
-            if layerInfo.memOut:
-                if IPinfo.outputPortIdx==0:
-                    self.PostDataCycle0=convLatencyInfo.outputDataCycleLast;
-                    self.PostDataCycle1=0;
-                    writeDataCycle0=convLatencyInfo.outputDataCycle;
-                    writeDataCycle1=0
-                else:
-                    self.PostDataCycle0=0;
-                    self.PostDataCycle1=convLatencyInfo.outputDataCycleLast;
-                    writeDataCycle0=0
-                    writeDataCycle1=convLatencyInfo.outputDataCycle;
-                self.PostTotalCycle=convLatencyInfo.outputTotalCycleLast;
-                writeTotalCycle=convLatencyInfo.outputTotalCycle;
-            else:
-                self.PostDataCycle0=0;
-                self.PostDataCycle1=0;
-                self.PostTotalCycle=4;
-                writeDataCycle0=0;
-                writeDataCycle1=0;
-                writeTotalCycle=4;
-                
-            weightDataCycleFirst=convLatencyInfo.weightDataCycle;
-            weightTotalCycleFirst=convLatencyInfo.weightTotalCycle;
-            weightDataCycleRecur= 0 if convLatencyInfo.oneTime else weightDataCycleFirst;
-            weightTotalCycleRecur= 0  if convLatencyInfo.oneTime else weightTotalCycleFirst;
-            numProcWeight=convLatencyInfo.numProcWeight
-            numWeightLoadFirst=1 if convLatencyInfo.oneTime else convLatencyInfo.numProcWeight;
-            numWeightLoadRecur= 0 if convLatencyInfo.oneTime else convLatencyInfo.numProcWeight;
-
-    
-            self.RecurDataCycleFirst0=weightDataCycleFirst*numWeightLoadFirst+readDataCycle0;
-            self.RecurDataCycleFirst1=weightDataCycleFirst*numWeightLoadFirst+readDataCycle1;
-            procIstagingTotalCycle=max(weightTotalCycleFirst,convLatencyInfo.latLoadFeedingBuff)+numProcWeight*max(weightDataCycleRecur, convLatencyInfo.latProcWeight);
-            self.RecurTotalCycleFirst=max(procIstagingTotalCycle,readTotalCycle,writeTotalCycle);
-
-
-            self.RecurDataCycleMid0=weightDataCycleRecur*numWeightLoadRecur+readDataCycle0+writeDataCycle0;
-            self.RecurDataCycleMid1=weightDataCycleRecur*numWeightLoadRecur+readDataCycle1+writeDataCycle1;
-            procIstagingTotalCycle=max(weightTotalCycleRecur,convLatencyInfo.latLoadFeedingBuff)+numProcWeight*max(weightDataCycleRecur, convLatencyInfo.latProcWeight);
-            self.RecurTotalCycleMid=max(procIstagingTotalCycle,readTotalCycle, writeTotalCycle);
-
-            
-            self.RecurDataCycleSecondLast0=weightDataCycleRecur*numWeightLoadRecur+readDataCycleLast0+writeDataCycle0;
-            self.RecurDataCycleSecondLast1=weightDataCycleRecur*numWeightLoadRecur+readDataCycleLast1+writeDataCycle1;
-            procIstagingTotalCycle=max(weightTotalCycleRecur,convLatencyInfo.latLoadFeedingBuff)+numProcWeight*max(weightDataCycleRecur, convLatencyInfo.latProcWeight);
-            self.RecurTotalCycleSecondLast=max(procIstagingTotalCycle,readTotalCycleLast, writeTotalCycle);  
-        
-            self.RecurDataCycleLast0=weightDataCycleRecur*numWeightLoadRecur+writeDataCycle0;
-            self.RecurDataCycleLast1=weightDataCycleRecur*numWeightLoadRecur+writeDataCycle1;
-            procIstagingTotalCycle=max(weightTotalCycleRecur,convLatencyInfo.latLoadFeedingBuff)+numProcWeight*max(weightDataCycleRecur, convLatencyInfo.latProcWeightLast);
-            self.RecurTotalCycleLast=max(procIstagingTotalCycle,writeTotalCycle);  
-
-            self.LastStartRow=convLatencyInfo.lastStartOutRow  
-            self.SecondLastStartRow=convLatencyInfo.lastStartOutRow-rowStep;       
-            self.DepsRowStepFirst=convLatencyInfo.FirstEndRows
-            self.DepsRowStepRecur=convLatencyInfo.DepsRows
-            self.Stride=layerInfo.stride
-
-        elif( IPinfo.IPtype== "Eltwise"):
-            ele_out_height  = layerInfo.out_height   
-            ele_out_width   = layerInfo.out_width    
-            ele_out_planes  = layerInfo.out_planes  
-            rowStep = layerInfo.rowStep
-            memInL  = layerInfo.memInL
-            memInR  = layerInfo.memInR
-            memOut  = layerInfo.memOut
-
-            burstNumber=rowStep*CeilDiv(ele_out_planes,16)
-            burstLength=ele_out_width
-            dataCycle,TotalCycle=memBurstReadLatency( burstNumber, burstLength, 16)
-        
-            self.PreDataCycle0=memInL*dataCycle
-            self.PreDataCycle1=memInR*dataCycle
-            self.PreTotalCycle=TotalCycle
-
-            self.RecurDataCycleFirst0=memInL*dataCycle
-            self.RecurDataCycleFirst1=memInR*dataCycle+memOut*dataCycle
-            self.RecurTotalCycleFirst=TotalCycle
-
-            self.RecurDataCycleMid0=memInL*dataCycle
-            self.RecurDataCycleMid1=memInR*dataCycle+memOut*dataCycle
-            self.RecurTotalCycleMid=TotalCycle
-
-
-            self.RecurDataCycleSecondLast0=memInL*dataCycle
-            self.RecurDataCycleSecondLast1=memInR*dataCycle+memOut*dataCycle
-            self.RecurTotalCycleSecondLast=TotalCycle
-
-            self.RecurDataCycleLast0=memInL*dataCycle
-            self.RecurDataCycleLast1=memInR*dataCycle+memOut*dataCycle
-            self.RecurTotalCycleLast=TotalCycle
-
-            self.PostDataCycle0=0
-            self.PostDataCycle1=memOut*dataCycle
-            self.PostTotalCycle=TotalCycle
-
-            self.RowNum=ele_out_height
-            self.RowStep=rowStep
-            self.DepsRowStepFirst=1
-            self.DepsRowStepRecur=rowStep
-            self.LastStartRow=ele_out_height-rowStep
-            self.SecondLastStartRow=ele_out_height-rowStep*2;
-            self.Stride=1
-
-        elif( IPinfo.IPtype== "Pooling"):
-            poolLatencyInfo= poolLatencyInfo_t();
-            
-            
-            computeLatencyPool(layerInfo,poolLatencyInfo);
-        
-            memIn=layerInfo.memIn
-            memOut=layerInfo.memOut
-
-           
-
-
-            
-            self.PreDataCycle0=memIn*poolLatencyInfo.inputDataCycle1st
-     
-            self.PreDataCycle1=0
-            
-            self.PreTotalCycle=memIn*poolLatencyInfo.inputTotalCycle1st
-          
-
-
-            self.RecurDataCycleFirst0=memIn*poolLatencyInfo.inputDataCycle
-            self.RecurDataCycleFirst1=0
-            self.RecurTotalCycleFirst=max(poolLatencyInfo.ComputePoolingCycle,poolLatencyInfo.inputDataCycle)
-
-            self.RecurDataCycleMid0=memIn*poolLatencyInfo.inputDataCycle
-            self.RecurDataCycleMid1=memIn*poolLatencyInfo.outputDataCycle
-            self.RecurTotalCycleMid=max(poolLatencyInfo.ComputePoolingCycle,poolLatencyInfo.inputTotalCycle,poolLatencyInfo.outputTotalCycle)
-
-
-            self.RecurDataCycleSecondLast0=memIn*poolLatencyInfo.inputDataCycleLast
-            self.RecurDataCycleSecondLast1=memIn*poolLatencyInfo.outputDataCycle
-            self.RecurTotalCycleSecondLast=max(poolLatencyInfo.ComputePoolingCycle,poolLatencyInfo.inputTotalCycle,poolLatencyInfo.outputTotalCycle)
-
-
-            self.RecurDataCycleLast0=0
-            self.RecurDataCycleLast1=memIn*poolLatencyInfo.outputDataCycle
-            self.RecurTotalCycleLast=max(poolLatencyInfo.ComputePoolingCycle,poolLatencyInfo.outputTotalCycle)
-
-
-            self.PostDataCycle0=0
-            self.PostDataCycle1=memIn*poolLatencyInfo.outputDataCycleLast
-            self.PostTotalCycle=memIn*poolLatencyInfo.outputTotalCycleLast
-
-            self.RowNum=layerInfo.out_height 
-            self.RowStep=rowStep
-            self.DepsRowStepFirst=poolLatencyInfo.FirstEndRows
-            self.DepsRowStepRecur=poolLatencyInfo.DepsRows
-            self.LastStartRow=poolLatencyInfo.lastStartOutRow
-            self.SecondLastStartRow=poolLatencyInfo.lastStartOutRow-rowStep;
-            self.Stride=1
+#
+#        if( IPinfo.IPtype== "Convolution"):
+#            convLatencyInfo=convlayerInfo_t();
+#            computeLatencyConv(layerInfo,IPinfo,convLatencyInfo);
+#            self.RowNum=layerInfo.out_height;
+#            self.RowStep=rowStep;
+#
+#            if(layerInfo.memIn):
+#                if IPinfo.inputPortIdx==0:
+#                    self.PreDataCycle0=convLatencyInfo.inputDataCycle1st;
+#                    self.PreDataCycle1=0;
+#                    readDataCycle0=convLatencyInfo.inputDataCycle;
+#                    readDataCycle1=0
+#                    readDataCycleLast0=convLatencyInfo.inputTotalDataLast
+#                    readDataCycleLast1=0;
+#                else:
+#                    self.PreDataCycle0=0;
+#                    self.PreDataCycle1=convLatencyInfo.inputDataCycle1st;
+#                    readDataCycle0=0
+#                    readDataCycle1=convLatencyInfo.inputDataCycle;
+#                    readDataCycleLast0=0;
+#                    readDataCycleLast1=convLatencyInfo.inputDataCycleLast
+#
+#                self.PreTotalCycle=convLatencyInfo.inputTotalCycle1st
+#                readTotalCycle=convLatencyInfo.inputTotalCycle
+#                readTotalCycleLast=convLatencyInfo.inputTotalCycleLast
+#
+#            else:
+#                self.PreDataCycle0=0;
+#                self.PreDataCycle1=0;
+#                self.PreTotalCycle=4;  
+#                readDataCycle0=0;
+#                readDataCycle1=0;
+#                readDataCycleLast0=0;
+#                readDataCycleLast1=0;
+#                readTotalCycle=4;
+#                readTotalCycleLast=4;
+#    
+#
+#            if layerInfo.memOut:
+#                if IPinfo.outputPortIdx==0:
+#                    self.PostDataCycle0=convLatencyInfo.outputDataCycleLast;
+#                    self.PostDataCycle1=0;
+#                    writeDataCycle0=convLatencyInfo.outputDataCycle;
+#                    writeDataCycle1=0
+#                else:
+#                    self.PostDataCycle0=0;
+#                    self.PostDataCycle1=convLatencyInfo.outputDataCycleLast;
+#                    writeDataCycle0=0
+#                    writeDataCycle1=convLatencyInfo.outputDataCycle;
+#                self.PostTotalCycle=convLatencyInfo.outputTotalCycleLast;
+#                writeTotalCycle=convLatencyInfo.outputTotalCycle;
+#            else:
+#                self.PostDataCycle0=0;
+#                self.PostDataCycle1=0;
+#                self.PostTotalCycle=4;
+#                writeDataCycle0=0;
+#                writeDataCycle1=0;
+#                writeTotalCycle=4;
+#                
+#            weightDataCycleFirst=convLatencyInfo.weightDataCycle;
+#            weightTotalCycleFirst=convLatencyInfo.weightTotalCycle;
+#            weightDataCycleRecur= 0 if convLatencyInfo.oneTime else weightDataCycleFirst;
+#            weightTotalCycleRecur= 0  if convLatencyInfo.oneTime else weightTotalCycleFirst;
+#            numProcWeight=convLatencyInfo.numProcWeight
+#            numWeightLoadFirst=1 if convLatencyInfo.oneTime else convLatencyInfo.numProcWeight;
+#            numWeightLoadRecur= 0 if convLatencyInfo.oneTime else convLatencyInfo.numProcWeight;
+#
+#    
+#            self.RecurDataCycleFirst0=weightDataCycleFirst*numWeightLoadFirst+readDataCycle0;
+#            self.RecurDataCycleFirst1=weightDataCycleFirst*numWeightLoadFirst+readDataCycle1;
+#            procIstagingTotalCycle=max(weightTotalCycleFirst,convLatencyInfo.latLoadFeedingBuff)+numProcWeight*max(weightDataCycleRecur, convLatencyInfo.latProcWeight);
+#            self.RecurTotalCycleFirst=max(procIstagingTotalCycle,readTotalCycle,writeTotalCycle);
+#
+#
+#            self.RecurDataCycleMid0=weightDataCycleRecur*numWeightLoadRecur+readDataCycle0+writeDataCycle0;
+#            self.RecurDataCycleMid1=weightDataCycleRecur*numWeightLoadRecur+readDataCycle1+writeDataCycle1;
+#            procIstagingTotalCycle=max(weightTotalCycleRecur,convLatencyInfo.latLoadFeedingBuff)+numProcWeight*max(weightDataCycleRecur, convLatencyInfo.latProcWeight);
+#            self.RecurTotalCycleMid=max(procIstagingTotalCycle,readTotalCycle, writeTotalCycle);
+#
+#            
+#            self.RecurDataCycleSecondLast0=weightDataCycleRecur*numWeightLoadRecur+readDataCycleLast0+writeDataCycle0;
+#            self.RecurDataCycleSecondLast1=weightDataCycleRecur*numWeightLoadRecur+readDataCycleLast1+writeDataCycle1;
+#            procIstagingTotalCycle=max(weightTotalCycleRecur,convLatencyInfo.latLoadFeedingBuff)+numProcWeight*max(weightDataCycleRecur, convLatencyInfo.latProcWeight);
+#            self.RecurTotalCycleSecondLast=max(procIstagingTotalCycle,readTotalCycleLast, writeTotalCycle);  
+#        
+#            self.RecurDataCycleLast0=weightDataCycleRecur*numWeightLoadRecur+writeDataCycle0;
+#            self.RecurDataCycleLast1=weightDataCycleRecur*numWeightLoadRecur+writeDataCycle1;
+#            procIstagingTotalCycle=max(weightTotalCycleRecur,convLatencyInfo.latLoadFeedingBuff)+numProcWeight*max(weightDataCycleRecur, convLatencyInfo.latProcWeightLast);
+#            self.RecurTotalCycleLast=max(procIstagingTotalCycle,writeTotalCycle);  
+#
+#            self.LastStartRow=convLatencyInfo.lastStartOutRow  
+#            self.SecondLastStartRow=convLatencyInfo.lastStartOutRow-rowStep;       
+#            self.DepsRowStepFirst=convLatencyInfo.FirstEndRows
+#            self.DepsRowStepRecur=convLatencyInfo.DepsRows
+#            self.Stride=layerInfo.stride
+#
+#        elif( IPinfo.IPtype== "Eltwise"):
+#            ele_out_height  = layerInfo.out_height   
+#            ele_out_width   = layerInfo.out_width    
+#            ele_out_planes  = layerInfo.out_planes  
+#            rowStep = layerInfo.rowStep
+#            memInL  = layerInfo.memInL
+#            memInR  = layerInfo.memInR
+#            memOut  = layerInfo.memOut
+#
+#            burstNumber=rowStep*CeilDiv(ele_out_planes,16)
+#            burstLength=ele_out_width
+#            dataCycle,TotalCycle=memBurstReadLatency( burstNumber, burstLength, 16)
+#        
+#            self.PreDataCycle0=memInL*dataCycle
+#            self.PreDataCycle1=memInR*dataCycle
+#            self.PreTotalCycle=TotalCycle
+#
+#            self.RecurDataCycleFirst0=memInL*dataCycle
+#            self.RecurDataCycleFirst1=memInR*dataCycle+memOut*dataCycle
+#            self.RecurTotalCycleFirst=TotalCycle
+#
+#            self.RecurDataCycleMid0=memInL*dataCycle
+#            self.RecurDataCycleMid1=memInR*dataCycle+memOut*dataCycle
+#            self.RecurTotalCycleMid=TotalCycle
+#
+#
+#            self.RecurDataCycleSecondLast0=memInL*dataCycle
+#            self.RecurDataCycleSecondLast1=memInR*dataCycle+memOut*dataCycle
+#            self.RecurTotalCycleSecondLast=TotalCycle
+#
+#            self.RecurDataCycleLast0=memInL*dataCycle
+#            self.RecurDataCycleLast1=memInR*dataCycle+memOut*dataCycle
+#            self.RecurTotalCycleLast=TotalCycle
+#
+#            self.PostDataCycle0=0
+#            self.PostDataCycle1=memOut*dataCycle
+#            self.PostTotalCycle=TotalCycle
+#
+#            self.RowNum=ele_out_height
+#            self.RowStep=rowStep
+#            self.DepsRowStepFirst=1
+#            self.DepsRowStepRecur=rowStep
+#            self.LastStartRow=ele_out_height-rowStep
+#            self.SecondLastStartRow=ele_out_height-rowStep*2;
+#            self.Stride=1
+#
+#        elif( IPinfo.IPtype== "Pooling"):
+#            poolLatencyInfo= poolLatencyInfo_t();
+#            
+#            
+#            computeLatencyPool(layerInfo,poolLatencyInfo);
+#        
+#            memIn=layerInfo.memIn
+#            memOut=layerInfo.memOut
+#
+#           
+#
+#
+#            
+#            self.PreDataCycle0=memIn*poolLatencyInfo.inputDataCycle1st
+#     
+#            self.PreDataCycle1=0
+#            
+#            self.PreTotalCycle=memIn*poolLatencyInfo.inputTotalCycle1st
+#          
+#
+#
+#            self.RecurDataCycleFirst0=memIn*poolLatencyInfo.inputDataCycle
+#            self.RecurDataCycleFirst1=0
+#            self.RecurTotalCycleFirst=max(poolLatencyInfo.ComputePoolingCycle,poolLatencyInfo.inputDataCycle)
+#
+#            self.RecurDataCycleMid0=memIn*poolLatencyInfo.inputDataCycle
+#            self.RecurDataCycleMid1=memIn*poolLatencyInfo.outputDataCycle
+#            self.RecurTotalCycleMid=max(poolLatencyInfo.ComputePoolingCycle,poolLatencyInfo.inputTotalCycle,poolLatencyInfo.outputTotalCycle)
+#
+#
+#            self.RecurDataCycleSecondLast0=memIn*poolLatencyInfo.inputDataCycleLast
+#            self.RecurDataCycleSecondLast1=memIn*poolLatencyInfo.outputDataCycle
+#            self.RecurTotalCycleSecondLast=max(poolLatencyInfo.ComputePoolingCycle,poolLatencyInfo.inputTotalCycle,poolLatencyInfo.outputTotalCycle)
+#
+#
+#            self.RecurDataCycleLast0=0
+#            self.RecurDataCycleLast1=memIn*poolLatencyInfo.outputDataCycle
+#            self.RecurTotalCycleLast=max(poolLatencyInfo.ComputePoolingCycle,poolLatencyInfo.outputTotalCycle)
+#
+#
+#            self.PostDataCycle0=0
+#            self.PostDataCycle1=memIn*poolLatencyInfo.outputDataCycleLast
+#            self.PostTotalCycle=memIn*poolLatencyInfo.outputTotalCycleLast
+#
+#            self.RowNum=layerInfo.out_height 
+#            self.RowStep=rowStep
+#            self.DepsRowStepFirst=poolLatencyInfo.FirstEndRows
+#            self.DepsRowStepRecur=poolLatencyInfo.DepsRows
+#            self.LastStartRow=poolLatencyInfo.lastStartOutRow
+#            self.SecondLastStartRow=poolLatencyInfo.lastStartOutRow-rowStep;
+#            self.Stride=1
     def __str__(self):
         string="PreDataCycle0 "+str(self.PreDataCycle0)+"\n";
         string+="PreDataCycle1 "+str(self.PreDataCycle1)+"\n";
