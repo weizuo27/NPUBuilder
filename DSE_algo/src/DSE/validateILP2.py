@@ -660,40 +660,41 @@ def exploitK_xPCombinationsValidation(
             #         print ""
 
 
-            IBrst2,OBrst2,solutionChoice2,ILPlatency2=brutalSearchSolution(IB_gsrkn,OB_gsrkn, L_gsrk, BRAMBudget-constBram, ConvIPNum);
+        #IBrst2,OBrst2,solutionChoice2,ILPlatency2=brutalSearchSolution(IB_gsrkn,OB_gsrkn, L_gsrk, BRAMBudget-constBram, ConvIPNum);
             IBrst,OBrst,solutionChoice,ILPlatency= RowStepILP.RowStepILP(IB_gsrkn,OB_gsrkn, L_gsrk, BRAMBudget-constBram, ConvIPNum);
 
             # checkConcstraint(IB_gsrkn,OB_gsrkn,L_gsrk,BRAMBudget-constBram, solutionChoice2, ConvIPNum,IBrst2,OBrst2)
-    
-            if  not( ILPlatency2==float("inf") and ILPlatency==None) and  ILPlatency2!=ILPlatency:
-                print "validation fail",ILPlatency2,ILPlatency
-
-                if ILPlatency!=None:
-                    computeLatencyValidate(
-                        IB_gsrkn,
-                        OB_gsrkn,
-                        L_gsrk,
-                        BRAMBudget-constBram,
-                        ConvIPNum,
-                        IBrst,
-                        OBrst,
-                        solutionChoice,
-                        ILPlatency
-                    )
-                if ILPlatency2!=float("inf"):
-                    computeLatencyValidate(
-                        IB_gsrkn,
-                        OB_gsrkn,
-                        L_gsrk,
-                        BRAMBudget-constBram,
-                        ConvIPNum,
-                        IBrst2,
-                        OBrst2,
-                        solutionChoice2,
-                        ILPlatency2
-                    )
-            else:
-                print "validation success", ILPlatency2,ILPlatency
+            
+            # if  not( ILPlatency2==float("inf") and ILPlatency==None) and  ILPlatency2!=ILPlatency:
+            #     print "validation fail",ILPlatency2,ILPlatency
+                
+            #     if ILPlatency!=None:
+            #         computeLatencyValidate(
+            #             IB_gsrkn,
+            #             OB_gsrkn,
+            #             L_gsrk,
+            #             BRAMBudget-constBram,
+            #             ConvIPNum,
+            #             IBrst,
+            #             OBrst,
+            #             solutionChoice,
+            #             ILPlatency
+            #         )
+            #     if ILPlatency2!=float("inf"):
+            #         computeLatencyValidate(
+            #             IB_gsrkn,
+            #             OB_gsrkn,
+            #             L_gsrk,
+            #             BRAMBudget-constBram,
+            #             ConvIPNum,
+            #             IBrst2,
+            #             OBrst2,
+            #             solutionChoice2,
+            #             ILPlatency2
+            #         )
+            # else:
+            #     print "validation success", ILPlatency2,ILPlatency
+                
 
             if( ILPlatency !=None and ILPlatency< depositLatency):
                 IDEPTH=[];ODEPTH=[];
@@ -703,8 +704,6 @@ def exploitK_xPCombinationsValidation(
                 depositWeight=weightList
                 depositsolutionChoice=solutionChoice
                 depositIDepthList,depositODepthList=updateDepositArrays(len(IPinfoList),IPindexList,IDEPTH,ODEPTH)
-            
-
 
             if EndFlgWeight: break;
         if EndFlagKxP: break;
