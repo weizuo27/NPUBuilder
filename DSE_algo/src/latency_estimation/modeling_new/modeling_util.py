@@ -10,12 +10,16 @@ def _align_size(x, y):
 
 
 def _ceil_div(x, y):
+    """
+    Cell division
+
+    """
     return -int(-x//y)
 
 
 class ConvIP():
-    ker_factor_list = [8, 16, 32]
-    pix_factor_list = [8, 16, 32, 48]
+    ker_factor_list = [0, 8, 16, 32]
+    pix_factor_list = [0, 8, 16, 32, 48]
 
     """
     get_[xxxx] function shall change object attribute based on calcalutaions
@@ -24,7 +28,15 @@ class ConvIP():
     """
 
     def __init__(self, cls=0, ker_factor=0, pix_factor=0, input_buffer_depth=0, output_buffer_depth=0, weight_buffer_depth=0):
-
+        """
+        initialization of the class
+        input: 
+            ker_factor: hardware factor XI_KER_PROC
+            pix_factor: hardware factor XI_PIX_PROC
+            input_buffer_depth: the depth of input buffer
+            output_buffer_depth: the depth of output buffer
+            weight_buffer_depth: the depth of input buffer
+        """
         assert(ker_factor in cls.ker_factor_list), "Invalid Ker factor of {}\n".format(
             ker_factor)
         self._ker_factor = ker_factor
@@ -115,7 +127,17 @@ class ConvIP():
         return total_cycle, data_cycle
 
     def clean_latency_info(self):
-        # attributes from get_channels_in_tile_size
+        """
+        clean out all the latency info and layer info
+        """
+
+        # clean mounted layer
+        self.Layer = None
+
+        # clean latency information dictionary
+        self._latency_dict = {}
+
+        # clean attributes from get_channels_in_tile_size
         self._channel_in_tile_number = None
         self._channel_in_tile_size = None
         self._window_size_square = None
@@ -130,6 +152,15 @@ class ConvIP():
         self._load_input_tile_latency = None
 
     def get_channels_in_tile_size(self):
+        """
+        Compute the Input depth(channel) tile size based on the estimated latency of LoadFeedingbuffer
+
+        Generated dictionary items:
+            self._compute_iter_length 
+            self._window_size_square 
+            self._channel_in_tile_size 
+            self._channel_in_tile_number 
+        """
         channels_in_align4 = _align_size(self.Layer._channels_in, 4)
         if channels_in_align4 < 4:
             split = 1
@@ -160,15 +191,33 @@ class ConvIP():
                         self.Layer._ctrl_val_compute_planes_align4)
 
         # store result in model instance
+        self._compute_iter_length = channel_in_tile_size/4 * window_size_sqare
         self._window_size_square = window_size_sqare
         self._channel_in_tile_size = channel_in_tile_size
         self._channel_in_tile_number = channel_in_tile_number
 
     def get_channels_out_tile_size(self):
+        """
+        Compute the output depth(channel) tile size based on the estimated latency of LoadFeedingbuffer
+
+        Required function call and pre-computed attributes or latency dictionary items:
+            self.get_channels_in_tile_size():
+                self._compute_iter_length
+            self.get_LoadFeedingBuffer_latency():
+                self._conversion_iter_number
+                
+        Generated dictionary items:
+            self._row_step_number
+
+        Generated IP attributes:
+            self._pseudo_max_nkpf: a debugging result for simulation, need to be deleted
+            self._channels_out_tile_size: the output depth tile size in computation, computed by nkpf*depth_per_nkpf (8 or 16 depending on _ker_factor)
+            self._channels_out_tile_size_last: the last/remainder output depth tile size in computation, 
+            self._channels_out_tile_number: the number of output tile
+        """
+        self._row_step_number = _ceil_div(self.Layer._output_height, self.Layer._row_step)
 
         # TODO: add group condition after alexnet is added
-
-        self.get_LoadFeedingBuffer_latency()
 
         max_nkpf = (self._weight_buffer_depth - 1) // self._compute_iter_length
         max_nkpf = min(max_nkpf, 15)
@@ -210,6 +259,7 @@ class ConvIP():
 
         # FIXME: delete this line after the design is calibracated
         self._pseudo_max_nkpf = max_nkpf
+        
         if (max_nkpf % 2 and max_nkpf != 1):
             max_nkpf = max_nkpf - 1
 
@@ -278,7 +328,6 @@ class ConvIP():
 
         Return: the time between the starting of the remaining task and end of the specified task [task_key]
         """
-        print(task_remain_latency_dict)
         accumulate_task_latency = 0
         real_latency = 0
         total_density = sum(task_data_density_dict.values())
@@ -384,17 +433,13 @@ class ConvIP():
         task_real_time_dict['writeoutput'] = 0
         task_data_density['writeoutput'] = write_data_cycle / \
             write_total_cycle if write_total_cycle else 0
-        print("ticle on")
-        # compute first weight_load segment
-        if(first_row_step_flag):
-            print(self.Layer._layer_id, task_remain_latency_dict)
 
+        # compute first weight_load segment
         accumulate_real_latency = 0
         first_weight_load_latency = self._get_AXI_racing_latency_by_task(
             task_remain_latency_dict, task_data_density, 'weight', task_real_time_dict)
         accumulate_real_latency += first_weight_load_latency
 
-        print("Overhead_weight", self.Layer._layer_id, accumulate_real_latency)
         if first_row_step_flag:
             self._latency_dict['FirstWeightOverhead'] = accumulate_real_latency
 
@@ -404,8 +449,6 @@ class ConvIP():
                 task_remain_latency_dict, task_data_density, real_latency, task_real_time_dict)
             accumulate_real_latency += real_latency
 
-        # compute all the procweight calls
-        print("Overhead_total", self.Layer._layer_id, accumulate_real_latency)
         for input_tile_index in range(self._channel_in_tile_number):
             for output_tile_index in range(self._channels_out_tile_number):
                 if output_tile_index == self._channels_out_tile_number - 1 and input_tile_index == self._channel_in_tile_number - 1:
@@ -422,29 +465,21 @@ class ConvIP():
                     proc_weight_latency = proc_weight_latency_normal_nkpf
                 else:
                     proc_weight_latency = proc_weight_latency_last_nkpf
-                print("Iter_weight", self.Layer._layer_id,
-                      accumulate_real_latency)
 
                 if weight_latency < proc_weight_latency:
                     real_latency = proc_weight_latency - weight_latency
                     self._update_remain_latency_by_real(
                         task_remain_latency_dict, task_data_density, real_latency, task_real_time_dict)
                     accumulate_real_latency += real_latency
-                print("Iter_total", self.Layer._layer_id,
-                      proc_weight_latency, accumulate_real_latency)
 
         proc_weight_latency = proc_weight_latency_last_nkpf
         accumulate_real_latency += proc_weight_latency
-
-        print("Last_total", self.Layer._layer_id,
-              proc_weight_latency_last_nkpf, accumulate_real_latency)
 
         self._update_remain_latency_by_real(
             task_remain_latency_dict, task_data_density, proc_weight_latency, task_real_time_dict)
         max_key = max(task_remain_latency_dict,
                       key=lambda k: task_remain_latency_dict[k])
 
-        print(task_remain_latency_dict)
         left_over_communicate_latency = self._get_AXI_racing_latency_by_task(
             task_remain_latency_dict, task_data_density, max_key, task_real_time_dict)
 
@@ -453,8 +488,6 @@ class ConvIP():
             self._first_read_flag = False
         accumulate_real_latency += left_over_communicate_latency
 
-        print("Last_leftover", self.Layer._layer_id,
-              left_over_communicate_latency, accumulate_real_latency)
         return accumulate_real_latency
 
     def get_ProcIstg_latency(self):
@@ -502,6 +535,20 @@ class ConvIP():
             self._overall_overhead
 
     def get_LoadFeedingBuffer_latency(self):
+        """
+        Compute the latency of LoadFeedingBuffer 
+
+        Required function call and pre-computed attributes or latency dictionary items:
+            self.get_channels_in_tile_size():
+                self._channel_in_tile_size
+                self._window_size_square
+
+        Generated dictionary items:
+            self._latency_dict["LoadFeedingBuffer"] : the latency of LoadFeedingBuffer
+        Generated IP attributes:
+            self._conversion_iter_number: a approximated latency of LoadFeedingBuffer which is used to decide output tile size
+
+        """
 
         conversion_number = _ceil_div(
             self._channel_in_tile_size/4, 16) * _ceil_div(self._pix_factor, 16)
@@ -526,20 +573,51 @@ class ConvIP():
             load_output_pixel_loacation_latency
 
     def get_ComputeKer16_latency(self):
-        self.get_channels_in_tile_size()
-        compute_iter_length = self._channel_in_tile_size/4 * \
-            self._window_size_square
-        compute_latency = (compute_iter_length+self._pix_factor/2 +
+        """
+        Compute the latency of ComputeKer16 
+
+        Required function call and pre-computed attributes or latency dictionary items:
+            self.get_channels_in_tile_size():
+                self._compute_iter_length
+                self._window_size_square
+
+        Generated dictionary items:
+            self._latency_dict["ComputeKer16"] : the latency of ComputeKer16
+        """
+
+        compute_latency = (self._compute_iter_length+self._pix_factor/2 +
                            self.COMPUTEKER_OVERHEAD)*self.CLK_PERIOD
-        self._compute_iter_length = compute_iter_length
+
         self._latency_dict["ComputeKer16"] = compute_latency
 
     def get_OStgBuffSeq_latency(self):
+        """
+        Compute the latency of OStgBuffSeq function.
 
+        Generated dictionary items:
+            self._latency_dict["OStgBuffSeq"]: latency of OStgBuffSeq function 
+        """
         self._latency_dict["OStgBuffSeq"] = (
             self._pix_factor + self.OSTGBUFFSEQ_OVERHEAD) * self.CLK_PERIOD
 
     def get_ProcResult_latency(self):
+        """
+        Compute the latency of ProcResult under different conditions
+
+        Required function call and pre-computed attributes or latency dictionary items:
+            self.get_channels_out_tile_size():
+                self._channels_out_tile_size 
+                self.__channels_out_tile_size_last
+            self.get_ComputeKer16_latency():
+                self._latency_dict["ComputeKer16"]
+            self.get_OStgBuffSeq_latency()
+                self._latency_dict["OStgBuffSeq"]
+
+        Generated dictionary items:
+            self._latency_dict["ProcResult"] : the latency of ProcResult with normal nkpf size
+            self._latency_dict["ProcResultLast"] : the latency of ProcResult with last(remainder) nkpf size
+        """
+
         self.get_ComputeKer16_latency()
         self.get_OStgBuffSeq_latency()
         self.get_channels_out_tile_size()
@@ -558,10 +636,25 @@ class ConvIP():
             ComputeKer16_latency, OstgBuff_latency, iteration_number_last)
 
         self._latency_dict["ProcResult"] = ProcResult_latency
-        self._latency_dict["Iternumber"] = iteration_number
         self._latency_dict["ProcResultLast"] = ProcResult_latency_last
 
     def get_WriteOutput_latency(self):
+        """
+        This function will compute different latency and data ammount to write output from DDR in each row step tile
+        If self.Layer._mem_out is true. 
+            It computes the latency and data latency simulating the behaviour of AXI mem interface
+        Otherwise 
+            It computes the latency and data latency simulating the behaviour of a FIFO
+        
+        Required function call and pre-computed attributes or latency dictionary items:
+            None
+
+        Following dictionay item in _latency_dict will be set:
+            self._latency_dict['WriteOutputNormal_Data']
+            self._latency_dict['WriteOutputNormal_Data']
+            self._latency_dict['WriteOutputLast_Data']
+            self._latency_dict['WriteOutputLast_Data']
+        """
         output_depth = self.Layer._channels_out
         output_width = self.Layer._output_width
         output_height = self.Layer._output_height
@@ -574,22 +667,46 @@ class ConvIP():
             output_height_last = output_height % row_step
         else:
             output_height_last = row_step
+        if self.Layer._mem_out == True:
+            total_cycle, data_cycle = self._mem_burst_write_latency(
+                burst_number, row_step*output_width, 10)
+            self._latency_dict['WriteOutputNormal_Data'] = data_cycle * \
+                self.CLK_PERIOD
+            self._latency_dict['WriteOutputNormal_Total'] = total_cycle * \
+                self.CLK_PERIOD
 
-        total_cycle, data_cycle = self._mem_burst_write_latency(
-            burst_number, row_step*output_width, 10)
-        self._latency_dict['WriteOutputNormal_Data'] = data_cycle * \
-            self.CLK_PERIOD
-        self._latency_dict['WriteOutputNormal_Total'] = total_cycle * \
-            self.CLK_PERIOD
-
-        total_cycle, data_cycle = self._mem_burst_write_latency(
-            burst_number, output_height_last*output_width, 10)
-        self._latency_dict['WriteOutputLast_Data'] = data_cycle * \
-            self.CLK_PERIOD
-        self._latency_dict['WriteOutputLast_Total'] = total_cycle * \
-            self.CLK_PERIOD
+            total_cycle, data_cycle = self._mem_burst_write_latency(
+                burst_number, output_height_last*output_width, 10)
+            self._latency_dict['WriteOutputLast_Data'] = data_cycle * \
+                self.CLK_PERIOD
+            self._latency_dict['WriteOutputLast_Total'] = total_cycle * \
+                self.CLK_PERIOD
+        else:
+            self._latency_dict['WriteOutputNormal_Data'] = 0
+            self._latency_dict['WriteOutputNormal_Total'] = burst_number * \
+                row_step * output_width * self.CLK_PERIOD
+            self._latency_dict['WriteOutputLast_Data'] = 0
+            self._latency_dict['WriteOutputLast_Total'] = burst_number * \
+                output_height_last * output_width * self.CLK_PERIOD
 
     def get_ReadInput_latency(self):
+        """
+        This function will compute different latency and data ammount to read input from DDR in each row step tile
+        If self.Layer._mem_in is true. 
+            It computes the latency and data latency simulating the behaviour of AXI mem interface
+        Otherwise 
+            It computes the latency and data latency simulating the behaviour of fifo
+        
+        Required function call and pre-computed attributes or latency dictionary items:
+            None
+        Following dictionay item in _latency_dict will be set:
+            self._latency_dict['ReadInputFirst_Data'] 
+            self._latency_dict['ReadInputFirst_Total'] 
+            self._latency_dict['ReadInputNormal_Data']
+            self._latency_dict['ReadInputNormal_Total']
+            self._latency_dict['ReadInputLast_Data']
+            self._latency_dict['ReadInputLast_Total']
+        """
 
         input_depth = self.Layer._channels_in
         input_width = self.Layer._input_width
@@ -617,29 +734,52 @@ class ConvIP():
                 input_height_last = 0
 
         burst_number = _ceil_div(input_depth, 32)
-        print("burst_number", self.Layer._layer_id, burst_number)
-        print(self.Layer._layer_id, input_height_normal, input_height_last)
-        total_cycle, data_cycle = self._mem_burst_read_latency(
-            burst_number, input_height_first*input_width, 10)
-        self._latency_dict['ReadInputFirst_Data'] = data_cycle * \
-            self.CLK_PERIOD
-        self._latency_dict['ReadInputFirst_Total'] = total_cycle * \
-            self.CLK_PERIOD
 
-        total_cycle, data_cycle = self._mem_burst_read_latency(
-            burst_number, input_height_normal*input_width, 10)
-        self._latency_dict['ReadInputNormal_Data'] = data_cycle * \
-            self.CLK_PERIOD
-        self._latency_dict['ReadInputNormal_Total'] = total_cycle * \
-            self.CLK_PERIOD
+        if self.Layer._mem_in == True:
+            total_cycle, data_cycle = self._mem_burst_read_latency(
+                burst_number, input_height_first*input_width, 10)
+            self._latency_dict['ReadInputFirst_Data'] = data_cycle * \
+                self.CLK_PERIOD
+            self._latency_dict['ReadInputFirst_Total'] = total_cycle * \
+                self.CLK_PERIOD
 
-        total_cycle, data_cycle = self._mem_burst_read_latency(
-            burst_number, input_height_last*input_width, 10)
-        self._latency_dict['ReadInputLast_Data'] = data_cycle * self.CLK_PERIOD
-        self._latency_dict['ReadInputLast_Total'] = total_cycle * \
-            self.CLK_PERIOD
+            total_cycle, data_cycle = self._mem_burst_read_latency(
+                burst_number, input_height_normal*input_width, 10)
+            self._latency_dict['ReadInputNormal_Data'] = data_cycle * \
+                self.CLK_PERIOD
+            self._latency_dict['ReadInputNormal_Total'] = total_cycle * \
+                self.CLK_PERIOD
+
+            total_cycle, data_cycle = self._mem_burst_read_latency(
+                burst_number, input_height_last*input_width, 10)
+            self._latency_dict['ReadInputLast_Data'] = data_cycle * \
+                self.CLK_PERIOD
+            self._latency_dict['ReadInputLast_Total'] = total_cycle * \
+                self.CLK_PERIOD
+        else:
+            self._latency_dict['ReadInputFirst_Data'] = 0
+            self._latency_dict['ReadInputFirst_Total'] = (
+                10 + input_height_first * input_width * burst_number)*self.CLK_PERIOD
+            self._latency_dict['ReadInputNormal_Data'] = 0
+            self._latency_dict['ReadInputNormal_Total'] = (
+                10 + input_height_normal * input_width * burst_number)*self.CLK_PERIOD
+            self._latency_dict['ReadInputLast_Data'] = 0
+            self._latency_dict['ReadInputLast_Total'] = (
+                10 + input_height_last * input_width * burst_number)*self.CLK_PERIOD
 
     def get_LoadKer_latency(self):
+        """
+        This function will compute different latency and data ammount to read weight from DDR
+        It computes the latency and data latency simulating the behaviour of AXI mem interface
+
+        Required function call and pre-computed attributes or latency dictionary items:
+            self.get_channels_out_tile_size():
+                self._compute_iter_length 
+
+        Following dictionay item in _latency_dict will be set:
+            self._latency_dict["LoadKern_Data"] 
+            self._latency_dict["LoadKern_Total"] 
+        """
 
         if self._ker_factor in [16, 32]:
             depth_per_nkpf = 16
@@ -649,12 +789,10 @@ class ConvIP():
             AssertionError(
                 "Invalid Ker factor of {}\n".format(self._ker_factor))
 
-        kernel_load_count = self._channel_in_tile_size / 4 * \
-            self._window_size_square * self._pseudo_max_nkpf
-        #self._channels_out_tile_size / depth_per_nkpf
+        #FIXME: currently it is usind _pseudo_max_nkpf, shoud be using read max_nkpf
+        kernel_load_count = self._compute_iter_length * self._pseudo_max_nkpf
+        #self._channels_out_tile_size /     depth_per_nkpf
 
-        print("wts_count:{},{}\n".format(
-            self.Layer._layer_id, kernel_load_count))
         total_cycle, data_cycle = self._mem_burst_read_latency(
             1, kernel_load_count, 10)
 
@@ -663,7 +801,24 @@ class ConvIP():
         self._latency_dict["LoadKern_Total"] = total_cycle * self.CLK_PERIOD
 
     def get_ProcWeight_latency(self):
+        """
+        Compute the latency of LoadFeedingBuffer 
 
+        Required function call and pre-computed attributes or latency dictionary items:
+            self.get_ProcResult_latency():
+                self._latency_dict['ProcResult']
+                self._latency_dict['ProcResultLast']
+            self.get_LoadFeedingBuffer_latency():
+                self._latency_dict['LoadFeedingBuffer']
+
+        Generated dictionary items:
+            self._latency_dict['ProcWeightNormal']
+            self._latency_dict['ProcWeightLastNkpf']
+            self._latency_dict['ProcWeightLastRowStep']
+            self._latency_dict['ProcWeightLast']
+            self._latency_dict['ProcWeightOverhead']
+
+        """
         output_width = self.Layer._output_width
         output_height = self.Layer._output_height
         row_step = self.Layer._row_step
@@ -685,12 +840,10 @@ class ConvIP():
 
         LoadFeedingBuffer_latency = self._latency_dict['LoadFeedingBuffer']
 
-        self._row_step_number = row_step_number
+        
         self._latency_dict['ProcWeightNormal'] = (pixel_factor_iters *
                                                   max(ProcResult_latency, LoadFeedingBuffer_latency))
 
-        print("ProcResult_latency_last", self.Layer._layer_id,
-              LoadFeedingBuffer_latency, ProcResult_latency_last, pixel_factor_iters)
         self._latency_dict['ProcWeightLastNkpf'] = ((pixel_factor_iters-1)*max(
             LoadFeedingBuffer_latency, ProcResult_latency_last)+ProcResult_latency_last)
 
@@ -715,6 +868,20 @@ class ConvIP():
             file_pointer.write(",{},".format(key))
         file_pointer.write("\n")
 
+    def get_latency(self):
+        self.get_channels_in_tile_size()
+        self.get_LoadFeedingBuffer_latency()
+        self.get_channels_out_tile_size()
+
+        self.get_ComputeKer16_latency()
+        self.get_OStgBuffSeq_latency()
+        self.get_ProcResult_latency()
+        self.get_LoadKer_latency()
+
+        self.get_ReadInput_latency()
+        self.get_WriteOutput_latency()
+
+        self.get_ProcIstg_latency()
 
 class ConvLayerInfo():
 
@@ -722,25 +889,6 @@ class ConvLayerInfo():
         self._feeding_buffer_size = 1024
 
     def set_from_layerInfo(self, layerInfo):
-        self.layerType=layerType
-        self.layerName=layerName
-        self.inp_height=inp_height
-        self.inp_width=inp_width
-        self.out_height=out_height
-        self.out_width=out_width
-        self.out_planes=out_planes
-        self.inp_planes=inp_planes
-        self.stride=stride
-        self.filter_height=filter_height
-        self.filter_width=filter_width
-        self.pad=pad
-        self.groupFlag=groupFlag  #0: Conv, 1 Conv_g
-        self.layerID=layerID
-        self.memIn=memIn
-        self.memInL=memInL
-        self.memInR=memInR
-        self.memOut=memOut
-        self.rowStep=rowStep
         self._input_height = layerInfo.inp_height
         self._input_width = layerInfo.inp_width
         self._output_height = layerInfo.out_height
@@ -755,6 +903,8 @@ class ConvLayerInfo():
         self._window_size = w_h
         self._layer_id = layerInfo.layerID
         self._row_step = layerInfo.rowStep
+        self._mem_in = layerInfo.memIn
+        self._mem_out = layerInfo.mode
 
     def set_from_file(self, file_name):
         args_file = open(file_name, 'rb')
