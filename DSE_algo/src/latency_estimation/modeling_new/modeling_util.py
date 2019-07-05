@@ -876,6 +876,7 @@ class ConvIP():
         self.get_ComputeKer16_latency()
         self.get_OStgBuffSeq_latency()
         self.get_ProcResult_latency()
+        self.get_ProcWeight_latency()
         self.get_LoadKer_latency()
 
         self.get_ReadInput_latency()
@@ -926,6 +927,9 @@ class ConvLayerInfo():
         self._window_size = w_h
         self._layer_id = args_list[12]
         self._row_step = args_list[15]
+        self._mem_in = True
+        self._mem_out = True
+
 
         self._ctrl_val_nkpf = args_list[13]
         self._ctrl_val_compute_planes_align4 = args_list[61]
@@ -962,12 +966,13 @@ if __name__ == "__main__":
             conv_layer.set_from_file(args_file_name)
             test_IP = ConvIP(ConvIP, 32, 32, 8192, 2048, 4096)
             test_IP.load_layer(conv_layer)
-            test_IP.get_ProcResult_latency()
-            test_IP.get_LoadKer_latency()
-            test_IP.get_ProcWeight_latency()
-            test_IP.get_ReadInput_latency()
-            test_IP.get_WriteOutput_latency()
-            test_IP.get_ProcIstg_latency()
+            test_IP.get_latency()
+            # test_IP.get_ProcResult_latency()
+            # test_IP.get_LoadKer_latency()
+            # test_IP.get_ProcWeight_latency()
+            # test_IP.get_ReadInput_latency()
+            # test_IP.get_WriteOutput_latency()
+            # test_IP.get_ProcIstg_latency()
 
             print('items number', len(test_IP._latency_dict))
             pp = pprint.PrettyPrinter(indent=4)
