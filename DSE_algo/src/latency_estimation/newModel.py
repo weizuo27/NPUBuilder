@@ -3,7 +3,7 @@ from infoClass import *
 from gurobipy import *
 import rowStepILP
 import numpy
-
+from modeling_new import modeling_util
 
 def AlignSize(x, y): return -(-x//y)*y
 def CeilDiv(x,y): return  -(-x//y)
@@ -389,39 +389,59 @@ class poolLatencyInfo_t:
 
 class layerLatencyInfo_t():
     def __init__(self, layerInfo, IPinfo, rowStep):
-        self.PreDataCycle0=None
-        self.PreDataCycle1=None
-        self.PreTotalCycle=None
+        if(IPinfo.IPtype == "Conv"):
+            conv_layer = modeling_util.ConvLayerInfo()
+            conv_layer.set_from_layerInfo(layerInfo)
+            test_IP = ConvIP()
+            test_IP.set_from_IPInfo(IPinfo)
+            test_IP.load_layer(conv_layer)
+        elif(IPinfo.IPtype == "ELtwise"):
+            elt_layer = ConvLayerInfo(layerInfo)
+            elt_layer.set_from_file(args_file_name)
+            test_IP = ConvIP(ConvIP, 32, 32, 8192, 2048, 4096)
+            test_IP.load_layer(conv_layer)
+        elif(IPinfo.IPtype == "Pool"):
+            conv_layer = ConvLayerInfo(layerInfo)
+            conv_layer.set_from_file(args_file_name)
+            test_IP = ConvIP(ConvIP, 32, 32, 8192, 2048, 4096)
+            test_IP.load_layer(conv_layer)
+        else:
+            assert(0, "unsupported IP")
 
-        self.RecurDataCycleFirst0=None
-        self.RecurDataCycleFirst1=None
-        self.RecurTotalCycleFirst=None
+        test_ip.computeLatency()
+        self.PreDataCycle0=test_IP.getPreDataCylcle0()
+        self.PreDataCycle1=test_IP.getPreDataCycle1()
+        self.PreTotalCycle=test_IP.getPreTotalCylce()
+        self.PreTotalCycle=test_IP.getPreTotalCylce()
 
-        self.RecurDataCycleMid0=None
-        self.RecurDataCycleMid1=None
-        self.RecurTotalCycleMid=None
+        self.RecurDataCycleFirst0=test_IP.getRecurDataCycleFirst0()
+        self.RecurDataCycleFirst1=test_IP.getRecurDataCycleFirst1()
+        self.RecurTotalCycleFirst=test_IP.getRecurTotalCycleFirst()
+
+        self.RecurDataCycleMid0=test_IP.getRecurDataCycleMid0()
+        self.RecurDataCycleMid1=test_IP.getRecurDataCycleMid1()
+        self.RecurTotalCycleMid=test_IP.getTotalCycleMid()
 
 
-        self.RecurDataCycleSecondLast0=None
-        self.RecurDataCycleSecondLast1=None
-        self.RecurTotalCycleSecondLast=None
+        self.RecurDataCycleSecondLast0=test_IP.getRecurDataCycleSecondLast0()
+        self.RecurDataCycleSecondLast1=test_IP.getRecurDataCycleLast1()
+        self.RecurTotalCycleSecondLast=test_IP.getRecurTotalCycleLast()
 
-        self.RecurDataCycleLast0=None
-        self.RecurDataCycleLast1=None
-        self.RecurTotalCycleLast=None
+        self.RecurDataCycleLast0=test_IP.getRecurDataCycleLast0()
+        self.RecurDataCycleLast1=test_IP.getRecurDataCycleFirst1()
+        self.RecurTotalCycleLast=test_IP.getRecurTotalCycleLast()
 
-        self.PostDataCycle0=None
-        self.PostDataCycle1=None
-        self.PostTotalCycle=None
+        self.PostDataCycle0=test_IP.getPostDataCycle0()
+        self.PostDataCycle1=test_IP.getPostDataCycle1()
+        self.PostTotalCycle=test_IP.getPostTotalCycle()
 
-        self.RowNum=None
-        self.RowStep=None
-        self.DepsRowStepFirst=None
-        self.DepsRowStepRecur=None
-        self.LastStartRow=None
-        self.SecondLastStartRow=None;
-        self.Stride=None
-
+        self.RowNum=test_IP.getRowNum()
+        self.RowStep=test_IP.getRowStep()
+        self.DepsRowStepFirst=test_IP.getDepsRowStepRecur()
+        self.DepsRowStepRecur=test_IP.getDepsRowStepRecur()
+        self.LastStartRow=test_IP.getLastStartRow()
+        self.SecondLastStartRow=test_IP.getSecondLastStartRow()
+        self.Stride=test_IP.getStride()
     
         layerInfo.rowStep=rowStep
 

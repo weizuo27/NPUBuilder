@@ -23,7 +23,7 @@ class ConvIP():
     _[xxxxx] are helpler function which change nothing
     """
 
-    def __init__(self, cls, ker_factor, pix_factor, input_buffer_depth, output_buffer_depth, weight_buffer_depth):
+    def __init__(self, cls=0, ker_factor=0, pix_factor=0, input_buffer_depth=0, output_buffer_depth=0, weight_buffer_depth=0):
 
         assert(ker_factor in cls.ker_factor_list), "Invalid Ker factor of {}\n".format(
             ker_factor)
@@ -58,6 +58,13 @@ class ConvIP():
 
         # FIXME: debugging purpose variable, need to be deleted
         self._first_read_flag = True
+
+    def set_from_IPInfo(self, IPInfo):
+        self._ker_factor = IPInfo.XI_KER_PROC
+        self._pix_factor = IPInfo.XI_PIX_PROC
+        self._input_buffer_depth = IPInfo.XI_INDEPTH
+        self._output_buffer_depth = IPInfo.XI_OUTDEPTH
+        self._weight_buffer_depth = IPInfo.XI_WEIGHTBUFF_DEPTH
 
     def load_layer(self, conv_layer_info):
         self.Layer = conv_layer_info
@@ -715,6 +722,41 @@ class ConvLayerInfo():
     def __init__(self):
         self._feeding_buffer_size = 1024
 
+    def set_from_layerInfo(self, layerInfo):
+        self.layerType=layerType
+        self.layerName=layerName
+        self.inp_height=inp_height
+        self.inp_width=inp_width
+        self.out_height=out_height
+        self.out_width=out_width
+        self.out_planes=out_planes
+        self.inp_planes=inp_planes
+        self.stride=stride
+        self.filter_height=filter_height
+        self.filter_width=filter_width
+        self.pad=pad
+        self.groupFlag=groupFlag  #0: Conv, 1 Conv_g
+        self.layerID=layerID
+        self.memIn=memIn
+        self.memInL=memInL
+        self.memInR=memInR
+        self.memOut=memOut
+        self.rowStep=rowStep
+        self._input_height = layerInfo.inp_height
+        self._input_width = layerInfo.inp_width
+        self._output_height = layerInfo.out_height
+        self._output_width = layerInfo.out_width
+        self._channels_out = layerInfo.out_planes
+        self._channels_in = layerInfo.inp_planes
+        self._stride = layerInfo.stride
+        self._pad_size = layerInfo.pad
+        w_h = layerInfo.filter_height
+        w_w = layerInfo.filter_width
+        assert(w_h == w_w, "the window size is not square")
+        self._window_size = w_h
+        self._layer_id = layerInfo.layerID
+        self._row_step = layerInfo.rowStep
+
     def set_from_file(self, file_name):
         args_file = open(file_name, 'rb')
         args_list = []
@@ -729,8 +771,10 @@ class ConvLayerInfo():
         self._channels_in = args_list[5]
         self._stride = args_list[6]
         self._pad_size = args_list[9]
-        self._window_size = args_list[7]
-        self._window_size = args_list[8]
+        w_h = args_list[7]
+        w_w = args_list[8]
+        assert(w_h == w_w, "the window size is not square")
+        self._window_size = w_h
         self._layer_id = args_list[12]
         self._row_step = args_list[15]
 

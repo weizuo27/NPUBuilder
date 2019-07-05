@@ -362,20 +362,6 @@ class IPSel():
                     PoolNums,
                     EleNums]=generateILPInput(g,layerIpLatencyTable_ILP,IP_dict,gs.noStreamEdge,gs.loneLayer)
 
-                    # roundMappingCandidates2,roundDictCandidates2,latCandidates2=RawILP.roundScheduling(
-                    # depsTable, 
-                    # noStreamTable,
-                    # loneLayerDepsTable,
-                    # loneLayerArray,
-                    # loneLayerLatency, 
-                    # layerTypeArray,
-                    # layerArray,
-                    # latencyPerIPTable, 
-                    # convNums,
-                    # PoolNums,
-                    # EleNums,
-                    # len(layerTypeArray));
-
                     if loneLayerLatency:
                         loneLayerLatency=loneLayerLatency[0][0][1];
                         loneLayerLatencyDeps=loneLayerDepsTable[0][1];
@@ -403,13 +389,6 @@ class IPSel():
                     );
                     end = time.time()
                     print "time",end - start
-                    # raw_input()
-                    # print "Brutal FOrce",latCandidates2,lat_achieved
-
-                    # for i in roundMappingCandidates2:
-                    #     for j in i:
-                    #         print j;
-                    #     print ""
                     
                     print "ILP",latCandidates,lat_achieved
 
@@ -417,16 +396,6 @@ class IPSel():
                         for j in i:
                             print j;
                         print ""
- 
-
-                    # pipelineCandidates=[]
-                    # for roundDict in roundDictCandidates:
-                    #     pipelineTable2={}
-                    #     for i in depsTable:
-                    #         s,t = i;
-                    #         if( roundDict[s]==roundDict[t] ):
-                    #             pipelineTable2[(layerArray[s],layerArray[t])]=1;
-                    #     pipelineCandidates.append(pipelineTable2)
                             
                     print "latCandidates",latCandidates
                     if not latCandidates :
@@ -499,12 +468,6 @@ class IPSel():
             print "No feasible solutions"
             return
 
-
-        #gen final_graph
-        # print groupRunInfoList_total
-        # for k,v in mapping_solution_total.items():
-        #     print v
-
         for groupIdx,choice in enumerate(solutionChoice_total):
             chosenIdx,rowStepList=choice
             solution=mapping_solution_total[groupIdx][chosenIdx]
@@ -518,11 +481,6 @@ class IPSel():
                     layerVertex.mappedIP=IPList_total[layerIPidx];
                     layerVertex.layerInfo=groupRunInfoList_total[groupIdx][chosenIdx][RoundIdx][layeridx]
                     layerVertex.layerInfo.rowStep=rowStep;
-                
-
-
-    
-        
         
         final_graph_list = []
 
@@ -540,17 +498,6 @@ class IPSel():
         self.codeGen(final_graph_list, lat_achieved_total, hw_layers, numConvIPs_total, numIPs_total, int(batchSize))
         
         return lat_achieved_total
-
-    # def genRoundInfo(self, graph, roundMappingList, IPInfoList):
-    #     roundSubGraph=[]
-    #     for node in r
-
- 
-
-    
-
-
-        
 
     def genIPinfoLayerInfoList(self, final_graph_list, pipelineTable_solution_total):
         IPinfoDict = dict() #key: The IP name, value: IP info
