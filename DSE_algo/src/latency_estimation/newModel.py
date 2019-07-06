@@ -392,27 +392,32 @@ class layerLatencyInfo_t():
         if(IPinfo.IPtype == "Conv"):
             conv_layer = modeling_util.ConvLayerInfo()
             conv_layer.set_from_layerInfo(layerInfo)
-            test_IP = ConvIP()
+
+            test_IP = modeling_util.ConvIP()
             test_IP.set_from_IPInfo(IPinfo)
             test_IP.load_layer(conv_layer)
         elif(IPinfo.IPtype == "ELtwise"):
-            elt_layer = ConvLayerInfo(layerInfo)
+            elt_layer = modeling_util.PoolLayerInfo(layerInfo)
             elt_layer.set_from_file(args_file_name)
-            test_IP = ConvIP(ConvIP, 32, 32, 8192, 2048, 4096)
+
+            test_IP = modeling_util.PoolIP(ConvIP, 32, 32, 8192, 2048, 4096)
             test_IP.load_layer(conv_layer)
         elif(IPinfo.IPtype == "Pool"):
-            conv_layer = ConvLayerInfo(layerInfo)
+            conv_layer = modeling_util.EleLayerInfo(layerInfo)
             conv_layer.set_from_file(args_file_name)
-            test_IP = ConvIP(ConvIP, 32, 32, 8192, 2048, 4096)
+
+            test_IP = modeling_util.EleIP(ConvIP, 32, 32, 8192, 2048, 4096)
             test_IP.load_layer(conv_layer)
         else:
             assert(0, "unsupported IP")
 
         test_ip.computeLatency()
-        self.PreDataCycle0=test_IP.getPreDataCylcle0()
+
+
+        self.PreDataCycle0=test_IP.getPreDataCycle0()
         self.PreDataCycle1=test_IP.getPreDataCycle1()
         self.PreTotalCycle=test_IP.getPreTotalCylce()
-        self.PreTotalCycle=test_IP.getPreTotalCylce()
+       
 
         self.RecurDataCycleFirst0=test_IP.getRecurDataCycleFirst0()
         self.RecurDataCycleFirst1=test_IP.getRecurDataCycleFirst1()
@@ -444,13 +449,13 @@ class layerLatencyInfo_t():
         self.Stride=test_IP.getStride()
     
         layerInfo.rowStep=rowStep
-#
+
+
 #        if( IPinfo.IPtype== "Convolution"):
 #            convLatencyInfo=convlayerInfo_t();
 #            computeLatencyConv(layerInfo,IPinfo,convLatencyInfo);
 #            self.RowNum=layerInfo.out_height;
 #            self.RowStep=rowStep;
-#
 #            if(layerInfo.memIn):
 #                if IPinfo.inputPortIdx==0:
 #                    self.PreDataCycle0=convLatencyInfo.inputDataCycle1st;
@@ -470,7 +475,7 @@ class layerLatencyInfo_t():
 #                self.PreTotalCycle=convLatencyInfo.inputTotalCycle1st
 #                readTotalCycle=convLatencyInfo.inputTotalCycle
 #                readTotalCycleLast=convLatencyInfo.inputTotalCycleLast
-#
+
 #            else:
 #                self.PreDataCycle0=0;
 #                self.PreDataCycle1=0;
@@ -680,11 +685,8 @@ def computeLatencyPipe2(
     NrowStep=[]
     for i in layerLat: NrowStep.append(i.RowStep)
 
-
-
     firstOperatingLayerID=0;
     lastOperatingLayerID=0;
-
   
     pipeInfoStage.append( (layerLat[0].PreDataCycle0*4, layerLat[0].PreDataCycle1*4,max(layerLat[0].PreDataCycle0*4, layerLat[0].PreDataCycle1*4,   layerLat[0].PreTotalCycle*4)  ) );
 
@@ -693,6 +695,7 @@ def computeLatencyPipe2(
             pipeInfoStage.append( (layerLat[lastOperatingLayerID].PostDataCycle0*4, layerLat[lastOperatingLayerID].PostDataCycle1*4,
             max( layerLat[lastOperatingLayerID].PostDataCycle0*4, layerLat[lastOperatingLayerID].PostDataCycle1*4,layerLat[lastOperatingLayerID].PostTotalCycle*4) )  )
             break; 
+
         stageDataCycle0=0;
         stageDataCycle1=0;
         stageTotalCycle=0;
@@ -705,7 +708,6 @@ def computeLatencyPipe2(
 
         for i in range(lastOperatingLayerID,firstOperatingLayerID,-1):
             NrowStep[i-1]=NrowStep[i]*layerLat[i].Stride;
-
 
         for i in range(firstOperatingLayerID,lastOperatingLayerID+1):
             currentEndRow=min( currentStartRows[i]+NrowStep[i], layerLat[i].RowNum)
