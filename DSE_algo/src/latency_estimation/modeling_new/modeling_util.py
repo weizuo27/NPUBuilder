@@ -2,7 +2,7 @@ import os.path
 import struct
 import sys
 import pprint
-VALIDATE = 1
+VALIDATE = 0
 
 
 def _align_size(x, y):
@@ -444,7 +444,6 @@ class ConvIP():
         
         first_weight_load_latency = self._get_AXI_racing_latency_by_task(
             task_remain_latency_dict, task_data_density, 'weight', task_real_time_dict)
-        print(" after first_weight_load_latency", task_remain_latency_dict )
         accumulate_real_latency += first_weight_load_latency
 
         if first_row_step_flag:
@@ -462,7 +461,6 @@ class ConvIP():
                 task_remain_latency_dict, task_data_density, real_latency, task_real_time_dict)
             accumulate_real_latency += real_latency
 
-        print(" after _update_remain_latency_by_real", task_remain_latency_dict )
 
         for input_tile_index in range(self._channel_in_tile_number):
             for output_tile_index in range(self._channels_out_tile_number):
@@ -761,6 +759,8 @@ class ConvIP():
         burst_number = _ceil_div(input_depth, 32)
 
         if self.Layer._mem_in == True:
+            print("input_height_first*input_width", input_height_first*input_width)
+            print("burst_number", burst_number)
             total_cycle, data_cycle = self._mem_burst_read_latency(
                 burst_number, input_height_first*input_width, 10)
             self._latency_dict['ReadInputFirst_Data'] = data_cycle * \
