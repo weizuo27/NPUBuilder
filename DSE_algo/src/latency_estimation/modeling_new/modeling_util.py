@@ -2,6 +2,8 @@ import os.path
 import struct
 import sys
 import pprint
+import argparse
+import math
 VALIDATE = 0
 
 
@@ -20,8 +22,8 @@ def _ceil_div(x, y):
 # FXD
 
 class ConvIP():
-    ker_factor_list = [0, 8, 16, 32]
-    pix_factor_list = [0, 8, 16, 32, 48]
+    ker_factor_list = [0, 8, 16, 24, 32]
+    pix_factor_list = [0, 8, 16, 24, 32, 48]
 
     """
     get_[xxxx] function shall change object attribute based on calcalutaions
@@ -82,6 +84,7 @@ class ConvIP():
     def load_layer(self, conv_layer_info):
         self.Layer = conv_layer_info
         self._latency_dict['RowStep'] = self.Layer._row_step
+        self.Layer._channels_in = _align_size(self.Layer._channels_in,4)
 
     def _pingpong_latency_helpler(self, ping_latency, pong_latency, number):
         return ping_latency + pong_latency + (number-1)*max(ping_latency, pong_latency)
@@ -230,7 +233,7 @@ class ConvIP():
             max_nkpf = min_nkpf
 
         # set an assert here to make sure when new point is added, it need to report a problem
-        assert(self._ker_factor in [8, 16, 32]), "Invalid Ker factor of {}\n".format(
+        assert(self._ker_factor in [8, 16, 24, 32]), "Invalid Ker factor of {}\n".format(
             self._ker_factor)
 
         if self._ker_factor in [32]:
@@ -239,9 +242,14 @@ class ConvIP():
             if max_nkpf * 16 < self.Layer._channels_out:
                 max_nkpf = max_nkpf - max_nkpf % 2
 
+        if self._ker_factor in [24]:
+            if max_nkpf * 24 > self.Layer._channels_out:
+                max_nkpf = _ceil_div(self.Layer._channels_out, 24)
+
         elif self._ker_factor in [8, 16]:
             if self._ker_factor * max_nkpf > self.Layer._channels_out:
-                max_nkpf = _ceil_div(self.Layer._channels_out, self._ker_factor)
+                max_nkpf = _ceil_div(
+                    self.Layer._channels_out, self._ker_factor)
         else:
             AssertionError(
                 "Invalid Ker factor of {}\n".format(self._ker_factor))
@@ -254,6 +262,8 @@ class ConvIP():
 
         if self._ker_factor in [16, 32]:
             depth_per_nkpf = 16
+        elif self._ker_factor in [24]:
+            depth_per_nkpf = 24
         elif self._ker_factor in [8]:
             depth_per_nkpf = 8
         else:
@@ -265,7 +275,7 @@ class ConvIP():
 
         # if (max_nkpf % 2 and max_nkpf != 1):
         #     max_nkpf = max_nkpf - 1
-        print("maxnkpf",max_nkpf)
+
         channels_out_tile_size = max_nkpf * depth_per_nkpf
         channels_out_tile_number = _ceil_div(
             self.Layer._channels_out, channels_out_tile_size)
@@ -280,8 +290,7 @@ class ConvIP():
         self._channels_out_tile_number = channels_out_tile_number
 
         self._weight_one_time_flag = (
-            self._channel_in_tile_number  * self._channels_out_tile_number <= 2)
-        print("_weight_one_time_flag",self._weight_one_time_flag)
+            self._channel_in_tile_number * self._channels_out_tile_number <= 2)
 
     def _update_remain_latency_by_real(self, task_remain_latency_dict, task_data_density_dict, real_latency_threashold, task_real_time_dict):
         accumulate_task_latency = 0
@@ -308,7 +317,8 @@ class ConvIP():
                 min(total_density, 1)
 
             if remain_real_latency < consumed_real_latency:
-                consumed_latency = remain_real_latency * min(total_density, 1) / total_density
+                consumed_latency = remain_real_latency * \
+                    min(total_density, 1) / total_density
                 remain_real_latency = 0
                 accumulate_task_latency += consumed_latency
                 pass_threshold_flag = True
@@ -441,7 +451,7 @@ class ConvIP():
         # compute first weight_load segment
         accumulate_real_latency = 0
         accumulate_data_latency = 0
-        
+
         first_weight_load_latency = self._get_AXI_racing_latency_by_task(
             task_remain_latency_dict, task_data_density, 'weight', task_real_time_dict)
         accumulate_real_latency += first_weight_load_latency
@@ -460,7 +470,6 @@ class ConvIP():
             self._update_remain_latency_by_real(
                 task_remain_latency_dict, task_data_density, real_latency, task_real_time_dict)
             accumulate_real_latency += real_latency
-
 
         for input_tile_index in range(self._channel_in_tile_number):
             for output_tile_index in range(self._channels_out_tile_number):
@@ -489,17 +498,16 @@ class ConvIP():
                     self._update_remain_latency_by_real(
                         task_remain_latency_dict, task_data_density, real_latency, task_real_time_dict)
                     accumulate_real_latency += real_latency
-        
+
         proc_weight_latency = proc_weight_latency_last_nkpf
         accumulate_real_latency += proc_weight_latency
 
-      
         self._update_remain_latency_by_real(
             task_remain_latency_dict, task_data_density, proc_weight_latency, task_real_time_dict)
- 
+
         max_key = max(task_remain_latency_dict,
                       key=lambda k: task_remain_latency_dict[k])
-     
+
         left_over_communicate_latency = self._get_AXI_racing_latency_by_task(
             task_remain_latency_dict, task_data_density, max_key, task_real_time_dict)
 
@@ -508,7 +516,6 @@ class ConvIP():
             self._first_read_flag = False
         accumulate_real_latency += left_over_communicate_latency
 
-        
         return (accumulate_real_latency, accumulate_data_latency)
 
     def get_ProcIstg_latency(self):
@@ -592,8 +599,18 @@ class ConvIP():
             _ceil_div(self._pix_factor, 16) * self._window_size_square
         self._conversion_iter_number = conversion_iter_number
 
-        self._latency_dict['LoadFeedingBuffer'] = load_input_tile_latency + \
-            load_output_pixel_loacation_latency
+        window_size = self.Layer._window_size
+        stride = self.Layer._stride
+
+        load_input_tile_latency_first_layer = 2 * \
+            (27 + window_size*(window_size+stride*(self._pix_factor/2 - 1))) * self.CLK_PERIOD
+
+        if self.Layer._layer_id == 0:
+            self._latency_dict['LoadFeedingBuffer'] = load_input_tile_latency_first_layer + \
+                load_output_pixel_loacation_latency
+        else:
+            self._latency_dict['LoadFeedingBuffer'] = load_input_tile_latency + \
+                load_output_pixel_loacation_latency
 
     def get_ComputeKer16_latency(self):
         """
@@ -756,11 +773,16 @@ class ConvIP():
             if input_height_last < 0:
                 input_height_last = 0
 
-        burst_number = _ceil_div(input_depth, 32)
+        self._input_height_first = input_height_first
+
+        if self.Layer._layer_id == 0:
+            assert(input_depth == 4), "First Layer depth not correct, get {} while expecting 4".format(
+                input_depth)
+            burst_number = _ceil_div(input_depth, 4)
+        else:
+            burst_number = _ceil_div(input_depth, 32)
 
         if self.Layer._mem_in == True:
-            print("input_height_first*input_width", input_height_first*input_width)
-            print("burst_number", burst_number)
             total_cycle, data_cycle = self._mem_burst_read_latency(
                 burst_number, input_height_first*input_width, 10)
             self._latency_dict['ReadInputFirst_Data'] = data_cycle * \
@@ -808,6 +830,8 @@ class ConvIP():
 
         if self._ker_factor in [16, 32]:
             depth_per_nkpf = 16
+        elif self._ker_factor in [24]:
+            depth_per_nkpf = 24
         elif self._ker_factor in [8]:
             depth_per_nkpf = 8
         else:
@@ -909,6 +933,7 @@ class ConvIP():
         self.get_ProcIstg_latency()
 
     # interface to DSE
+    # ['NoOutput', 'NormalInput', 'LastInput', 'NoInput']:
     def getPreDataCycle0(self):
         return self._latency_dict['ReadInputFirst_Data']
 
@@ -918,14 +943,181 @@ class ConvIP():
     def getPreTotalCycle0(self):
         return self._latency_dict['ReadInputFirst_Total']
 
-    def getPreDataCycle0(self):
-        return self._latency_dict['ReadInputFirst_Data']
+    def getRecurDataCycleFirst0(self):
+        return self._latency_dict['IstageNoOutputLatencyData']
 
-    def getPreDataCycle1(self):
-        return self._latency_dict['ReadInputFirst_Data']
+    def getRecurDataCycleFirst1(self):
+        return self._latency_dict['IstageNoOutputLatencyData']
 
-    def getPreTotalCycle0(self):
-        return self._latency_dict['ReadInputFirst_Total']
+    def getRecurTotalCycleFirst(self):
+        return self._latency_dict['IstageNoOutputLatencyTotal']
+
+    def getRecurDataCycleMid0(self):
+        return self._latency_dict['IstageNormalInputLatencyData']
+
+    def getRecurDataCycleMid1(self):
+        return self._latency_dict['IstageNormalInputLatencyData']
+
+    def getRecurTotalCycleMid(self):
+        return self._latency_dict['IstageNormalInputLatencyTotal']
+
+    def getRecurDataCycleSecondLast0(self):
+        return self._latency_dict['IstageLastInputLatencyData']
+
+    def getRecurDataCycleSecondLast1(self):
+        return self._latency_dict['IstageLastInputLatencyData']
+
+    def getRecurTotalCycleSecondLast(self):
+        return self._latency_dict['IstageLastInputLatencyTotal']
+
+    def getRecurDataCycleLast0(self):
+        return self._latency_dict['IstageNoInputLatencyData']
+
+    def getRecurDataCycleLast1(self):
+        return self._latency_dict['IstageNoInputLatencyData']
+
+    def getRecurTotalCycleLast(self):
+        return self._latency_dict['IstageNoInputLatencyTotal']
+
+    def getPostDataCycle0(self):
+        return self._latency_dict['WriteOutputLast_Data']
+
+    def getPostDataCycle1(self):
+        return self._latency_dict['WriteOutputLast_Data']
+
+    def getPostTotalCycle0(self):
+        return self._latency_dict['WriteOutputLast_Total']
+
+    def getRowNum(self):
+        return self.Layer._output_height
+
+    def getRowStep(self):
+        return self.Layer._row_step
+
+    def getDepsRowStepFirst(self):
+        return self._input_height_first
+
+    def getDepsRowStepRecur(self):
+        return self.Layer._row_step * self.Layer._stride
+
+    def getLastStartRow(self):
+        if self._input_height_first == self.Layer._input_height:
+            return 0
+        else:
+            remainder = self.Layer._input_height - self._input_height_first
+            normal_row_step_number = remainder / \
+                (self.Layer._row_step * self.Layer._stride)
+            return self.Layer._input_height + normal_row_step_number*(self.Layer._row_step * self.Layer._stride)
+
+    def getSecondLastStartRow(self):
+        if self._input_height_first == self.Layer._input_height:
+            return None
+        else:
+            remainder = self.Layer._input_height - self._input_height_first
+            normal_row_step_number = remainder / \
+                (self.Layer._row_step * self.Layer._stride)
+            if normal_row_step_number == 0:
+                return None
+            else:
+                return self.Layer._input_height + (normal_row_step_number-1)*(self.Layer._row_step * self.Layer._stride)
+
+    def getStride(self):
+        return self.Layer._stride
+
+
+class PoolIP():
+    def load_layerInfo(self, layerInfo):
+        self.layerInfo = layerInfo
+
+    def get_latency(self):
+        layerInfo = self.layerInfo
+        self.ele_out_height = layerInfo.out_height
+        self.ele_out_width = layerInfo.out_width
+        self.ele_out_planes = layerInfo.out_planes
+        self.rowStep = layerInfo.rowStep
+        self.memInL = layerInfo.memInL
+        self.memInR = layerInfo.memInR
+        self.memOut = layerInfo.memOut
+
+        self.burstNumber = self.rowStep*_ceil_div(self.ele_out_planes, 16)
+        self.burstLength = self.ele_out_width
+        self.dataCycle, self.TotalCycle = memBurstReadLatency(
+            self.burstNumber, self.burstLength, 16)
+
+    def PreDataCycle0():
+        return self.memInL*self.dataCycle
+
+    def PreDataCycle1():
+        return self.memInR*self.dataCycle
+
+    def PreTotalCycle():
+        return self.TotalCycle
+
+    def RecurDataCycleFirst0():
+        return self.memInL*self.dataCycle
+
+    def RecurDataCycleFirst1():
+        return self.memInR*self.dataCycle+self.memOut*self.dataCycle
+
+    def RecurTotalCycleFirst():
+        return self.TotalCycle
+
+    def RecurDataCycleMid0():
+        return self.memInL*self.dataCycle
+
+    def RecurDataCycleMid1():
+        return self.memInR*self.dataCycle+self.memOut*self.dataCycle
+
+    def RecurTotalCycleMid():
+        return self.TotalCycle
+
+    def RecurDataCycleSecondLast0():
+        return self.memInL*self.dataCycle
+
+    def RecurDataCycleSecondLast1():
+        return memInR*dataCycle+memOut*dataCycle
+
+    def RecurTotalCycleSecondLast():
+        return TotalCycle
+
+    def RecurDataCycleLast0():
+        return memInL*dataCycle
+
+    def RecurDataCycleLast1():
+        return memInR*dataCycle+memOut*dataCycle
+
+    def RecurTotalCycleLast():
+        return TotalCycle
+
+    def PostDataCycle0():
+        return 0
+
+    def PostDataCycle1():
+        return memOut*dataCycle
+
+    def PostTotalCycle():
+        return TotalCycle
+
+    def RowNum():
+        return ele_out_height
+
+    def RowStep():
+        return rowStep
+
+    def DepsRowStepFirst():
+        return 1
+
+    def DepsRowStepRecur():
+        return rowStep
+
+    def LastStartRow():
+        return ele_out_height-rowStep
+
+    def SecondLastStartRow():
+        return ele_out_height-rowStep*2
+
+    def Stride():
+        return 1
 
 
 class ConvLayerInfo():
@@ -997,11 +1189,131 @@ class ConvLayerInfo():
             self._group_number = 2
 
 
+def constantBramConv(wBufferSize, ker_proc, pix_proc):
+    # need validation
+    if ker_proc == 32:
+        ker_proc = 16
+
+    wBrams = math.ceil(wBufferSize / 1024.0) * \
+        ker_proc * math.ceil(32.0/18) * 2
+    feedingBrams = 2 * math.ceil(32.0/18) * pix_proc/2 * 2
+    resulting = 2*ker_proc * 2 * 2
+    bias_scale = 24
+    brams = wBrams + feedingBrams + resulting + bias_scale
+    return brams
+
+
+def computeIOBram(IN_D, OUT_D):
+    inBrams = 2*_ceil_div(IN_D, 1024) * 8 * 2 * math.ceil(32.0/18)
+    outBrams = 2*_ceil_div(OUT_D, 1024) * 8 * math.ceil(72.0/18) * 2
+    # print  [inBrams, outBrams]
+    return [inBrams, outBrams]
+
+
+def computeRequiredIODepth(layerInfo, rowStep):
+
+    conv_out_planes = layerInfo._channels_out
+    conv_inp_planes = layerInfo._channels_in
+    conv_stride = layerInfo._stride
+    conv_inp_width = layerInfo._input_width
+    conv_out_width = layerInfo._output_width
+    conv_filter_height = layerInfo._window_size
+    layerID = layerInfo._layer_id
+
+    if(layerID != 0):
+        IN_D = 1 << int.bit_length(
+            conv_inp_width * (-(-conv_inp_planes//64))*(conv_filter_height+(rowStep*2-1)*conv_stride))
+    else:
+        IN_D = 1024
+    IN_D = max(IN_D, 1024)
+    OUT_D = _align_size(
+        int(conv_out_width*_ceil_div(conv_out_planes, 32)*rowStep), 1024)
+    return [IN_D, OUT_D]
+
+
 if __name__ == "__main__":
-    folder_name = sys.argv[1]
+
+    parser = argparse.ArgumentParser(
+        description='Please Specify BRAM for conv layer')
+    parser.add_argument('-bram', type=int, help="number of BRAM")
+    parser.add_argument('-argsfolder', type=str,
+                        help="folder containing args files")
+    args = parser.parse_args()
+
+    folder_name = args.argsfolder
+    bram_budget = args.bram
+
+    deposit_all_layer_latency = float('inf')
+    deposit_ip_configure = None
+    deposit_all_layer_row_step = {}
+
+    # for weight_depth in [1024, 2048, 3072, 4096]:
+    #     for input_depth in [1024, 2048, 4096, 8192]:
+    #         for output_depth in [1024, 2048, 3072, 4096]:
+    #             for ker_factor in [16]:
+    #                 for pix_factor in [48]:
+    #                     if ker_factor*pix_factor > 800:
+    #                         continue
+    #                     total_bram = constantBramConv(weight_depth, ker_factor, pix_factor) \
+    #                         + sum(computeIOBram(input_depth, output_depth))
+    #                     if total_bram > bram_budget:
+    #                         continue
+
+    #                     row_step_list = {}
+    #                     IP_valid_flag = True
+    #                     layer_latency_list = []
+
+    #                     for i in range(77):
+    #                         args_file_name = folder_name+"/args_conv_L"+str(i)
+
+    #                         if not os.path.exists(args_file_name):
+    #                             continue
+
+    #                         conv_layer = ConvLayerInfo()
+    #                         conv_layer.set_from_file(args_file_name)
+
+    #                         deposit_layer_latency = float('inf')
+    #                         deposit_row_step = None
+
+    #                         for row_step in range(1, conv_layer._output_height+1):
+
+    #                             required_input_depth, required_output_depth = computeRequiredIODepth(
+    #                                 conv_layer, row_step)
+    #                             if required_input_depth > input_depth or required_output_depth > output_depth:
+    #                                 break
+    #                             conv_layer._row_step = row_step
+    #                             test_IP = ConvIP(
+    #                                 ConvIP, ker_factor, pix_factor, input_depth, output_depth, weight_depth)
+    #                             test_IP.load_layer(conv_layer)
+    #                             test_IP.get_latency()
+
+    #                             layer_latency = test_IP._latency_dict['TotalLatency']
+    #                             if layer_latency < deposit_layer_latency:
+    #                                 deposit_layer_latency = layer_latency
+    #                                 deposit_row_step = row_step
+
+    #                         if deposit_row_step == None:
+    #                             IP_valid_flag = False
+    #                             break
+    #                         layer_latency_list.append(deposit_layer_latency)
+    #                         row_step_list[conv_layer._layer_id] = deposit_row_step
+
+    #                     all_layer_latency = sum(layer_latency_list[1:])
+    #                     if all_layer_latency < deposit_all_layer_latency:
+    #                         deposit_all_layer_latency = all_layer_latency
+    #                         deposit_all_layer_row_step = row_step_list
+    #                         deposit_ip_configure = (
+    #                             ker_factor, pix_factor, input_depth, output_depth, weight_depth)
+    # print(deposit_ip_configure)
+    # print(deposit_all_layer_latency)
+    # print(deposit_all_layer_row_step)
+
+    # for key, value in deposit_all_layer_row_step.items():
+    #     print(key, ",", value)
+
     layer_list = []
     csv_file = open("model_latency.csv", "w")
-    for i in range(77):
+    for i in range(1):
         args_file_name = folder_name+"/args_conv_L"+str(i)
 
         if os.path.exists(args_file_name):

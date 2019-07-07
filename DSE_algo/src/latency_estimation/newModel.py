@@ -392,22 +392,22 @@ class layerLatencyInfo_t():
         if(IPinfo.IPtype == "Conv"):
             conv_layer = modeling_util.ConvLayerInfo()
             conv_layer.set_from_layerInfo(layerInfo)
-
             test_IP = modeling_util.ConvIP()
             test_IP.set_from_IPInfo(IPinfo)
             test_IP.load_layer(conv_layer)
+
         elif(IPinfo.IPtype == "ELtwise"):
-            elt_layer = modeling_util.PoolLayerInfo(layerInfo)
-            elt_layer.set_from_file(args_file_name)
-
-            test_IP = modeling_util.PoolIP(ConvIP, 32, 32, 8192, 2048, 4096)
+            elt_layer = modeling_util.EltLayerInfo()
+            elt_layer.set_from_IPInfo(layerInfo)
+            test_IP = modeling_util.PoolIP(EltIP)
             test_IP.load_layer(conv_layer)
+
         elif(IPinfo.IPtype == "Pool"):
-            conv_layer = modeling_util.EleLayerInfo(layerInfo)
-            conv_layer.set_from_file(args_file_name)
-
-            test_IP = modeling_util.EleIP(ConvIP, 32, 32, 8192, 2048, 4096)
+            pool_layer = modeling_util.PoolLayerInfo()
+            pool_layer.set_from_IPInfo(layerInfo)
+            test_IP = modeling_util.EleIP(PoolIP)
             test_IP.load_layer(conv_layer)
+            
         else:
             assert(0, "unsupported IP")
 
@@ -425,15 +425,15 @@ class layerLatencyInfo_t():
 
         self.RecurDataCycleMid0=test_IP.getRecurDataCycleMid0()
         self.RecurDataCycleMid1=test_IP.getRecurDataCycleMid1()
-        self.RecurTotalCycleMid=test_IP.getTotalCycleMid()
+        self.RecurTotalCycleMid=test_IP.getRecurTotalCycleMid()
 
 
         self.RecurDataCycleSecondLast0=test_IP.getRecurDataCycleSecondLast0()
-        self.RecurDataCycleSecondLast1=test_IP.getRecurDataCycleLast1()
-        self.RecurTotalCycleSecondLast=test_IP.getRecurTotalCycleLast()
+        self.RecurDataCycleSecondLast1=test_IP.getRecurDataCycleSecondLast1()
+        self.RecurTotalCycleSecondLast=test_IP.getRecurTotalCycleSecondLast()
 
         self.RecurDataCycleLast0=test_IP.getRecurDataCycleLast0()
-        self.RecurDataCycleLast1=test_IP.getRecurDataCycleFirst1()
+        self.RecurDataCycleLast1=test_IP.getRecurDataCycleLast1()
         self.RecurTotalCycleLast=test_IP.getRecurTotalCycleLast()
 
         self.PostDataCycle0=test_IP.getPostDataCycle0()
