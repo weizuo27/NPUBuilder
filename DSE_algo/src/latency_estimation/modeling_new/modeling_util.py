@@ -84,7 +84,7 @@ class ConvIP():
     def load_layer(self, conv_layer_info):
         self.Layer = conv_layer_info
         self._latency_dict['RowStep'] = self.Layer._row_step
-        self.Layer._channels_in = _align_size(self.Layer._channels_in,4)
+        self.Layer._channels_in = _align_size(self.Layer._channels_in, 4)
 
     def _pingpong_latency_helpler(self, ping_latency, pong_latency, number):
         return ping_latency + pong_latency + (number-1)*max(ping_latency, pong_latency)
@@ -226,6 +226,8 @@ class ConvIP():
         # TODO: add group condition after alexnet is added
 
         max_nkpf = (self._weight_buffer_depth - 1) // self._compute_iter_length
+        # max_nkpf = min(max_nkpf, 15)
+
         max_nkpf = min(max_nkpf, 15)
         min_nkpf = _ceil_div(self._conversion_iter_number,
                              self._compute_iter_length)
@@ -239,7 +241,7 @@ class ConvIP():
         if self._ker_factor in [32]:
             if max_nkpf * 16 > self.Layer._channels_out:
                 max_nkpf = _ceil_div(self.Layer._channels_out, 16)
-            if max_nkpf * 16 < self.Layer._channels_out:
+            if max_nkpf * 16 > self.Layer._channels_out:
                 max_nkpf = max_nkpf - max_nkpf % 2
 
         if self._ker_factor in [24]:
@@ -604,7 +606,8 @@ class ConvIP():
         stride = self.Layer._stride
 
         load_input_tile_latency_first_layer = 2 * \
-            (27 + window_size*(window_size+stride*(self._pix_factor/2 - 1))) * self.CLK_PERIOD
+            (27 + window_size*(window_size+stride *
+                               (self._pix_factor/2 - 1))) * self.CLK_PERIOD
 
         if self.Layer._layer_id == 0:
             self._latency_dict['LoadFeedingBuffer'] = load_input_tile_latency_first_layer + \
@@ -920,9 +923,9 @@ class ConvIP():
     def get_latency(self):
         self.get_channels_in_tile_size()
         self.get_LoadFeedingBuffer_latency()
+        self.get_ComputeKer16_latency()
         self.get_channels_out_tile_size()
 
-        self.get_ComputeKer16_latency()
         self.get_OStgBuffSeq_latency()
         self.get_ProcResult_latency()
         self.get_ProcWeight_latency()
@@ -1031,7 +1034,7 @@ class PoolIP():
         self.layerInfo = layerInfo
 
     def get_latency(self):
-
+        return None
 
     def PreDataCycle0():
         return 0
@@ -1108,87 +1111,360 @@ class PoolIP():
     def Stride():
         return 0
 
+
 class EltIP():
+    def __init__(self, input_depth):
+        self._input_buffer_depth = input_depth
+        self.AXI_ACK_CYCLE = 3.5
+        self.AXI_RESPONSE_CYCLE = 24
+        self.AXI_ACK_CYCLE_WRITE = 7
+        self.AXI_RESPONSE_CYCLE_WRITE = 40
+        self.CLK_PERIOD = 4.0
+        self._latency_dict = {}
+
+    def load_layer(self, Layer):
+        self.Layer = Layer
+
+    def _mem_burst_read_latency(self, burst_number, burst_length, burst_overhead):
+        """
+        computes the function latency and bandwidth latency of a sequence of burstReads
+        return: totalCycle: the total cycle number such sequence of burst read takes
+                dataCycle: the total cycle number for data transfer such sequence of burst read takes ( it will be in conflict with other read)
+        input burstNumber: the number of burst read in the burst sequence
+        input burstLength: the length of each burst read
+        input burstOverhead: the cycle number between the time last burst read data is receive till the start of issurance of next burst read
+        """
+        if(burst_length == 0):
+            return 0, 0
+        burst_breaks = _ceil_div(burst_length, 16)
+
+        data_cycle = (burst_length+burst_breaks *
+                      self.AXI_ACK_CYCLE)*burst_number
+
+        total_cycle = (burst_overhead + self.AXI_RESPONSE_CYCLE) * \
+            burst_number + data_cycle
+
+        return total_cycle, data_cycle
+
+    def _mem_burst_write_latency(self, burst_number, burst_length, burst_overhead):
+        """
+        computes the function latency and bandwidth latency of a sequence of burstReads
+        return: totalCycle: the total cycle number such sequence of burst read takes
+                dataCycle: the total cycle number for data transfer such sequence of burst read takes ( it will be in conflict with other read)
+        input burstNumber: the number of burst read in the burst sequence
+        input burstLength: the length of each burst read
+        input burstOverhead: the cycle number between the time last burst read data is receive till the start of issurance of next burst read
+        """
+        if(burst_length == 0):
+            return 0, 0
+        burst_breaks = _ceil_div(burst_length, 16)
+
+        data_cycle = (burst_length+(burst_breaks-1) *
+                      self.AXI_ACK_CYCLE_WRITE)*burst_number
+
+        if(burst_breaks == 1):
+            responseoffset = -5
+        else:
+            responseoffset = 0
+
+        total_cycle = (burst_overhead + self.AXI_RESPONSE_CYCLE_WRITE+responseoffset) * \
+            burst_number + data_cycle
+
+        return total_cycle, data_cycle
+
+    def _update_remain_latency_by_real(self, task_remain_latency_dict, task_data_density_dict, real_latency_threashold, task_real_time_dict):
+        accumulate_task_latency = 0
+        remain_real_latency = real_latency_threashold
+        total_density = sum(task_data_density_dict.values())
+        pass_threshold_flag = False
+
+        for key, value in sorted(task_remain_latency_dict.items(), key=lambda kv: kv[1]):
+
+            if task_remain_latency_dict[key] == 0 or task_data_density_dict[key] == 0:
+                total_density = total_density - task_data_density_dict[key]
+                continue
+            if pass_threshold_flag:
+                if accumulate_task_latency > task_remain_latency_dict[key]:
+                    AssertionError("accumulate_task_latency error")
+                task_remain_latency_dict[key] -= accumulate_task_latency
+                task_real_time_dict[key] += real_latency_threashold
+                continue
+
+            consumed_task_latency = task_remain_latency_dict[key] - \
+                accumulate_task_latency
+
+            consumed_real_latency = consumed_task_latency * total_density / \
+                min(total_density, 1)
+
+            if remain_real_latency < consumed_real_latency:
+                consumed_latency = remain_real_latency * \
+                    min(total_density, 1) / total_density
+                remain_real_latency = 0
+                accumulate_task_latency += consumed_latency
+                pass_threshold_flag = True
+            else:
+                accumulate_task_latency = task_remain_latency_dict[key]
+                remain_real_latency -= consumed_real_latency
+
+            task_remain_latency_dict[key] -= accumulate_task_latency
+            task_real_time_dict[key] += real_latency_threashold - \
+                remain_real_latency
+            total_density = total_density - task_data_density_dict[key]
+
+    def _get_AXI_racing_latency_by_task(self, task_remain_latency_dict, task_data_density_dict, task_key, task_real_time_dict):
+        """
+        This function shall run AXI racing model until the AXI data task specified by task_key is over.
+        task_remain_latency_dict: the dictionary that specify the remaining latency of each task, the function shall
+                                update the remain latency of each task after the call.
+
+        task_data_density_dict: the dictionay recording the data density through the latency. The data density is computed by
+                                data ammount divided by total task latency.
+
+        Return: the time between the starting of the remaining task and end of the specified task [task_key]
+        """
+        accumulate_task_latency = 0
+        real_latency = 0
+        total_density = sum(task_data_density_dict.values())
+        pass_threshold_flag = False
+
+        remaining_task_number = len(task_data_density_dict)
+
+        for key, value in sorted(task_remain_latency_dict.items(), key=lambda kv: kv[1]):
+
+            if task_remain_latency_dict[key] == 0 or task_data_density_dict[key] == 0:
+
+                total_density = total_density - task_data_density_dict[key]
+                if key == task_key:
+                    pass_threshold_flag = True
+                continue
+            if pass_threshold_flag:
+                if accumulate_task_latency > task_remain_latency_dict[key]:
+                    AssertionError("accumulate_task_latency error")
+                task_remain_latency_dict[key] -= accumulate_task_latency
+                task_real_time_dict[key] = real_latency
+                continue
+
+            consumed_task_latency = task_remain_latency_dict[key] - \
+                accumulate_task_latency
+
+            consumed_real_latency = consumed_task_latency * total_density / \
+                min(total_density, 1)
+
+            remaining_task_number -= 1
+            if key == task_key:
+                pass_threshold_flag = True
+
+            accumulate_task_latency = task_remain_latency_dict[key]
+            real_latency += consumed_real_latency
+
+            task_remain_latency_dict[key] -= accumulate_task_latency
+            task_real_time_dict[key] += real_latency
+
+            total_density = total_density - task_data_density_dict[key]
+
+        return real_latency
+
+    def get_read_lateney(self):
+        input_height = self.Layer._input_height
+        input_width = self.Layer._input_width
+        input_depth = self.Layer._channels_in
+        row_step = self.Layer._row_step
+
+        row_step_last = input_height % row_step if input_height % row_step != 0 else row_step
+        burst_number = _ceil_div(input_depth, 16)
+        burst_length = input_width * row_step
+        burst_length_last = input_width * row_step_last
+
+        total_cycle, data_cycle = self._mem_burst_read_latency(
+            burst_number, burst_length, 10)
+        self._latency_dict['ReadLeftNormal_Total'] = total_cycle * \
+            self.CLK_PERIOD
+        self._latency_dict['ReadLeftNormal_Data'] = data_cycle * \
+            self.CLK_PERIOD
+
+        total_cycle, data_cycle = self._mem_burst_read_latency(
+            burst_number, burst_length_last, 10)
+        self._latency_dict['ReadLeftLast_Total'] = total_cycle * \
+            self.CLK_PERIOD
+        self._latency_dict['ReadLeftLast_Data'] = data_cycle * \
+            self.CLK_PERIOD
+
+    def get_write_lateney(self):
+        output_height = self.Layer._output_height
+        output_width = self.Layer._output_width
+        output_depth = self.Layer._channels_out
+        row_step = self.Layer._row_step
+
+        row_step_last = output_height % row_step if output_height % row_step != 0 else row_step
+        self._row_step_last = row_step_last
+        burst_number = _ceil_div(output_depth, 16)
+        burst_length = output_width * row_step
+        burst_length_last = output_width * row_step_last
+
+
+        total_cycle, data_cycle = self._mem_burst_write_latency(
+            burst_number, burst_length, 10)
+        self._latency_dict['WriteOutputNormal_Total'] = total_cycle * \
+            self.CLK_PERIOD
+        self._latency_dict['WriteOutputNormal_Data'] = data_cycle * \
+            self.CLK_PERIOD
+
+        total_cycle, data_cycle = self._mem_burst_write_latency(
+            burst_number, burst_length_last, 10)
+        self._latency_dict['WriteOutputLast_Total'] = total_cycle * \
+            self.CLK_PERIOD
+        self._latency_dict['WriteOutputLast_Data'] = data_cycle * \
+            self.CLK_PERIOD
+
+    def get_phase_latency(self):
+        row_step = self.Layer._row_step
+        input_height = self.Layer._input_height
+        row_step_number = _ceil_div(input_height, row_step)
+
+        # process ovehead phase
+        self._latency_dict['ReadInputOverhead_Data'] = self._latency_dict['ReadLeftNormal_Data']
+        self._latency_dict['ReadInputOverhead_Total'] = self._latency_dict['ReadLeftNormal_Total']
+
+        self._row_step_number = row_step_number
+        # process normal read, normal write
+        if row_step_number > 2:
+            self._latency_dict['NormalPhase_Total'] = max(
+                self._latency_dict['ReadLeftNormal_Total'], self._latency_dict['WriteOutputNormal_Total'])
+        else:
+            self._latency_dict['NormalPhase_Total'] = 0
+
+        # process Last read, normal write
+        if row_step_number > 1:
+            self._latency_dict['LastPhase_Total'] = max(
+                self._latency_dict['ReadLeftLast_Total'], self._latency_dict['WriteOutputNormal_Total'])
+        else:
+            self._latency_dict['LastPhase_Total'] = 0
+
+        # write overhead
+
+        self._latency_dict['WriteOutputOverhead_Data'] = self._latency_dict['WriteOutputLast_Data']
+        self._latency_dict['WriteOutputOverhead_Total'] = self._latency_dict['WriteOutputLast_Total']
+
+        self._latency_dict['TotalLatency'] = self._latency_dict['ReadInputOverhead_Data'] + \
+            self._latency_dict['WriteOutputOverhead_Total'] + \
+            self._latency_dict['LastPhase_Total'] + \
+            self._latency_dict['NormalPhase_Total'] * (row_step_number - 2)
+
+    def get_latency(self):
+        self.get_read_lateney()
+        self.get_write_lateney()
+        self.get_phase_latency()
+
+    def write_latency_data_tab(self, file_pointer):
+        file_pointer.write("{}".format(self.Layer._layer_id))
+        for key, value in sorted(self._latency_dict.items(), key=lambda kv: kv[0]):
+            file_pointer.write(",{},".format(value))
+        file_pointer.write("\n")
+
+    def write_latency_title_tab(self, file_pointer):
+        file_pointer.write("layerID")
+        for key, value in sorted(self._latency_dict.items(), key=lambda kv: kv[0]):
+            file_pointer.write(",{},".format(key))
+        file_pointer.write("\n")
+
     def load_layerInfo(self, layerInfo):
         self.layerInfo = layerInfo
 
-    def get_latency(self):
+    def PreDataCycle0(self):
+        return self._latency_dict['ReadInputOverhead_Data']
 
-
-    def PreDataCycle0():
+    def PreDataCycle1(self):
         return 0
 
-    def PreDataCycle1():
+    def PreTotalCycle(self):
+        return self._latency_dict['ReadInputOverhead_Total']
+
+    def RecurDataCycleFirst0(self):
         return 0
 
-    def PreTotalCycle():
+    def RecurDataCycleFirst1(self):
         return 0
 
-    def RecurDataCycleFirst0():
+    def RecurTotalCycleFirst(self):
         return 0
 
-    def RecurDataCycleFirst1():
+    def RecurDataCycleMid0(self):
+        if self._row_step_number > 2:
+            return self._latency_dict['ReadLeftNormal_Data']
+        else:
+            return 0
+
+    def RecurDataCycleMid1(self):
+        if self._row_step_number > 2:
+            return self._latency_dict['WriteOutputNormal_Data']
+        else:
+            return 0
+
+    def RecurTotalCycleMid(self):
+        if self._row_step_number > 2:
+            return self._latency_dict['NormalPhase_Total']
+        else:
+            return 0
+
+    def RecurDataCycleSecondLast0(self):
         return 0
 
-    def RecurTotalCycleFirst():
+    def RecurDataCycleSecondLast1(self):
         return 0
 
-    def RecurDataCycleMid0():
+    def RecurTotalCycleSecondLast(self):
         return 0
 
-    def RecurDataCycleMid1():
+    def RecurDataCycleLast0(self):
+        if self._row_step_number > 1:
+            return self._latency_dict['ReadLeftLast_Data']
+        else:
+            return 0
+
+    def RecurDataCycleLast1(self):
+        if self._row_step_number > 1:
+            return self._latency_dict['WriteOutputNormal_Data']
+        else:
+            return 0
+
+    def RecurTotalCycleLast(self):
+        if self._row_step_number > 1:
+            return self._latency_dict['LastPhase_Total']
+        else:
+            return 0
+
+    def PostDataCycle0(self):
         return 0
 
-    def RecurTotalCycleMid():
-        return 0
+    def PostDataCycle1(self):
+        return self._latency_dict['WriteOutputNormal_Data']
 
-    def RecurDataCycleSecondLast0():
-        return 0
+    def PostTotalCycle(self):
+        return self._latency_dict['WriteOutputNormal_Total']
 
-    def RecurDataCycleSecondLast1():
-        return 0
+    def RowNum(self):
+        assert(self.Layer._input_height ==
+               self.Layer._output_height), " Elementwise layer does not have same input output height"
+        return self.Layer._input_height
 
-    def RecurTotalCycleSecondLast():
-        return 0
+    def RowStep(self):
+        return self.Layer._row_step
 
-    def RecurDataCycleLast0():
-        return 0
+    def DepsRowStepFirst(self):
+        return self.Layer._row_step
 
-    def RecurDataCycleLast1():
-        return 0
+    def DepsRowStepRecur(self):
+        return self.Layer._row_step
 
-    def RecurTotalCycleLast():
-        return 0
+    def LastStartRow(self):
 
-    def PostDataCycle0():
-        return 0
+        return self.Layer._input_height - self._row_step_last
 
-    def PostDataCycle1():
-        return 0
+    def SecondLastStartRow(self):
+        return None
 
-    def PostTotalCycle():
-        return 0
-
-    def RowNum():
-        return 0
-
-    def RowStep():
-        return 0
-
-    def DepsRowStepFirst():
-        return 0
-
-    def DepsRowStepRecur():
-        return 0
-
-    def LastStartRow():
-        return 0
-
-    def SecondLastStartRow():
-        return 0
-
-    def Stride():
-        return 0
+    def Stride(self):
+        return 1
 
 
 class ConvLayerInfo():
@@ -1303,7 +1579,8 @@ def computeRequiredIODepth(layerInfo, rowStep):
 
 
 def main_conv_brutal_search():
-
+    global VALIDATE
+    VALIDATE = 0
     parser = argparse.ArgumentParser(
         description='Please Specify BRAM for conv layer')
     parser.add_argument('-bram', type=int, help="number of BRAM")
@@ -1321,8 +1598,8 @@ def main_conv_brutal_search():
     for weight_depth in [1024, 2048, 3072, 4096]:
         for input_depth in [1024, 2048, 4096, 8192]:
             for output_depth in [1024, 2048, 3072, 4096]:
-                for ker_factor in [8,16, 32]:
-                    for pix_factor in [16,32,48]:
+                for ker_factor in [8, 16, 32]:
+                    for pix_factor in [16, 32, 48]:
                         if ker_factor*pix_factor > 800:
                             continue
                         total_bram = constantBramConv(weight_depth, ker_factor, pix_factor) \
@@ -1379,6 +1656,84 @@ def main_conv_brutal_search():
     print(deposit_all_layer_latency)
     print(deposit_all_layer_row_step)
 
+    for key, value in deposit_all_layer_row_step.items():
+        print(key, end=',')
+        print(value)
 
-if __name__ == "__main__": 
-    main_conv_brutal_search()
+
+def validate_one_conv_IP():
+    global VALIDATE
+    VALIDATE = 1
+    parser = argparse.ArgumentParser(
+        description='Please Specify BRAM for conv layer')
+    parser.add_argument('-bram', type=int, help="number of BRAM")
+    parser.add_argument('-argsfolder', type=str,
+                        help="folder containing args files")
+    args = parser.parse_args()
+
+    folder_name = args.argsfolder
+
+    csv_file = open("model_latency.csv", "w")
+    for i in range(77):
+        args_file_name = folder_name+"/args_conv_L"+str(i)
+
+        if os.path.exists(args_file_name):
+            conv_layer = ConvLayerInfo()
+            conv_layer.set_from_file(args_file_name)
+            test_IP = ConvIP(ConvIP, 16, 48, 4096, 4096, 2048)
+            test_IP.load_layer(conv_layer)
+            test_IP.get_latency()
+
+            pp = pprint.PrettyPrinter(indent=4)
+            pp.pprint(test_IP._latency_dict)
+            if(i == 0):
+                test_IP.write_latency_title_tab(csv_file)
+            test_IP.write_latency_data_tab(csv_file)
+
+
+def validate_one_elt_IP():
+    global VALIDATE
+    VALIDATE = 1
+
+    layer_config = [
+        (56, 56, 256, 4),
+        (28, 28, 512, 4),
+        (14, 14, 1024, 4),
+        (7, 7, 2048, 4),
+        (56, 56, 256, 3),
+        (28, 28, 512, 3),
+        (14, 14, 1024, 3),
+        (7, 7, 2048, 3),
+        (56, 56, 256, 2),
+        (28, 28, 512, 2),
+        (14, 14, 1024, 2),
+        (7, 7, 2048, 2),
+        (56, 56, 256, 1),
+        (28, 28, 512, 1),
+        (14, 14, 1024, 1),
+        (7, 7, 2048, 1)]
+
+    csv_file = open("model_latency.csv", "w")
+
+    for i, layer in enumerate(layer_config):
+        layer_info = ConvLayerInfo()
+        layer_info._input_height = layer[0]
+        layer_info._output_height = layer[0]
+        layer_info._input_width = layer[1]
+        layer_info._output_width = layer[1]
+        layer_info._channels_in = layer[2]
+        layer_info._channels_out = layer[2]
+        layer_info._row_step = layer[3]
+        layer_info._layer_id = i
+        test_IP = EltIP(8192)
+        test_IP.load_layer(layer_info)
+        test_IP.get_latency()
+        if(i == 0):
+            test_IP.write_latency_title_tab(csv_file)
+        test_IP.write_latency_data_tab(csv_file)
+
+
+if __name__ == "__main__":
+    # validate_one_IP()
+    # main_conv_brutal_search()
+    validate_one_elt_IP()
