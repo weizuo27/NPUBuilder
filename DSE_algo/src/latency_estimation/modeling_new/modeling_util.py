@@ -7,6 +7,28 @@ import math
 VALIDATE = 0
 
 
+class Phase():
+    def __init__(self):
+        self.Data = None
+        self.Total_latency = None
+        self.W_start_row = None
+        self.W_end_row = None
+        self.R_start_row = None
+        self.R_end_row = None
+
+    def set_latency_info(self, data0, data1, non_racing_latency):
+        self.Total_latency = non_racing_latency
+        self.Data = (data0, data1)
+
+    def set_write_row_info(self, start_row, end_row):
+        self.W_start_row = start_row
+        self.W_end_row = end_row
+
+    def set_read_row_info(self, start_row, end_row):
+        self.R_start_row = start_row
+        self.R_end_row = end_row
+
+
 def _align_size(x, y):
     return -int(-x//y)*y
 
@@ -711,6 +733,7 @@ class ConvIP():
             output_height_last = output_height % row_step
         else:
             output_height_last = row_step
+        self._output_height_last = output_height_last
         if self.Layer._mem_out == True:
             total_cycle, data_cycle = self._mem_burst_write_latency(
                 burst_number, row_step*output_width, 10)
@@ -778,6 +801,7 @@ class ConvIP():
                 input_height_last = 0
 
         self._input_height_first = input_height_first
+        self._input_height_last = input_height_last
 
         if self.Layer._layer_id == 0:
             assert(input_depth == 4), "First Layer depth not correct, get {} while expecting 4".format(
@@ -936,97 +960,174 @@ class ConvIP():
 
         self.get_ProcIstg_latency()
 
-    # interface to DSE
-    # ['NoOutput', 'NormalInput', 'LastInput', 'NoInput']:
-    def getPreDataCycle0(self):
-        return self._latency_dict['ReadInputFirst_Data']
+    def initiate_input_rowstep(self):
+        self._input_row_step_index = 0
+        self._input_row_step = self.Layer._row_step * self.Layer._stride
+        self._input_start_row = 0
+        self._input_end_row = self._input_height_first - 1
 
-    def getPreDataCycle1(self):
-        return self._latency_dict['ReadInputFirst_Data']
+    def increment_input_rowstep(self):
+        self._input_row_step_index = self._input_row_step_index + 1
 
-    def getPreTotalCycle0(self):
-        return self._latency_dict['ReadInputFirst_Total']
+        assert(self._input_row_step_index <
+               self._row_step_number), "loading input rowstep index out of boundary"
+        self._input_start_row = self._input_end_row + 1
 
-    def getRecurDataCycleFirst0(self):
-        return self._latency_dict['IstageNoOutputLatencyData']
-
-    def getRecurDataCycleFirst1(self):
-        return self._latency_dict['IstageNoOutputLatencyData']
-
-    def getRecurTotalCycleFirst(self):
-        return self._latency_dict['IstageNoOutputLatencyTotal']
-
-    def getRecurDataCycleMid0(self):
-        return self._latency_dict['IstageNormalInputLatencyData']
-
-    def getRecurDataCycleMid1(self):
-        return self._latency_dict['IstageNormalInputLatencyData']
-
-    def getRecurTotalCycleMid(self):
-        return self._latency_dict['IstageNormalInputLatencyTotal']
-
-    def getRecurDataCycleSecondLast0(self):
-        return self._latency_dict['IstageLastInputLatencyData']
-
-    def getRecurDataCycleSecondLast1(self):
-        return self._latency_dict['IstageLastInputLatencyData']
-
-    def getRecurTotalCycleSecondLast(self):
-        return self._latency_dict['IstageLastInputLatencyTotal']
-
-    def getRecurDataCycleLast0(self):
-        return self._latency_dict['IstageNoInputLatencyData']
-
-    def getRecurDataCycleLast1(self):
-        return self._latency_dict['IstageNoInputLatencyData']
-
-    def getRecurTotalCycleLast(self):
-        return self._latency_dict['IstageNoInputLatencyTotal']
-
-    def getPostDataCycle0(self):
-        return self._latency_dict['WriteOutputLast_Data']
-
-    def getPostDataCycle1(self):
-        return self._latency_dict['WriteOutputLast_Data']
-
-    def getPostTotalCycle0(self):
-        return self._latency_dict['WriteOutputLast_Total']
-
-    def getRowNum(self):
-        return self.Layer._output_height
-
-    def getRowStep(self):
-        return self.Layer._row_step
-
-    def getDepsRowStepFirst(self):
-        return self._input_height_first
-
-    def getDepsRowStepRecur(self):
-        return self.Layer._row_step * self.Layer._stride
-
-    def getLastStartRow(self):
-        if self._input_height_first == self.Layer._input_height:
-            return 0
+        if self._output_row_step_index == self._row_step_number - 1:
+            self._input_end_row = self._input_start_row + self._input_height_last - 1
         else:
-            remainder = self.Layer._input_height - self._input_height_first
-            normal_row_step_number = remainder / \
-                (self.Layer._row_step * self.Layer._stride)
-            return self.Layer._input_height + normal_row_step_number*(self.Layer._row_step * self.Layer._stride)
+            self._input_end_row = self._input_start_row + self._input_row_step - 1
 
-    def getSecondLastStartRow(self):
-        if self._input_height_first == self.Layer._input_height:
-            return None
+    def initiate_output_rowstep(self):
+        self._output_row_step_index = 0
+        self._output_row_step = self.Layer._row_step
+        self._output_start_row = 0
+        self._output_end_row = self._output_row_step - 1
+
+    def increment_output_rowstep(self):
+        self._output_row_step_index = self._output_row_step_index + 1
+        assert(self._output_row_step_index <
+               self._row_step_number), "loading output rowstep index out of boundary"
+        self._output_start_row = self._output_end_row + 1
+        if self._output_row_step_index == self._row_step_number - 1:
+            self._output_end_row = self._output_start_row + self._output_height_last - 1
         else:
-            remainder = self.Layer._input_height - self._input_height_first
-            normal_row_step_number = remainder / \
-                (self.Layer._row_step * self.Layer._stride)
-            if normal_row_step_number == 0:
-                return None
+            self._output_end_row = self._output_start_row + self._output_row_step - 1
+
+    def get_phase_list(self):
+        phast_lsit = []
+
+        first_row_step = self._input_height_first - 1
+
+        # initialize start and end row recorder for rowstep
+
+        output_row_step = self.Layer._row_step
+
+        self.initiate_input_rowstep()
+        self.initiate_output_rowstep()
+
+        # pre phase
+        phase_pre = Phase()
+        phase_pre.set_latency_info(
+            self._latency_dict['ReadInputFirst_Data'],
+            self._latency_dict['ReadInputFirst_Data'],
+            self._latency_dict['ReadInputFirst_Total'])
+
+        if self.Layer._mem_in:
+            phase_pre.set_read_row_info(None, None)
+        else:
+            phase_pre.set_read_row_info(
+                self._input_start_row, self._input_end_row)
+
+        phase_pre.set_write_row_info(None, None)
+        phast_lsit.append(phase_pre)
+
+        # no output phase
+        if self._row_step_number >= 2:
+            self.increment_input_rowstep()
+            phase_nooutput = Phase()
+            phase_nooutput.set_latency_info(
+                self._latency_dict['IstageNoOutputLatencyData'],
+                self._latency_dict['IstageNoOutputLatencyData'],
+                self._latency_dict['IstageNoOutputLatencyTotal'])
+            if self.Layer._mem_in:
+                phase_nooutput.set_read_row_info(None, None)
             else:
-                return self.Layer._input_height + (normal_row_step_number-1)*(self.Layer._row_step * self.Layer._stride)
+                phase_nooutput.set_read_row_info(
+                    self._input_start_row, self._input_end_row)
+            phase_nooutput.set_write_row_info(None, None)
 
-    def getStride(self):
-        return self.Layer._stride
+            phast_lsit.append(phase_nooutput)
+
+        # normalinput phase
+
+        if self._row_step_number >= 4:
+            for i in range(self._row_step_number - 3):
+                self.increment_input_rowstep()
+                self.increment_output_rowstep()
+                phase_normalinput = Phase()
+                phase_normalinput.set_latency_info(
+                    self._latency_dict['IstageNormalInputLatencyData'],
+                    self._latency_dict['IstageNormalInputLatencyData'],
+                    self._latency_dict['IstageNormalInputLatencyTotal'])
+                if self.Layer._mem_in:
+                    phase_normalinput.set_read_row_info(None, None)
+                else:
+                    phase_normalinput.set_read_row_info(
+                        self._input_start_row, self._input_end_row)
+                if self.Layer._mem_out:
+                    phase_normalinput.set_write_row_info(None, None)
+                else:
+                    phase_normalinput.set_write_row_info(
+                        self._output_start_row, self._output_end_row)
+
+                phast_lsit.append(phase_normalinput)
+
+        # LastInput phase
+        if self._row_step_number >= 3:
+            self.increment_input_rowstep()
+            self.increment_output_rowstep()
+            phase_LastInput = Phase()
+            phase_LastInput.set_latency_info(
+                self._latency_dict['IstageLastInputLatencyData'],
+                self._latency_dict['IstageLastInputLatencyData'],
+                self._latency_dict['IstageLastInputLatencyTotal'])
+            if self.Layer._mem_in:
+                phase_LastInput.set_read_row_info(None, None)
+            else:
+                phase_LastInput.set_read_row_info(
+                    self._input_start_row, self._input_end_row)
+            if self.Layer._mem_out:
+                phase_LastInput.set_write_row_info(None, None)
+            else:
+                phase_LastInput.set_write_row_info(
+                    self._output_start_row, self._output_end_row)
+
+            phast_lsit.append(phase_LastInput)
+
+        # noinput phase
+        if self._row_step_number >= 1:
+            self.increment_output_rowstep()
+            phase_NoInput = Phase()
+            phase_NoInput.set_latency_info(
+                self._latency_dict['IstageNoInputLatencyData'],
+                self._latency_dict['IstageNoInputLatencyData'],
+                self._latency_dict['IstageNoInputLatencyTotal'])
+
+            phase_NoInput.set_read_row_info(None, None)
+            if self.Layer._mem_out:
+                phase_NoInput.set_write_row_info(None, None)
+            else:
+                phase_NoInput.set_write_row_info(
+                    self._output_start_row, self._output_end_row)
+
+            phast_lsit.append(phase_NoInput)
+
+        # post phase
+        self.increment_output_rowstep()
+        phase_Post = Phase()
+        phase_Post.set_latency_info(
+            self._latency_dict['IstagePostLatencyData'],
+            self._latency_dict['IstagePostLatencyData'],
+            self._latency_dict['IstagePostLatencyTotal'])
+
+        phase_Post.set_read_row_info(None, None)
+        if self.Layer._mem_out:
+            phase_Post.set_write_row_info(None, None)
+        else:
+            phase_Post.set_write_row_info(
+                self._output_start_row, self._output_end_row)
+
+        phast_lsit.append(phase_Post)
+
+        assert(self._input_row_step_index == self._row_step_number -
+               1), "input row step number not matching row step number, expecting {} but geting {}".format(
+                self._input_row_step_index, self._row_step_number)
+
+        assert(self._output_row_step_index == self._row_step_number -
+               1), "output row step number not matching row step number, expecting {} but geting {}".format(
+                self._output_row_step_index, self._row_step_number)
+
 
 
 class PoolIP():
@@ -1301,7 +1402,6 @@ class EltIP():
         burst_length = output_width * row_step
         burst_length_last = output_width * row_step_last
 
-
         total_cycle, data_cycle = self._mem_burst_write_latency(
             burst_number, burst_length, 10)
         self._latency_dict['WriteOutputNormal_Total'] = total_cycle * \
@@ -1370,101 +1470,141 @@ class EltIP():
     def load_layerInfo(self, layerInfo):
         self.layerInfo = layerInfo
 
-    def PreDataCycle0(self):
-        return self._latency_dict['ReadInputOverhead_Data']
 
-    def PreDataCycle1(self):
-        return 0
+    def initiate_input_rowstep(self):
+        self._input_row_step_index = 0
+        self._input_row_step = self.Layer._row_step
+        self._input_start_row = 0
+        self._input_end_row = self._input_row_step - 1
 
-    def PreTotalCycle(self):
-        return self._latency_dict['ReadInputOverhead_Total']
+    def increment_input_rowstep(self):
+        self._input_row_step_index = self._input_row_step_index + 1
 
-    def RecurDataCycleFirst0(self):
-        return 0
+        assert(self._input_row_step_index <
+               self._row_step_number), "loading input rowstep index out of boundary"
 
-    def RecurDataCycleFirst1(self):
-        return 0
+        self._input_start_row = self._input_end_row + 1
 
-    def RecurTotalCycleFirst(self):
-        return 0
-
-    def RecurDataCycleMid0(self):
-        if self._row_step_number > 2:
-            return self._latency_dict['ReadLeftNormal_Data']
+        if self._output_row_step_index == self._row_step_number - 1:
+            self._input_end_row = self._input_start_row + self._row_step_last - 1
         else:
-            return 0
+            self._input_end_row = self._input_start_row + self._input_row_step - 1
 
-    def RecurDataCycleMid1(self):
-        if self._row_step_number > 2:
-            return self._latency_dict['WriteOutputNormal_Data']
+    def initiate_output_rowstep(self):
+        self._output_row_step_index = 0
+        self._output_row_step = self.Layer._row_step
+        self._output_start_row = 0
+        self._output_end_row = self._output_row_step - 1
+
+    def increment_output_rowstep(self):
+        self._output_row_step_index = self._output_row_step_index + 1
+        assert(self._output_row_step_index <
+               self._row_step_number), "loading output rowstep index out of boundary"
+        self._output_start_row = self._output_end_row + 1
+        if self._output_row_step_index == self._row_step_number - 1:
+            self._output_end_row = self._output_start_row + self._row_step_last - 1
         else:
-            return 0
+            self._output_end_row = self._output_start_row + self._output_row_step - 1
+    
 
-    def RecurTotalCycleMid(self):
-        if self._row_step_number > 2:
-            return self._latency_dict['NormalPhase_Total']
+    def get_phase_list(self):
+        phast_lsit = []
+
+
+        # initialize start and end row recorder for rowstep
+
+     
+
+        self.initiate_input_rowstep()
+        self.initiate_output_rowstep()
+
+        # pre phase
+        phase_pre = Phase()
+        phase_pre.set_latency_info(
+            self._latency_dict['ReadInputNormal_Data'],
+            0,
+            self._latency_dict['ReadInputNormal_Total'])
+
+        if self.Layer._mem_in:
+            phase_pre.set_read_row_info(None, None)
         else:
-            return 0
+            phase_pre.set_read_row_info(
+                self._input_start_row, self._input_end_row)
 
-    def RecurDataCycleSecondLast0(self):
-        return 0
+        phase_pre.set_write_row_info(None, None)
+        phast_lsit.append(phase_pre)
 
-    def RecurDataCycleSecondLast1(self):
-        return 0
+        # normalinput phase
+        if self._row_step_number >= 3:
+            for i in range(self._row_step_number - 2):
+                self.increment_input_rowstep()
+                self.increment_output_rowstep()
+                phase_normalinput = Phase()
+                phase_normalinput.set_latency_info(
+                    self._latency_dict['ReadLeftNormal_Data'],
+                    self._latency_dict['WriteOutputNormal_Data'],
+                    self._latency_dict['NormalPhase_Total'])
+                if self.Layer._mem_in:
+                    phase_normalinput.set_read_row_info(None, None)
+                else:
+                    phase_normalinput.set_read_row_info(
+                        self._input_start_row, self._input_end_row)
+                if self.Layer._mem_out:
+                    phase_normalinput.set_write_row_info(None, None)
+                else:
+                    phase_normalinput.set_write_row_info(
+                        self._output_start_row, self._output_end_row)
 
-    def RecurTotalCycleSecondLast(self):
-        return 0
+                phast_lsit.append(phase_normalinput)
 
-    def RecurDataCycleLast0(self):
-        if self._row_step_number > 1:
-            return self._latency_dict['ReadLeftLast_Data']
+        # LastInput phase
+        if self._row_step_number >= 2:
+            self.increment_input_rowstep()
+            self.increment_output_rowstep()
+            phase_LastInput = Phase()
+            phase_LastInput.set_latency_info(
+                self._latency_dict['ReadLeftLast_Total'],
+                self._latency_dict['WriteOutputNormal_Data'],
+                self._latency_dict['LastPhase_Total'])
+            if self.Layer._mem_in:
+                phase_LastInput.set_read_row_info(None, None)
+            else:
+                phase_LastInput.set_read_row_info(
+                    self._input_start_row, self._input_end_row)
+            if self.Layer._mem_out:
+                phase_LastInput.set_write_row_info(None, None)
+            else:
+                phase_LastInput.set_write_row_info(
+                    self._output_start_row, self._output_end_row)
+
+            phast_lsit.append(phase_LastInput)
+
+
+        # post phase
+        self.increment_output_rowstep()
+        phase_Post = Phase()
+        phase_Post.set_latency_info(
+                0,
+                self._latency_dict['WriteOutputLast_Data'],
+                self._latency_dict['WriteOutputLast_Total'])
+
+        phase_Post.set_read_row_info(None, None)
+        if self.Layer._mem_out:
+            phase_Post.set_write_row_info(None, None)
         else:
-            return 0
+            phase_Post.set_write_row_info(
+                self._output_start_row, self._output_end_row)
 
-    def RecurDataCycleLast1(self):
-        if self._row_step_number > 1:
-            return self._latency_dict['WriteOutputNormal_Data']
-        else:
-            return 0
+        phast_lsit.append(phase_Post)
 
-    def RecurTotalCycleLast(self):
-        if self._row_step_number > 1:
-            return self._latency_dict['LastPhase_Total']
-        else:
-            return 0
+        assert(self._input_row_step_index == self._row_step_number -
+               1), "input row step number not matching row step number, expecting {} but geting {}".format(
+                self._input_row_step_index, self._row_step_number)
 
-    def PostDataCycle0(self):
-        return 0
+        assert(self._output_row_step_index == self._row_step_number -
+               1), "output row step number not matching row step number, expecting {} but geting {}".format(
+                self._output_row_step_index, self._row_step_number)
 
-    def PostDataCycle1(self):
-        return self._latency_dict['WriteOutputNormal_Data']
-
-    def PostTotalCycle(self):
-        return self._latency_dict['WriteOutputNormal_Total']
-
-    def RowNum(self):
-        assert(self.Layer._input_height ==
-               self.Layer._output_height), " Elementwise layer does not have same input output height"
-        return self.Layer._input_height
-
-    def RowStep(self):
-        return self.Layer._row_step
-
-    def DepsRowStepFirst(self):
-        return self.Layer._row_step
-
-    def DepsRowStepRecur(self):
-        return self.Layer._row_step
-
-    def LastStartRow(self):
-
-        return self.Layer._input_height - self._row_step_last
-
-    def SecondLastStartRow(self):
-        return None
-
-    def Stride(self):
-        return 1
 
 
 class ConvLayerInfo():
