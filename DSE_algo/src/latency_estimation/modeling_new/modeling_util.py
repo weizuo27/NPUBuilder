@@ -7,6 +7,166 @@ import math
 VALIDATE = 0
 
 
+def get_racing_latency(data_dict, latency_dict):
+
+    latency_dict_nodata = {}
+    latency_dict_data = {}
+    data0_density_dict = {}
+    data1_density_dict = {}
+
+    assert(latency_dict), "latency_dict should not be empty"
+    assert(data_dict), "latency_dict should not be empty"
+    assert(len(latency_dict) == len(data_dict)
+           ), "data_dict should have same length as latency_dict"
+
+    for key in latency_dict:
+        assert(key in data_dict), "data_dict should have same keys as latency_dict"
+        assert(
+            latency_dict[key] != 0), "No task in the dictionary should be of latency zero"
+        if(data_dict[key] == (0, 0)):
+            latency_dict_nodata[key] = latency_dict[key]
+        else:
+            data0_density_dict[key] = data_dict[key][0]/latency_dict[key]
+            data1_density_dict[key] = data_dict[key][1]/latency_dict[key]
+            latency_dict_data[key] = latency_dict[key]
+
+    if latency_dict_nodata:
+        min_nondata_key = min(latency_dict_nodata,
+                              key=lambda k: latency_dict_nodata[k])
+        min_nondata_latency = latency_dict_nodata[min_nondata_key]
+    else:
+        min_nondata_latency = float("inf")
+
+    if latency_dict_data:
+        min_data_key = min(latency_dict_data,
+                           key=lambda k: latency_dict_data[k])
+        total_density0 = sum(data0_density_dict.values())
+        total_density1 = sum(data1_density_dict.values())
+        total_density = max(total_density0, total_density1)
+        consumed_task_latency = latency_dict_data[min_data_key]
+        min_data_latency = consumed_task_latency * total_density / \
+            min(total_density, 1)
+    else:
+        min_data_latency = float("inf")
+
+    min_task_latency = min(min_data_latency, min_nondata_latency)
+
+    delete_key_list = []
+    for key in latency_dict_nodata:
+        latency_dict[key] -= min_task_latency
+        if latency_dict[key] == 0:
+            delete_key_list.append(key)
+
+    for key in latency_dict_data:
+        if min_nondata_latency < min_data_latency:
+            consumed_task_latency = min_task_latency / total_density * min(total_density, 1) 
+        latency_dict[key] -= consumed_task_latency
+        if latency_dict[key] == 0:
+            delete_key_list.append(key)
+        data0 = latency_dict[key] * data0_density_dict[key]
+        data1 = latency_dict[key] * data1_density_dict[key]
+        data_dict[key] = (data0, data1)
+
+    for key in delete_key_list:
+        del latency_dict[key]
+        del data_dict[key]
+    
+    return min_task_latency, delete_key_list
+
+
+
+def get_AXI_racing_latency_by_shortest_task(data_dict, latency_dict):
+    """
+    This function shall run AXI racing model until the AXI data task specified by task_key is over.
+    task_remain_latency_dict: the dictionary that specify the remaining latency of each task, the function shall
+                            update the remain latency of each task after the call.
+
+    task_data_density_dict: the dictionay recording the data density through the latency. The data density is computed by
+                            data ammount divided by total task latency.
+
+    Return: the time between the starting of the remaining task and end of the specified task [task_key]
+    """
+
+    task_data0_density_dict = {}
+    task_data1_density_dict = {}
+    for key in latency_dict:
+        assert(
+            latency_dict[key] != 0), "No task in the dictionary should be of latency zero"
+
+        task_data0_density_dict[key] = data_dict[key][0]/latency_dict[key]
+        task_data1_density_dict[key] = data_dict[key][1]/latency_dict[key]
+
+    task_key = max(latency_dict, key=lambda k: latency_dict[k])
+
+    accumulate_task_latency = 0
+    real_latency = 0
+    total_density0 = sum(task_data0_density_dict.values())
+    total_density1 = sum(task_data1_density_dict.values())
+
+    pass_threshold_flag = False
+
+    assert(len(latency_dict) == len(data_dict)
+           ), "data_dict should have same length as latency_dict"
+    remaining_task_number = len(latency_dict)
+
+    for key, value in sorted(latency_dict.items(), key=lambda kv: kv[1]):
+
+        if latency_dict[key] == 0:
+
+            total_density0 = total_density0 - task_data0_density_dict[key]
+            total_density1 = total_density1 - task_data1_density_dict[key]
+
+            if key == task_key:
+                pass_threshold_flag = True
+            continue
+
+        if pass_threshold_flag:
+            if accumulate_task_latency > latency_dict[key]:
+                AssertionError("accumulate_task_latency error")
+            latency_dict[key] -= accumulate_task_latency
+            newdata0 = data_dict[key][0] - accumulate_task_latency * \
+                task_data0_density_dict[key]
+            newdata1 = data_dict[key][1] - accumulate_task_latency * \
+                task_data1_density_dict[key]
+
+            continue
+
+        consumed_task_latency = latency_dict[key] - \
+            accumulate_task_latency
+
+        total_density = max(total_density0, total_density1)
+
+        consumed_real_latency = consumed_task_latency * total_density / \
+            min(total_density, 1)
+
+        remaining_task_number -= 1
+        if key == task_key:
+            pass_threshold_flag = True
+
+        accumulate_task_latency = latency_dict[key]
+        real_latency += consumed_real_latency
+
+        latency_dict[key] -= accumulate_task_latency
+        data_dict[key][0] -= accumulate_task_latency * \
+            task_data0_density_dict[key]
+        data_dict[key][1] -= accumulate_task_latency * \
+            task_data1_density_dict[key]
+
+        total_density0 = total_density0 - task_data0_density_dict[key]
+        total_density1 = total_density1 - task_data1_density_dict[key]
+
+    delete_key = []
+
+    for key in latency_dict:
+        if latency_dict[key] == 0:
+            delete_key.append(delete_key)
+    for key in delete_key:
+        del latency_dict[key]
+        del data_dict[key]
+
+    return real_latency
+
+
 class Phase():
     def __init__(self):
         self.Data = None
@@ -973,7 +1133,7 @@ class ConvIP():
                self._row_step_number), "loading input rowstep index out of boundary"
         self._input_start_row = self._input_end_row + 1
 
-        if self._output_row_step_index == self._row_step_number - 1:
+        if self._input_row_step_index == self._row_step_number - 1:
             self._input_end_row = self._input_start_row + self._input_height_last - 1
         else:
             self._input_end_row = self._input_start_row + self._input_row_step - 1
@@ -981,12 +1141,12 @@ class ConvIP():
     def initiate_output_rowstep(self):
         self._output_row_step_index = 0
         self._output_row_step = self.Layer._row_step
-        self._output_start_row = 0
-        self._output_end_row = self._output_row_step - 1
+        self._output_start_row = -1
+        self._output_end_row = -1
 
     def increment_output_rowstep(self):
         self._output_row_step_index = self._output_row_step_index + 1
-        assert(self._output_row_step_index <
+        assert(self._output_row_step_index <=
                self._row_step_number), "loading output rowstep index out of boundary"
         self._output_start_row = self._output_end_row + 1
         if self._output_row_step_index == self._row_step_number - 1:
@@ -995,14 +1155,8 @@ class ConvIP():
             self._output_end_row = self._output_start_row + self._output_row_step - 1
 
     def get_phase_list(self):
-        phast_lsit = []
-
-        first_row_step = self._input_height_first - 1
-
+        phase_list = []
         # initialize start and end row recorder for rowstep
-
-        output_row_step = self.Layer._row_step
-
         self.initiate_input_rowstep()
         self.initiate_output_rowstep()
 
@@ -1020,7 +1174,7 @@ class ConvIP():
                 self._input_start_row, self._input_end_row)
 
         phase_pre.set_write_row_info(None, None)
-        phast_lsit.append(phase_pre)
+        phase_list.append(phase_pre)
 
         # no output phase
         if self._row_step_number >= 2:
@@ -1037,7 +1191,7 @@ class ConvIP():
                     self._input_start_row, self._input_end_row)
             phase_nooutput.set_write_row_info(None, None)
 
-            phast_lsit.append(phase_nooutput)
+            phase_list.append(phase_nooutput)
 
         # normalinput phase
 
@@ -1061,7 +1215,7 @@ class ConvIP():
                     phase_normalinput.set_write_row_info(
                         self._output_start_row, self._output_end_row)
 
-                phast_lsit.append(phase_normalinput)
+                phase_list.append(phase_normalinput)
 
         # LastInput phase
         if self._row_step_number >= 3:
@@ -1083,11 +1237,12 @@ class ConvIP():
                 phase_LastInput.set_write_row_info(
                     self._output_start_row, self._output_end_row)
 
-            phast_lsit.append(phase_LastInput)
+            phase_list.append(phase_LastInput)
 
         # noinput phase
         if self._row_step_number >= 1:
-            self.increment_output_rowstep()
+            if self._row_step_number > 1:
+                self.increment_output_rowstep()
             phase_NoInput = Phase()
             phase_NoInput.set_latency_info(
                 self._latency_dict['IstageNoInputLatencyData'],
@@ -1101,15 +1256,15 @@ class ConvIP():
                 phase_NoInput.set_write_row_info(
                     self._output_start_row, self._output_end_row)
 
-            phast_lsit.append(phase_NoInput)
+            phase_list.append(phase_NoInput)
 
         # post phase
         self.increment_output_rowstep()
         phase_Post = Phase()
         phase_Post.set_latency_info(
-            self._latency_dict['IstagePostLatencyData'],
-            self._latency_dict['IstagePostLatencyData'],
-            self._latency_dict['IstagePostLatencyTotal'])
+            self._latency_dict['WriteOutputLast_Data'],
+            self._latency_dict['WriteOutputLast_Data'],
+            self._latency_dict['WriteOutputLast_Total'])
 
         phase_Post.set_read_row_info(None, None)
         if self.Layer._mem_out:
@@ -1118,16 +1273,21 @@ class ConvIP():
             phase_Post.set_write_row_info(
                 self._output_start_row, self._output_end_row)
 
-        phast_lsit.append(phase_Post)
+        phase_list.append(phase_Post)
 
-        assert(self._input_row_step_index == self._row_step_number -
+        assert(self._input_end_row == self.Layer._input_height -
                1), "input row step number not matching row step number, expecting {} but geting {}".format(
-                self._input_row_step_index, self._row_step_number)
+            self._input_row_step_index, self._row_step_number)
 
-        assert(self._output_row_step_index == self._row_step_number -
+        assert(self._output_end_row == self.Layer._output_height -
                1), "output row step number not matching row step number, expecting {} but geting {}".format(
-                self._output_row_step_index, self._row_step_number)
+            self._output_row_step_index, self._row_step_number)
+        self._phase_list = phase_list
+        return phase_list
 
+    def print_phase_list(self):
+        for phase in self._phase_list:
+            print(phase.__dict__)
 
 
 class PoolIP():
@@ -1470,7 +1630,6 @@ class EltIP():
     def load_layerInfo(self, layerInfo):
         self.layerInfo = layerInfo
 
-
     def initiate_input_rowstep(self):
         self._input_row_step_index = 0
         self._input_row_step = self.Layer._row_step
@@ -1480,12 +1639,12 @@ class EltIP():
     def increment_input_rowstep(self):
         self._input_row_step_index = self._input_row_step_index + 1
 
-        assert(self._input_row_step_index <
+        assert(self._input_row_step_index <=
                self._row_step_number), "loading input rowstep index out of boundary"
 
         self._input_start_row = self._input_end_row + 1
 
-        if self._output_row_step_index == self._row_step_number - 1:
+        if self._input_row_step_index == self._row_step_number - 1:
             self._input_end_row = self._input_start_row + self._row_step_last - 1
         else:
             self._input_end_row = self._input_start_row + self._input_row_step - 1
@@ -1493,46 +1652,35 @@ class EltIP():
     def initiate_output_rowstep(self):
         self._output_row_step_index = 0
         self._output_row_step = self.Layer._row_step
-        self._output_start_row = 0
-        self._output_end_row = self._output_row_step - 1
+        self._output_start_row = -1
+        self._output_end_row = -1
 
     def increment_output_rowstep(self):
         self._output_row_step_index = self._output_row_step_index + 1
-        assert(self._output_row_step_index <
-               self._row_step_number), "loading output rowstep index out of boundary"
+        assert(self._output_row_step_index <=
+               self._row_step_number), "loading output rowstep index out of boundary:[{},{}]".format(self._output_row_step_index, self._row_step_number)
         self._output_start_row = self._output_end_row + 1
         if self._output_row_step_index == self._row_step_number - 1:
             self._output_end_row = self._output_start_row + self._row_step_last - 1
         else:
             self._output_end_row = self._output_start_row + self._output_row_step - 1
-    
 
     def get_phase_list(self):
-        phast_lsit = []
-
-
+        phase_list = []
         # initialize start and end row recorder for rowstep
-
-     
-
         self.initiate_input_rowstep()
         self.initiate_output_rowstep()
 
         # pre phase
         phase_pre = Phase()
         phase_pre.set_latency_info(
-            self._latency_dict['ReadInputNormal_Data'],
+            self._latency_dict['ReadLeftNormal_Data'],
             0,
-            self._latency_dict['ReadInputNormal_Total'])
+            self._latency_dict['ReadLeftNormal_Total'])
 
-        if self.Layer._mem_in:
-            phase_pre.set_read_row_info(None, None)
-        else:
-            phase_pre.set_read_row_info(
-                self._input_start_row, self._input_end_row)
-
+        phase_pre.set_read_row_info(self._input_start_row, self._input_end_row)
         phase_pre.set_write_row_info(None, None)
-        phast_lsit.append(phase_pre)
+        phase_list.append(phase_pre)
 
         # normalinput phase
         if self._row_step_number >= 3:
@@ -1544,18 +1692,12 @@ class EltIP():
                     self._latency_dict['ReadLeftNormal_Data'],
                     self._latency_dict['WriteOutputNormal_Data'],
                     self._latency_dict['NormalPhase_Total'])
-                if self.Layer._mem_in:
-                    phase_normalinput.set_read_row_info(None, None)
-                else:
-                    phase_normalinput.set_read_row_info(
-                        self._input_start_row, self._input_end_row)
-                if self.Layer._mem_out:
-                    phase_normalinput.set_write_row_info(None, None)
-                else:
-                    phase_normalinput.set_write_row_info(
-                        self._output_start_row, self._output_end_row)
 
-                phast_lsit.append(phase_normalinput)
+                phase_normalinput.set_read_row_info(
+                    self._input_start_row, self._input_end_row)
+                phase_normalinput.set_write_row_info(None, None)
+
+                phase_list.append(phase_normalinput)
 
         # LastInput phase
         if self._row_step_number >= 2:
@@ -1566,45 +1708,39 @@ class EltIP():
                 self._latency_dict['ReadLeftLast_Total'],
                 self._latency_dict['WriteOutputNormal_Data'],
                 self._latency_dict['LastPhase_Total'])
-            if self.Layer._mem_in:
-                phase_LastInput.set_read_row_info(None, None)
-            else:
-                phase_LastInput.set_read_row_info(
-                    self._input_start_row, self._input_end_row)
-            if self.Layer._mem_out:
-                phase_LastInput.set_write_row_info(None, None)
-            else:
-                phase_LastInput.set_write_row_info(
-                    self._output_start_row, self._output_end_row)
 
-            phast_lsit.append(phase_LastInput)
+            phase_LastInput.set_read_row_info(
+                self._input_start_row, self._input_end_row)
+            phase_LastInput.set_write_row_info(None, None)
 
+            phase_list.append(phase_LastInput)
 
         # post phase
         self.increment_output_rowstep()
         phase_Post = Phase()
         phase_Post.set_latency_info(
-                0,
-                self._latency_dict['WriteOutputLast_Data'],
-                self._latency_dict['WriteOutputLast_Total'])
+            0,
+            self._latency_dict['WriteOutputLast_Data'],
+            self._latency_dict['WriteOutputLast_Total'])
 
         phase_Post.set_read_row_info(None, None)
-        if self.Layer._mem_out:
-            phase_Post.set_write_row_info(None, None)
-        else:
-            phase_Post.set_write_row_info(
-                self._output_start_row, self._output_end_row)
+        phase_Post.set_write_row_info(None, None)
 
-        phast_lsit.append(phase_Post)
+        phase_list.append(phase_Post)
 
-        assert(self._input_row_step_index == self._row_step_number -
-               1), "input row step number not matching row step number, expecting {} but geting {}".format(
-                self._input_row_step_index, self._row_step_number)
+        assert(self._input_end_row == self.Layer._input_height -
+               1), "input row step number not matching row step number,  getting {} but expecting {}".format(
+            self._input_end_row, self.Layer._input_height)
 
-        assert(self._output_row_step_index == self._row_step_number -
-               1), "output row step number not matching row step number, expecting {} but geting {}".format(
-                self._output_row_step_index, self._row_step_number)
+        assert(self._output_end_row == self.Layer._output_height -
+               1), "output row step number not matching row step number, getting {} but expecting {}".format(
+            self._output_end_row, self.Layer._output_height)
+        self._phase_list = phase_list
+        return phase_list
 
+    def print_phase_list(self):
+        for phase in self._phase_list:
+            print(phase.__dict__)
 
 
 class ConvLayerInfo():
@@ -1651,7 +1787,7 @@ class ConvLayerInfo():
         self._layer_id = args_list[12]
         self._row_step = args_list[15]
         self._mem_in = True
-        self._mem_out = True
+        self._mem_out = False
 
         self._ctrl_val_nkpf = args_list[13]
         self._ctrl_val_compute_planes_align4 = args_list[61]
@@ -1823,9 +1959,11 @@ def validate_one_conv_IP():
             test_IP = ConvIP(ConvIP, 16, 48, 4096, 4096, 2048)
             test_IP.load_layer(conv_layer)
             test_IP.get_latency()
-
-            pp = pprint.PrettyPrinter(indent=4)
-            pp.pprint(test_IP._latency_dict)
+            phase_list = test_IP.get_phase_list()
+            test_IP.print_phase_list()
+            print()
+            # pp = pprint.PrettyPrinter(indent=4)
+            # pp.pprint(test_IP._latency_dict)
             if(i == 0):
                 test_IP.write_latency_title_tab(csv_file)
             test_IP.write_latency_data_tab(csv_file)
@@ -1868,12 +2006,32 @@ def validate_one_elt_IP():
         test_IP = EltIP(8192)
         test_IP.load_layer(layer_info)
         test_IP.get_latency()
+        phase_list = test_IP.get_phase_list()
+        test_IP.print_phase_list()
+        print()
         if(i == 0):
             test_IP.write_latency_title_tab(csv_file)
         test_IP.write_latency_data_tab(csv_file)
 
 
+def validate_axi_function():
+    data_dict = {}
+    latency_dict = {}
+
+    # data_dict[1] = (0, 0)
+    # latency_dict[1] = 12
+    data_dict[2] = (0, 4)
+    latency_dict[2] = 4
+    data_dict[3] = (16, 0)
+    latency_dict[3] = 16
+    latency, delete_list = get_racing_latency(data_dict, latency_dict)
+    print(latency)
+    print(delete_list)
+    print(latency_dict)
+    print(data_dict)
+
 if __name__ == "__main__":
-    # validate_one_IP()
+    # validate_one_conv_IP()
     # main_conv_brutal_search()
-    validate_one_elt_IP()
+    # validate_one_elt_IP()
+    validate_axi_function()
