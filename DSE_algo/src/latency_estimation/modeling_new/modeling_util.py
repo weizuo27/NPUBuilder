@@ -59,7 +59,8 @@ def get_racing_latency(data_dict, latency_dict):
 
     for key in latency_dict_data:
         if min_nondata_latency < min_data_latency:
-            consumed_task_latency = min_task_latency / total_density * min(total_density, 1) 
+            consumed_task_latency = min_task_latency / \
+                total_density * min(total_density, 1)
         latency_dict[key] -= consumed_task_latency
         if latency_dict[key] == 0:
             delete_key_list.append(key)
@@ -70,9 +71,7 @@ def get_racing_latency(data_dict, latency_dict):
     for key in delete_key_list:
         del latency_dict[key]
         del data_dict[key]
-    
     return min_task_latency, delete_key_list
-
 
 
 def get_AXI_racing_latency_by_shortest_task(data_dict, latency_dict):
@@ -362,7 +361,7 @@ class ConvIP():
             _ceil_div(channels_in_align4/4, buffer_capacity))-1)
 
         channel_in_tile_size = int(channels_in_align4 /
-                                   (channel_in_tile_number*split))
+                                   (channel_in_tile_number))
 
         # following is for model simulation debugging
 
@@ -406,8 +405,10 @@ class ConvIP():
             self.Layer._output_height, self.Layer._row_step)
 
         # TODO: add group condition after alexnet is added
-
-        max_nkpf = (self._weight_buffer_depth - 1) // self._compute_iter_length
+        if(self.Layer._group_number == 2):
+            max_nkpf = (self._weight_buffer_depth/2 - 1) // self._compute_iter_length
+        else:
+            max_nkpf = (self._weight_buffer_depth - 1) // self._compute_iter_length
         # max_nkpf = min(max_nkpf, 15)
 
         max_nkpf = min(max_nkpf, 15)
@@ -472,9 +473,13 @@ class ConvIP():
         self._channels_out_tile_size = channels_out_tile_size
         self._channels_out_tile_size_last = channels_out_tile_size_last
         self._channels_out_tile_number = channels_out_tile_number
+       
+        
+   
 
         self._weight_one_time_flag = (
             self._channel_in_tile_number * self._channels_out_tile_number <= 2)
+        print("self._weight_one_time_flag", self._weight_one_time_flag, self._channel_in_tile_number, self._channels_out_tile_number )
         self._latency_dict['_weight_one_time_flag'] = self._weight_one_time_flag
 
     def _update_remain_latency_by_real(self, task_remain_latency_dict, task_data_density_dict, real_latency_threashold, task_real_time_dict):
@@ -705,49 +710,22 @@ class ConvIP():
 
     def get_ProcIstg_latency(self):
 
-        stage_type_table = {
-            1: {'NoInput': ('None', 'None', True, True)},
 
-            2: {'NoOutput': ('ReadInputLast', 'None', False, True),
-                'NoInput': ('None', 'WriteOutputNormal', True, False)},
+        for input_flag in ['None', 'ReadInputNormal', 'ReadInputLast']:
+            for output_flag in ['None', 'WriteOutputNormal']:
+                for last_weight_flag, fist_row_step_flag in [(True, True), (True, False), (False, True),(False,False)]:
+                    key = input_flag+output_flag + \
+                        str(last_weight_flag)+str(fist_row_step_flag)
+                    Total, Data = self._get_istg_latency(
+                        input_flag, output_flag, last_weight_flag, fist_row_step_flag)
 
-            3: {'NoOutput': ('ReadInputNormal', 'None', False, True),
-                'LastInput': ('ReadInputLast', 'WriteOutputNormal', False, False),
-                'NoInput': ('None', 'WriteOutputNormal', True, False)},
+                    if(self.Layer._group_number == 2):
+                        self._latency_dict[key+"_Data"]=Data*2
+                        self._latency_dict[key+"_Total"]=Total*2
+                    else:
+                        self._latency_dict[key+"_Data"]=Data
+                        self._latency_dict[key+"_Total"]=Total               
 
-            4: {'NoOutput': ('ReadInputNormal', 'None', False, True),
-                'NormalInput': ('ReadInputNormal', 'WriteOutputNormal', False, False),
-                'LastInput': ('ReadInputLast', 'WriteOutputNormal', False, False),
-                'NoInput': ('None', 'WriteOutputNormal', True, False)},
-        }
-
-        # start compute 4 stages of latency: NoOuput, NormalInput, LastInput, NoInput
-        row_step_index = self._row_step_number if self._row_step_number < 4 else 4
-
-        stage_latency_dict = {}
-        for stage_tag in ['NoOutput', 'NormalInput', 'LastInput', 'NoInput']:
-            if stage_tag in stage_type_table[row_step_index]:
-                input_flag, output_flag, last_weight_flag, fist_row_step_flag = stage_type_table[
-                    row_step_index][stage_tag]
-                stage_latency_dict[stage_tag] = self._get_istg_latency(
-                    input_flag, output_flag, last_weight_flag, fist_row_step_flag)
-            else:
-                stage_latency_dict[stage_tag] = (0, 0)
-
-            self._latency_dict['Istage{}LatencyTotal'.format(
-                stage_tag)] = stage_latency_dict[stage_tag][0]
-            self._latency_dict['Istage{}LatencyData'.format(
-                stage_tag)] = stage_latency_dict[stage_tag][1]
-
-        self._latency_dict['IstageReadOverhead'] = self._latency_dict['ReadInputFirst_Total']
-        self._latency_dict['IstageWriteOverhead'] = self._latency_dict['WriteOutputLast_Total']
-        self._latency_dict['TotalLatency'] = self._latency_dict['IstageReadOverhead']\
-            + self._latency_dict['IstageNoOutputLatencyTotal']\
-            + self._latency_dict['IstageNormalInputLatencyTotal'] * (self._row_step_number - 3)\
-            + self._latency_dict['IstageLastInputLatencyTotal']\
-            + self._latency_dict['IstageNoInputLatencyTotal']\
-            + self._latency_dict['WriteOutputLast_Total'] + \
-            self._overall_overhead
 
     def get_LoadFeedingBuffer_latency(self):
         """
@@ -950,16 +928,25 @@ class ConvIP():
         else:
             input_height_first = (
                 (row_step-1) * stride + filter_size) - pad_size
+
             if input_height_first > input_height:
                 input_height_first = input_height
 
             input_height_normal = row_step * stride
+            input_rowstep_number = _ceil_div(
+                input_height - input_height_first, input_height_normal) + 1
+            # assert(input_rowstep_number ==
+            #        self._row_step_number), "input loading time less than output loading time, in {}: out {}\n"
 
-            input_height_last = input_height - input_height_first - \
-                input_height_normal*(self._row_step_number - 2)
-            if input_height_last < 0:
+            if((input_height - input_height_first) % input_height_normal):
+                input_height_last = (
+                    input_height - input_height_first) % input_height_normal
+            elif input_height == input_height_first:
                 input_height_last = 0
+            else:
+                input_height_last = input_height_normal
 
+        self._input_row_step_number = input_rowstep_number
         self._input_height_first = input_height_first
         self._input_height_last = input_height_last
 
@@ -972,7 +959,7 @@ class ConvIP():
 
         if self.Layer._mem_in == True:
             total_cycle, data_cycle = self._mem_burst_read_latency(
-                burst_number, input_height_first*input_width, 10)
+                burst_number, input_height_first * input_width, 10)
             self._latency_dict['ReadInputFirst_Data'] = data_cycle * \
                 self.CLK_PERIOD
             self._latency_dict['ReadInputFirst_Total'] = total_cycle * \
@@ -1001,6 +988,7 @@ class ConvIP():
             self._latency_dict['ReadInputLast_Data'] = 0
             self._latency_dict['ReadInputLast_Total'] = (
                 10 + input_height_last * input_width * burst_number)*self.CLK_PERIOD
+
 
     def get_LoadKer_latency(self):
         """
@@ -1128,44 +1116,68 @@ class ConvIP():
 
     def increment_input_rowstep(self):
         self._input_row_step_index = self._input_row_step_index + 1
-
-        assert(self._input_row_step_index <
-               self._row_step_number), "loading input rowstep index out of boundary"
+        if(self._input_row_step_index >= self._input_row_step_number):
+            self._input_row_step_index = self._input_row_step_number-1;
+            return "None"
         self._input_start_row = self._input_end_row + 1
 
-        if self._input_row_step_index == self._row_step_number - 1:
+        if self._input_row_step_index == self._input_row_step_number - 1:
             self._input_end_row = self._input_start_row + self._input_height_last - 1
+            return "ReadInputLast"
         else:
             self._input_end_row = self._input_start_row + self._input_row_step - 1
+            return "ReadInputNormal"
+
+    def initiate_compute_rowstep(self):
+        self._compute_row_step_index = -1
+
+    def increment_compute_rowstep(self):
+        self._compute_row_step_index = self._compute_row_step_index + 1
+        first_step = False
+        last_step = False
+        if(self._compute_row_step_index == 0):
+            first_step = True
+        if(self._compute_row_step_index == self._row_step_number - 1):
+            last_step = True
+        return (first_step, last_step)
 
     def initiate_output_rowstep(self):
-        self._output_row_step_index = 0
+        self._output_row_step_index = -2
         self._output_row_step = self.Layer._row_step
         self._output_start_row = -1
         self._output_end_row = -1
 
     def increment_output_rowstep(self):
         self._output_row_step_index = self._output_row_step_index + 1
-        assert(self._output_row_step_index <=
-               self._row_step_number), "loading output rowstep index out of boundary"
+        if(self._output_row_step_index < 0):
+            return "None"
         self._output_start_row = self._output_end_row + 1
         if self._output_row_step_index == self._row_step_number - 1:
             self._output_end_row = self._output_start_row + self._output_height_last - 1
+            return "WriteOutputLast"
         else:
             self._output_end_row = self._output_start_row + self._output_row_step - 1
+            return "WriteOutputNormal"
 
     def get_phase_list(self):
         phase_list = []
         # initialize start and end row recorder for rowstep
         self.initiate_input_rowstep()
         self.initiate_output_rowstep()
+        self.initiate_compute_rowstep()
 
         # pre phase
         phase_pre = Phase()
-        phase_pre.set_latency_info(
-            self._latency_dict['ReadInputFirst_Data'],
-            self._latency_dict['ReadInputFirst_Data'],
-            self._latency_dict['ReadInputFirst_Total'])
+        if(self.Layer._group_number == 2):
+            phase_pre.set_latency_info(
+                self._latency_dict['ReadInputFirst_Data']*2,
+                self._latency_dict['ReadInputFirst_Data']*2,
+                self._latency_dict['ReadInputFirst_Total']*2)
+        else:
+            phase_pre.set_latency_info(
+                self._latency_dict['ReadInputFirst_Data'],
+                self._latency_dict['ReadInputFirst_Data'],
+                self._latency_dict['ReadInputFirst_Total'])
 
         if self.Layer._mem_in:
             phase_pre.set_read_row_info(None, None)
@@ -1176,95 +1188,44 @@ class ConvIP():
         phase_pre.set_write_row_info(None, None)
         phase_list.append(phase_pre)
 
-        # no output phase
-        if self._row_step_number >= 2:
-            self.increment_input_rowstep()
-            phase_nooutput = Phase()
-            phase_nooutput.set_latency_info(
-                self._latency_dict['IstageNoOutputLatencyData'],
-                self._latency_dict['IstageNoOutputLatencyData'],
-                self._latency_dict['IstageNoOutputLatencyTotal'])
-            if self.Layer._mem_in:
-                phase_nooutput.set_read_row_info(None, None)
+        print(self._row_step_number)
+        while(self._compute_row_step_index <= (self._row_step_number - 2) ):
+            input_flag = self.increment_input_rowstep()
+            first_compute_row_flag, last_compute_row_flag = self.increment_compute_rowstep()
+            output_flag = self.increment_output_rowstep()
+            key=input_flag+output_flag+str(last_compute_row_flag)+str(first_compute_row_flag)
+            Data = self._latency_dict[key+"_Data"]
+            Total = self._latency_dict[key+"_Total"]
+            phase_compute = Phase()
+            phase_compute.set_latency_info(Data,Data,Total)
+
+            if self.Layer._mem_in or input_flag == "None":
+                phase_compute.set_read_row_info(None, None)
             else:
-                phase_nooutput.set_read_row_info(
+                phase_compute.set_read_row_info(
                     self._input_start_row, self._input_end_row)
-            phase_nooutput.set_write_row_info(None, None)
 
-            phase_list.append(phase_nooutput)
-
-        # normalinput phase
-
-        if self._row_step_number >= 4:
-            for i in range(self._row_step_number - 3):
-                self.increment_input_rowstep()
-                self.increment_output_rowstep()
-                phase_normalinput = Phase()
-                phase_normalinput.set_latency_info(
-                    self._latency_dict['IstageNormalInputLatencyData'],
-                    self._latency_dict['IstageNormalInputLatencyData'],
-                    self._latency_dict['IstageNormalInputLatencyTotal'])
-                if self.Layer._mem_in:
-                    phase_normalinput.set_read_row_info(None, None)
-                else:
-                    phase_normalinput.set_read_row_info(
-                        self._input_start_row, self._input_end_row)
-                if self.Layer._mem_out:
-                    phase_normalinput.set_write_row_info(None, None)
-                else:
-                    phase_normalinput.set_write_row_info(
-                        self._output_start_row, self._output_end_row)
-
-                phase_list.append(phase_normalinput)
-
-        # LastInput phase
-        if self._row_step_number >= 3:
-            self.increment_input_rowstep()
-            self.increment_output_rowstep()
-            phase_LastInput = Phase()
-            phase_LastInput.set_latency_info(
-                self._latency_dict['IstageLastInputLatencyData'],
-                self._latency_dict['IstageLastInputLatencyData'],
-                self._latency_dict['IstageLastInputLatencyTotal'])
-            if self.Layer._mem_in:
-                phase_LastInput.set_read_row_info(None, None)
+            if self.Layer._mem_out or output_flag == 'None':
+                phase_compute.set_write_row_info(None, None)
             else:
-                phase_LastInput.set_read_row_info(
-                    self._input_start_row, self._input_end_row)
-            if self.Layer._mem_out:
-                phase_LastInput.set_write_row_info(None, None)
-            else:
-                phase_LastInput.set_write_row_info(
+                phase_compute.set_write_row_info(
                     self._output_start_row, self._output_end_row)
+            phase_list.append(phase_compute)
 
-            phase_list.append(phase_LastInput)
-
-        # noinput phase
-        if self._row_step_number >= 1:
-            if self._row_step_number > 1:
-                self.increment_output_rowstep()
-            phase_NoInput = Phase()
-            phase_NoInput.set_latency_info(
-                self._latency_dict['IstageNoInputLatencyData'],
-                self._latency_dict['IstageNoInputLatencyData'],
-                self._latency_dict['IstageNoInputLatencyTotal'])
-
-            phase_NoInput.set_read_row_info(None, None)
-            if self.Layer._mem_out:
-                phase_NoInput.set_write_row_info(None, None)
-            else:
-                phase_NoInput.set_write_row_info(
-                    self._output_start_row, self._output_end_row)
-
-            phase_list.append(phase_NoInput)
-
-        # post phase
-        self.increment_output_rowstep()
+        output_flag = self.increment_output_rowstep()
+        assert(output_flag == "WriteOutputLast" ) 
+        
         phase_Post = Phase()
-        phase_Post.set_latency_info(
-            self._latency_dict['WriteOutputLast_Data'],
-            self._latency_dict['WriteOutputLast_Data'],
-            self._latency_dict['WriteOutputLast_Total'])
+        if(self.Layer._group_number == 2):
+            phase_Post.set_latency_info(
+                self._latency_dict['WriteOutputLast_Data']*2,
+                self._latency_dict['WriteOutputLast_Data']*2,
+                self._latency_dict['WriteOutputLast_Total']*2)
+        else:
+            phase_Post.set_latency_info(
+                self._latency_dict['WriteOutputLast_Data'],
+                self._latency_dict['WriteOutputLast_Data'],
+                self._latency_dict['WriteOutputLast_Total'])          
 
         phase_Post.set_read_row_info(None, None)
         if self.Layer._mem_out:
@@ -1282,7 +1243,10 @@ class ConvIP():
         assert(self._output_end_row == self.Layer._output_height -
                1), "output row step number not matching row step number, expecting {} but geting {}".format(
             self._output_row_step_index, self._row_step_number)
+
         self._phase_list = phase_list
+        
+        self._latency_dict["TotalLatency"]=  sum(c.Total_latency for c in phase_list) 
         return phase_list
 
     def print_phase_list(self):
@@ -1787,12 +1751,12 @@ class ConvLayerInfo():
         self._layer_id = args_list[12]
         self._row_step = args_list[15]
         self._mem_in = True
-        self._mem_out = False
+        self._mem_out = True
 
         self._ctrl_val_nkpf = args_list[13]
         self._ctrl_val_compute_planes_align4 = args_list[61]
         self._ctrl_val_straddle = args_list[17]
-        self._group_number = 1
+        self._group_number = 1 + args_list[30]
 
     def set_from_node(self, file_name, node_data, layer_id, group_flag):
 
@@ -1950,13 +1914,33 @@ def validate_one_conv_IP():
     folder_name = args.argsfolder
 
     csv_file = open("model_latency.csv", "w")
-    for i in range(77):
+    for i in range(7):
         args_file_name = folder_name+"/args_conv_L"+str(i)
+        args_group_file_name = folder_name+"/args_convG1_L"+str(i)
+        args_exist = False
 
+        group_flag = False
         if os.path.exists(args_file_name):
+            args_exist = True
+
+        if os.path.exists(args_group_file_name):
+            args_exist = True
+            group_flag = True
+
+        if args_exist:
+            print("layer Id", i )
             conv_layer = ConvLayerInfo()
-            conv_layer.set_from_file(args_file_name)
-            test_IP = ConvIP(ConvIP, 16, 48, 4096, 4096, 2048)
+            if(group_flag):
+                conv_layer.set_from_file(args_group_file_name)
+            else:
+                conv_layer.set_from_file(args_file_name)
+
+            assert((conv_layer._group_number == 2) ==
+                   group_flag), "Group number in coherent with group_flag"
+            if group_flag:  
+                test_IP = ConvIP(ConvIP, 16, 48, 4096, 4096, 4096)
+            else:
+                test_IP = ConvIP(ConvIP, 16, 48, 4096, 4096, 2048)
             test_IP.load_layer(conv_layer)
             test_IP.get_latency()
             phase_list = test_IP.get_phase_list()
@@ -1967,6 +1951,8 @@ def validate_one_conv_IP():
             if(i == 0):
                 test_IP.write_latency_title_tab(csv_file)
             test_IP.write_latency_data_tab(csv_file)
+        else:
+            print("{} does not exist".format(args_file_name))
 
 
 def validate_one_elt_IP():
@@ -2030,8 +2016,9 @@ def validate_axi_function():
     print(latency_dict)
     print(data_dict)
 
+
 if __name__ == "__main__":
-    # validate_one_conv_IP()
+    validate_one_conv_IP()
     # main_conv_brutal_search()
     # validate_one_elt_IP()
-    validate_axi_function()
+    # validate_axi_function()
