@@ -6,8 +6,8 @@ import argparse
 import math
 VALIDATE = 0
 
-
-def get_racing_latency(data_dict, latency_dict):
+# This is the foo function, feel free to rename it
+def foo(data_dict, latency_dict):
 
     latency_dict_nodata = {}
     latency_dict_data = {}
@@ -207,9 +207,9 @@ class ConvIP():
     pix_factor_list = [0, 8, 16, 24, 32, 48]
 
     """
-    get_[xxxx] function shall change object attribute based on calcalutaions
-    get_[XXXX]_latency function shall change both object write latency into latency info
-    _[xxxxx] are helpler function which change nothing
+    get_[xxxx] function shall change object attribute 2 on calcalutaions
+    get_[XXXX]_latency function shall change both obje2ite latency into latency info
+    _[xxxxx] are helpler function which change nothing2
     """
 
     def __init__(self, cls=0, ker_factor=0, pix_factor=0, input_buffer_depth=0, output_buffer_depth=0, weight_buffer_depth=0):
@@ -261,6 +261,15 @@ class ConvIP():
         self._input_buffer_depth = IPInfo.XI_INDEPTH
         self._output_buffer_depth = IPInfo.XI_OUTDEPTH
         self._weight_buffer_depth = IPInfo.XI_WEIGHTBUFF_DEPTH
+
+    def set_from_Layerinfo(self, layerInfo):      
+        layer=ConvLayerInfo()
+        layer.set_from_layerInfo(layerInfo)
+        self.Layer = layer
+        self._latency_dict['RowStep'] = self.Layer._row_step
+        self.Layer._channels_in = _align_size(self.Layer._channels_in, 4)
+
+
 
     def load_layer(self, conv_layer_info):
         self.Layer = conv_layer_info
@@ -726,7 +735,6 @@ class ConvIP():
                         self._latency_dict[key+"_Data"]=Data
                         self._latency_dict[key+"_Total"]=Total               
 
-
     def get_LoadFeedingBuffer_latency(self):
         """
         Compute the latency of LoadFeedingBuffer 
@@ -989,7 +997,6 @@ class ConvIP():
             self._latency_dict['ReadInputLast_Total'] = (
                 10 + input_height_last * input_width * burst_number)*self.CLK_PERIOD
 
-
     def get_LoadKer_latency(self):
         """
         This function will compute different latency and data ammount to read weight from DDR
@@ -1092,7 +1099,7 @@ class ConvIP():
             file_pointer.write(",{},".format(key))
         file_pointer.write("\n")
 
-    def get_latency(self):
+    def compute_latency(self):
         self.get_channels_in_tile_size()
         self.get_LoadFeedingBuffer_latency()
         self.get_ComputeKer16_latency()
@@ -1258,94 +1265,31 @@ class PoolIP():
     def load_layerInfo(self, layerInfo):
         self.layerInfo = layerInfo
 
-    def get_latency(self):
+    def compute_latency(self):
         return None
 
-    def PreDataCycle0():
-        return 0
-
-    def PreDataCycle1():
-        return 0
-
-    def PreTotalCycle():
-        return 0
-
-    def RecurDataCycleFirst0():
-        return 0
-
-    def RecurDataCycleFirst1():
-        return 0
-
-    def RecurTotalCycleFirst():
-        return 0
-
-    def RecurDataCycleMid0():
-        return 0
-
-    def RecurDataCycleMid1():
-        return 0
-
-    def RecurTotalCycleMid():
-        return 0
-
-    def RecurDataCycleSecondLast0():
-        return 0
-
-    def RecurDataCycleSecondLast1():
-        return 0
-
-    def RecurTotalCycleSecondLast():
-        return 0
-
-    def RecurDataCycleLast0():
-        return 0
-
-    def RecurDataCycleLast1():
-        return 0
-
-    def RecurTotalCycleLast():
-        return 0
-
-    def PostDataCycle0():
-        return 0
-
-    def PostDataCycle1():
-        return 0
-
-    def PostTotalCycle():
-        return 0
-
-    def RowNum():
-        return 0
-
-    def RowStep():
-        return 0
-
-    def DepsRowStepFirst():
-        return 0
-
-    def DepsRowStepRecur():
-        return 0
-
-    def LastStartRow():
-        return 0
-
-    def SecondLastStartRow():
-        return 0
-
-    def Stride():
-        return 0
+    def get_phase_list(self):
+        return None
+    
 
 
 class EltIP():
-    def __init__(self, input_depth):
-        self._input_buffer_depth = input_depth
+    def __init__(self):
+        self._input_buffer_depth = None
         self.AXI_ACK_CYCLE = 3.5
         self.AXI_RESPONSE_CYCLE = 24
         self.AXI_ACK_CYCLE_WRITE = 7
         self.AXI_RESPONSE_CYCLE_WRITE = 40
         self.CLK_PERIOD = 4.0
         self._latency_dict = {}
+
+    def sef_from_IPinfo(self, IPInfo):
+        self._input_buffer_depth = IPInfo.XI_INDEPTH
+
+    def set_from_Layerinfo(self, layerInfo):
+        layer=ConvLayerInfo()
+        layer.set_from_layerInfo(layerInfo)
+        self.Layer = layer
 
     def load_layer(self, Layer):
         self.Layer = Layer
@@ -1574,7 +1518,7 @@ class EltIP():
             self._latency_dict['LastPhase_Total'] + \
             self._latency_dict['NormalPhase_Total'] * (row_step_number - 2)
 
-    def get_latency(self):
+    def compute_latency(self):
         self.get_read_lateney()
         self.get_write_lateney()
         self.get_phase_latency()
@@ -1728,7 +1672,7 @@ class ConvLayerInfo():
         self._layer_id = layerInfo.layerID
         self._row_step = layerInfo.rowStep
         self._mem_in = layerInfo.memIn
-        self._mem_out = layerInfo.mode
+        self._mem_out = layerInfo.memOut
 
     def set_from_file(self, file_name):
         args_file = open(file_name, 'rb')
@@ -1937,12 +1881,14 @@ def validate_one_conv_IP():
 
             assert((conv_layer._group_number == 2) ==
                    group_flag), "Group number in coherent with group_flag"
-            if group_flag:  
+
+            if group_flag:
                 test_IP = ConvIP(ConvIP, 16, 48, 4096, 4096, 4096)
             else:
                 test_IP = ConvIP(ConvIP, 16, 48, 4096, 4096, 2048)
+                
             test_IP.load_layer(conv_layer)
-            test_IP.get_latency()
+            test_IP.compute_latency()
             phase_list = test_IP.get_phase_list()
             test_IP.print_phase_list()
             print()
@@ -1991,7 +1937,7 @@ def validate_one_elt_IP():
         layer_info._layer_id = i
         test_IP = EltIP(8192)
         test_IP.load_layer(layer_info)
-        test_IP.get_latency()
+        test_IP.compute_latency()
         phase_list = test_IP.get_phase_list()
         test_IP.print_phase_list()
         print()
