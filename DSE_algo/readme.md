@@ -2,11 +2,14 @@
 1. Input files need to be prepared to run the flow:
     go to folder ./inputFiles
     >> IP_config_w (The list of IPs to select among and their configurations)
+    
         This can be generated in src/latency_estimation/genIPconfig.py (after generation, file needs to be copied here)
+    
     >> layerIDMapping(The layer ID of each layer for a network. I have given example for four networks, named as "layerIDMappingXXNet", can copy them as "layerIDMapping")
     >> PoolingTyping(The pooling type of each pooling layer for a network. I have given example for four networks, named as "PoolingTypingXXNet", can copy as "PoolingTyping")
     >> input NN graph (The graph structure of the networks. I have given the graph for the four networks, named as "xxNet_optimized_graph.txt)
-        Note: To generate this graph file for other networks, it need to be written in a specific format.
+    
+    Note: To generate this graph file for other networks, it need to be written in a specific format.
 
 2. To run the flow (example)
     >> time python top_4.py 1400 2090 294080 448160 10000 19000000 ./inputFiles/google_optimized_graph.txt  "./inputFiles/IP_config_w" 4
