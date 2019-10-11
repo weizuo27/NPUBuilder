@@ -14,29 +14,27 @@
 2. To run the flow (example)
       
          time python top_4.py 1400 2090 294080 448160 10000 19000000 ./inputFiles/google_optimized_graph.txt  "./inputFiles/IP_config_w" 4
-    * To understand the meaning of each argument:
+   To understand the meaning of each argument:
         
-            python top_4.py -h
+         python top_4.py -h
 
 3. The output of the flow:
     go to folder outputFiles. It has two parts(folders): hw and sw, which is coresponding to the generated file for hardware design and software design
     1. hw: (will add explaination later). Can copy to the correct folder (the folders need to be created)
-        callOrder.csv :
-        dnn_wrapper.cpp : 
-        ipNameList : 
-        ippackGen.sh : 
-        pipeSystem.cpp : 
-        pipeSystem.h : 
-        round.csv :
-
-
-        pipeSystemTemp : This is used for sw generation, not used for design.
+        * callOrder.csv :
+        * dnn_wrapper.cpp : 
+        * ipNameList : 
+        * ippackGen.sh : 
+        * pipeSystem.cpp : 
+        * pipeSystem.h : 
+        * round.csv :
+        * pipeSystemTemp : This is used for sw generation, not used for design.
 
     2. sw (Following the folder orgnization of the CHaiDNN)
-        csvParser.cpp : Copy to scheduler folder
-        csvParser.hpp : Copy to scheduler folder
-        utils_wei.cpp : Copy to scheduler folder
-        utils_wei.hpp : Copy to scheduler folder
-        xi_scheduler.cpp : Copy to scheduler folder (replace the original xi_scheduler.cpp)
-        xi_kernels.cpp : Copy to folder "common"
-        xi_kernels.h :  Copy to folder "common"
+        * csvParser.cpp : Copy to scheduler folder
+        * csvParser.hpp : Copy to scheduler folder
+        * utils_wei.cpp : Copy to scheduler folder
+        * utils_wei.hpp : Copy to scheduler folder
+        * xi_scheduler.cpp : Copy to scheduler folder (replace the original xi_scheduler.cpp)
+        * xi_kernels.cpp : Copy to folder "common"
+        * xi_kernels.h :  Copy to folder "common"
